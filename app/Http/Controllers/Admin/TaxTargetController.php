@@ -13,13 +13,36 @@ class TaxTargetController extends Controller
 {
     public function index(): View
     {
-        $taxTargets = TaxTarget::query()
-            ->with('taxType')
+        $query = TaxTarget::query()->with('taxType');
+
+        // Search functionality
+        if (request()->filled('search')) {
+            $search = request('search');
+            $query->whereHas('taxType', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        // Year filter
+        if (request()->filled('year')) {
+            $query->where('year', request('year'));
+        }
+
+        $taxTargets = $query
             ->orderByDesc('year')
             ->orderBy('tax_type_id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.tax-targets.index', compact('taxTargets'));
+        // Get available years for filter dropdown
+        $availableYears = TaxTarget::query()
+            ->select('year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year');
+
+        return view('admin.tax-targets.index', compact('taxTargets', 'availableYears'));
     }
 
     public function create(): View

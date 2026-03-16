@@ -4,6 +4,7 @@ namespace App\Actions\Tax;
 
 use App\Imports\TaxRealizationImport;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PreviewTaxRealizationAction
@@ -18,9 +19,9 @@ class PreviewTaxRealizationAction
      *     preview_data: list<array{
      *         row: int,
      *         kode_jenis_pajak: string|null,
-     *         nama_jenis_pajak: string|null,
-     *         kode_kecamatan: string|null,
-     *         nama_kecamatan: string|null,
+     *         jenis_pajak: string|null,
+     *         jumlah_kecamatan: int,
+     *         keterangan: string,
      *         tahun: string|int|null,
      *         januari: float,
      *         februari: float,
@@ -39,18 +40,25 @@ class PreviewTaxRealizationAction
      *     }>,
      * }
      */
-    public function __invoke(UploadedFile $file): array
+    public function __invoke(UploadedFile $file, ?int $year = null): array
     {
         $storedPath = $file->store('imports/tax-realizations/pending', 'local');
 
-        $import = new TaxRealizationImport(previewOnly: true);
+        $import = new TaxRealizationImport(
+            previewOnly: true,
+            year: $year,
+        );
 
-        Excel::import($import, $storedPath, 'local');
+        Excel::import($import, $storedPath, 'local', null, 'Import Realisasi');
+
+        $previewData = $import->getPreviewData();
+
+        Log::info('PreviewTaxRealizationAction: totalRows='.$import->getTotalRows().', previewCount='.count($previewData));
 
         return [
             'stored_path' => $storedPath,
             'total_rows' => $import->getTotalRows(),
-            'preview_data' => $import->getPreviewData(),
+            'preview_data' => $previewData,
         ];
     }
 }

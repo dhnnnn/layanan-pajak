@@ -6,6 +6,7 @@ use App\Enums\ImportStatus;
 use App\Imports\TaxRealizationImport;
 use App\Models\ImportLog;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
@@ -21,6 +22,7 @@ class ImportTaxRealizationAction
         string $storedPath,
         string $originalFileName,
         User $user,
+        ?int $year = null,
     ): ImportLog {
         /** @var ImportLog $importLog */
         $importLog = ImportLog::query()->create([
@@ -33,9 +35,14 @@ class ImportTaxRealizationAction
             $import = new TaxRealizationImport(
                 importLog: $importLog,
                 user: $user,
+                year: $year,
             );
 
-            Excel::import($import, $storedPath, 'local');
+            Log::info('ImportTaxRealizationAction: Starting import for storedPath='.$storedPath.', year='.$year);
+
+            Excel::import($import, $storedPath, 'local', null, 'Import Realisasi');
+
+            Log::info('ImportTaxRealizationAction: Finished. Total='.$import->getTotalRows().', Success='.$import->getSuccessRows().', Failed='.$import->getFailedRows());
 
             $importLog->update([
                 'status' => $import->getFailedRows() > 0

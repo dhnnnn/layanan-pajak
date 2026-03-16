@@ -4,24 +4,40 @@
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 overflow-hidden">
             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Unggah File Baru</h3>
             
-            <form action="{{ route('admin.import.preview') }}" method="POST" enctype="multipart/form-data" class="flex flex-col md:flex-row items-end gap-4">
+            <form action="{{ route('admin.import.preview') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
-                <div class="flex-1 w-full">
-                    <label for="file" class="block text-sm font-semibold text-slate-700 mb-1">Pilih File Excel (.xlsx, .xls)</label>
-                    <input type="file" name="file" id="file" accept=".xlsx, .xls" 
-                        class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-lg @error('file') border-red-500 @enderror" 
-                        required>
-                    @error('file')
+
+                <div>
+                    <label for="year" class="block text-sm font-semibold text-slate-700 mb-1">Tahun Realisasi</label>
+                    <select name="year" id="year" class="block w-full text-sm border-slate-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 @error('year') border-red-500 @enderror" required>
+                        @php $currentYear = date('Y'); @endphp
+                        @for($y = $currentYear; $y >= $currentYear - 5; $y--)
+                            <option value="{{ $y }}" {{ old('year', $currentYear) == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
+                    </select>
+                    @error('year')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
-                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm inline-flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Pratinjau Data
-                </button>
+
+                <div class="flex flex-col md:flex-row items-end gap-4 pt-2">
+                    <div class="flex-1 w-full">
+                        <label for="file" class="block text-sm font-semibold text-slate-700 mb-1">Pilih File Excel (.xlsx, .xls)</label>
+                        <input type="file" name="file" id="file" accept=".xlsx, .xls" 
+                            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-lg @error('file') border-red-500 @enderror" 
+                            required>
+                        @error('file')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm inline-flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Pratinjau Data
+                    </button>
+                </div>
             </form>
             
             <div class="mt-4 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
@@ -30,11 +46,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <div class="text-xs text-blue-700 leading-relaxed">
-                        <p class="font-bold mb-1">Petunjuk Import:</p>
+                        <p class="font-bold mb-1">Petunjuk Import Master:</p>
                         <ul class="list-disc ml-4 space-y-1">
-                            <li>Gunakan template yang telah disediakan untuk memastikan struktur data benar.</li>
-                            <li>Pastikan nama <strong>Jenis Pajak</strong> dan <strong>Kecamatan</strong> sesuai dengan data master.</li>
-                            <li>Kolom bulan (Januari - Desember) harus berisi angka riil atau 0.</li>
+                            <li>Download template master dari menu Template.</li>
+                            <li>Isi data realisasi untuk setiap jenis pajak.</li>
+                            <li>Pastikan nama <strong>Jenis Pajak</strong> sesuai dengan dropdown yang tersedia.</li>
+                            <li>Data akan otomatis diterapkan ke semua kecamatan.</li>
+                            <li>Kolom bulan (Januari - Desember) harus berisi angka atau 0.</li>
                         </ul>
                     </div>
                 </div>

@@ -4,24 +4,53 @@
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 overflow-hidden">
             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Unggah File Realisasi</h3>
             
-            <form action="{{ route('pegawai.import.preview') }}" method="POST" enctype="multipart/form-data" class="flex flex-col md:flex-row items-end gap-4">
+            <form action="{{ route('pegawai.import.preview') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
-                <div class="flex-1 w-full">
-                    <label for="file" class="block text-sm font-semibold text-slate-700 mb-1">Pilih File Excel (.xlsx, .xls)</label>
-                    <input type="file" name="file" id="file" accept=".xlsx, .xls" 
-                        class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-lg @error('file') border-red-500 @enderror" 
-                        required>
-                    @error('file')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="district_id" class="block text-sm font-semibold text-slate-700 mb-1">Kecamatan Target</label>
+                        <select name="district_id" id="district_id" class="block w-full text-sm border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 @error('district_id') border-red-500 @enderror" required>
+                            <option value="">-- Pilih Kecamatan --</option>
+                            @foreach($districts as $district)
+                                <option value="{{ $district->id }}" {{ old('district_id') == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('district_id')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="year" class="block text-sm font-semibold text-slate-700 mb-1">Tahun Realisasi</label>
+                        <select name="year" id="year" class="block w-full text-sm border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 @error('year') border-red-500 @enderror" required>
+                            @php $currentYear = date('Y'); @endphp
+                            @for($y = $currentYear; $y >= $currentYear - 5; $y--)
+                                <option value="{{ $y }}" {{ old('year', $currentYear) == $y ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                        @error('year')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
-                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm inline-flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Pratinjau
-                </button>
+
+                <div class="flex flex-col md:flex-row items-end gap-4 pt-2">
+                    <div class="flex-1 w-full">
+                        <label for="file" class="block text-sm font-semibold text-slate-700 mb-1">Pilih File Excel (.xlsx, .xls)</label>
+                        <input type="file" name="file" id="file" accept=".xlsx, .xls" 
+                            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-lg @error('file') border-red-500 @enderror" 
+                            required>
+                        @error('file')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm inline-flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Pratinjau
+                    </button>
+                </div>
             </form>
             
             <div class="mt-4 p-4 bg-emerald-50/50 rounded-lg border border-emerald-100">

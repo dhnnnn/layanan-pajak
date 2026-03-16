@@ -7,35 +7,24 @@ use Illuminate\Database\Seeder;
 
 class TaxTypeSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $taxTypes = [
-            ['name' => 'Pajak Bumi dan Bangunan', 'code' => 'PBB'],
-            [
-                'name' => 'Bea Perolehan Hak atas Tanah dan Bangunan',
-                'code' => 'BPHTB',
-            ],
-            ['name' => 'Pajak Hotel', 'code' => 'P-HTL'],
-            ['name' => 'Pajak Restoran', 'code' => 'P-RST'],
-            ['name' => 'Pajak Hiburan', 'code' => 'P-HBR'],
-            ['name' => 'Pajak Reklame', 'code' => 'P-RKL'],
-            ['name' => 'Pajak Penerangan Jalan', 'code' => 'P-PPJ'],
-            ['name' => 'Pajak Parkir', 'code' => 'P-PRK'],
-            ['name' => 'Pajak Air Tanah', 'code' => 'P-AT'],
-            [
-                'name' => 'Pajak Mineral Bukan Logam dan Batuan',
-                'code' => 'P-MBLB',
-            ],
+        $types = [
+            ['code' => 'HOTEL', 'name' => 'Pajak Hotel'],
+            ['code' => 'RESTORAN', 'name' => 'Pajak Restoran'],
+            ['code' => 'HIBURAN', 'name' => 'Pajak Hiburan'],
+            ['code' => 'REKLAME', 'name' => 'Pajak Reklame'],
+            ['code' => 'PPJ', 'name' => 'Pajak Penerangan Jalan'],
+            ['code' => 'MINERAL', 'name' => 'Pajak Mineral Bukan Logam dan Batuan'],
+            ['code' => 'PARKIR', 'name' => 'Pajak Parkir'],
+            ['code' => 'AIR_TANAH', 'name' => 'Pajak Air Tanah'],
+            ['code' => 'WALET', 'name' => 'Pajak Sarang Burung Walet'],
+            ['code' => 'BPHTB', 'name' => 'Bea Perolehan Hak Atas Tanah dan Bangunan (BPHTB)'],
+            ['code' => 'PBB', 'name' => 'Pajak Bumi dan Bangunan Perdesaan dan Perkotaan (PBB-P2)'],
         ];
 
-        foreach ($taxTypes as $taxType) {
-            TaxType::query()->firstOrCreate(
-                ['code' => $taxType['code']],
-                ['name' => $taxType['name']],
-            );
+        foreach ($types as $type) {
+            TaxType::updateOrCreate(['code' => $type['code']], $type);
         }
     }
 }

@@ -12,6 +12,7 @@ class StoreTaxRealizationAction
      *     tax_type_id: int,
      *     district_id: int,
      *     year: int,
+     *     target?: float,
      *     january: float,
      *     february: float,
      *     march: float,
@@ -34,7 +35,10 @@ class StoreTaxRealizationAction
                 'district_id' => $data['district_id'],
                 'year' => $data['year'],
             ],
-            array_merge($data, ['user_id' => $user->id]),
+            array_merge(
+                $data,
+                ['user_id' => $user->id]
+            ),
         );
     }
 }

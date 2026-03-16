@@ -73,6 +73,8 @@
                     @csrf
                     <input type="hidden" name="stored_path" value="{{ $storedPath }}">
                     <input type="hidden" name="file_name" value="{{ $fileName }}">
+                    <input type="hidden" name="district_id" value="{{ $district_id }}">
+                    <input type="hidden" name="year" value="{{ $year }}">
                     
                     <button type="submit" class="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-all shadow-lg transform active:scale-95 inline-flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

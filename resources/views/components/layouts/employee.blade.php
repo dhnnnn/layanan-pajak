@@ -11,7 +11,7 @@
             </div>
 
             {{-- Navigation --}}
-            <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto text-sm">
+            <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto text-sm scrollbar-hide">
                 <p class="px-3 pt-1 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menu Utama</p>
                 <x-layouts.sidebar-item route="pegawai.dashboard" :active="request()->routeIs('pegawai.dashboard')" activeClass="bg-emerald-600 text-white">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

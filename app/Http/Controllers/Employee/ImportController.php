@@ -20,20 +20,33 @@ class ImportController extends Controller
             ->latest()
             ->paginate(15);
 
-        return view('employee.import.index', compact('importLogs'));
+        $districts = $request->user()->districts()->orderBy('name')->get();
+
+        return view('employee.import.index', compact('importLogs', 'districts'));
     }
 
     public function preview(
         ImportRequest $request,
         PreviewTaxRealizationAction $previewImport,
     ): View {
-        $result = $previewImport($request->file('file'));
+        $request->validate([
+            'district_id' => ['required', 'exists:employee_districts,district_id,user_id,'.$request->user()->id],
+            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $result = $previewImport(
+            file: $request->file('file'),
+            districtId: $request->integer('district_id'),
+            year: $request->integer('year')
+        );
 
         return view('employee.import.preview', [
             'storedPath' => $result['stored_path'],
             'totalRows' => $result['total_rows'],
             'previewData' => $result['preview_data'],
             'fileName' => $request->file('file')->getClientOriginalName(),
+            'district_id' => $request->integer('district_id'),
+            'year' => $request->integer('year'),
         ]);
     }
 
@@ -44,12 +57,16 @@ class ImportController extends Controller
         $request->validate([
             'stored_path' => ['required', 'string'],
             'file_name' => ['required', 'string'],
+            'district_id' => ['required', 'exists:employee_districts,district_id,user_id,'.$request->user()->id],
+            'year' => ['required', 'integer'],
         ]);
 
         $importLog = $importRealization(
             storedPath: $request->string('stored_path')->toString(),
             originalFileName: $request->string('file_name')->toString(),
             user: $request->user(),
+            districtId: $request->integer('district_id'),
+            year: $request->integer('year'),
         );
 
         return redirect()

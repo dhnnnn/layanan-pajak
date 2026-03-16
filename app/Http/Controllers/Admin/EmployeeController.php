@@ -6,6 +6,7 @@ use App\Actions\Employee\AssignEmployeeDistrictAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignDistrictRequest;
 use App\Http\Requests\Admin\StoreEmployeeRequest;
+use App\Http\Requests\Admin\UpdateEmployeeRequest;
 use App\Models\District;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -76,7 +77,7 @@ class EmployeeController extends Controller
     }
 
     public function update(
-        StoreEmployeeRequest $request,
+        UpdateEmployeeRequest $request,
         User $employee,
         AssignEmployeeDistrictAction $assignDistricts,
     ): RedirectResponse {

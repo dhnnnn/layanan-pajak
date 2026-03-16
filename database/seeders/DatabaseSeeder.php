@@ -14,8 +14,6 @@ class DatabaseSeeder extends Seeder
             DistrictSeeder::class,
             TaxTypeSeeder::class,
             MonthSeeder::class,
-            TaxTargetSeeder::class,
-            TaxRealizationSeeder::class,
         ]);
     }
 }

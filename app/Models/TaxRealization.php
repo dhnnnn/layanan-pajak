@@ -18,6 +18,7 @@ class TaxRealization extends Model
         'district_id',
         'user_id',
         'year',
+        'target',
         'january',
         'february',
         'march',
@@ -39,6 +40,7 @@ class TaxRealization extends Model
     {
         return [
             'year' => 'integer',
+            'target' => 'decimal:2',
             'january' => 'decimal:2',
             'february' => 'decimal:2',
             'march' => 'decimal:2',

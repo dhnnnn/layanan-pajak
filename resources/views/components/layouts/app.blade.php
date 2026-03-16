@@ -6,6 +6,66 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Page' }} — Sistem Realisasi Pajak Kab. Pasuruan</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    
+    {{-- Tom Select for searchable dropdowns --}}
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    
+    <style>
+        /* Tom Select Custom Styling to match Tailwind */
+        .ts-wrapper.single .ts-control {
+            background-color: white;
+            border: 1px solid rgb(203 213 225);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .ts-wrapper.single .ts-control:focus,
+        .ts-wrapper.single.focus .ts-control {
+            border-color: rgb(59 130 246);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+        
+        .ts-wrapper .ts-dropdown {
+            border: 1px solid rgb(203 213 225);
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-top: 0.25rem;
+        }
+        
+        .ts-dropdown .option {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .ts-dropdown .option.active {
+            background-color: rgb(239 246 255);
+            color: rgb(30 64 175);
+        }
+        
+        .ts-dropdown .option:hover {
+            background-color: rgb(243 244 246);
+        }
+        
+        .ts-wrapper.single .ts-control .item {
+            font-size: 0.875rem;
+        }
+        
+        /* For error state */
+        .ts-wrapper.error .ts-control {
+            border-color: rgb(239 68 68);
+        }
+        
+        /* For emerald focus (employee pages) */
+        .ts-wrapper.emerald-focus.single .ts-control:focus,
+        .ts-wrapper.emerald-focus.single.focus .ts-control {
+            border-color: rgb(16 185 129);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+    </style>
+    
     {{ $head ?? '' }}
 </head>
 <body class="bg-slate-100 font-sans antialiased">
@@ -49,5 +109,56 @@
     </div>
 
 </div>
+
+<script>
+    // Initialize Tom Select on all select elements
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all select elements
+        const selectElements = document.querySelectorAll('select:not(.no-search)');
+        
+        selectElements.forEach(function(select) {
+            // Skip if already initialized
+            if (select.tomselect) return;
+            
+            // Check if select has onchange attribute
+            const hasOnChange = select.hasAttribute('onchange');
+            const onChangeHandler = hasOnChange ? select.getAttribute('onchange') : null;
+            
+            // Check for emerald focus class
+            const hasEmeraldFocus = select.classList.contains('focus:ring-emerald-500') || 
+                                   select.classList.contains('focus:border-emerald-500');
+            
+            // Check for error state
+            const hasError = select.classList.contains('border-red-500');
+            
+            const tomSelectInstance = new TomSelect(select, {
+                create: false,
+                sortField: {
+                    field: "text",
+                    direction: "asc"
+                },
+                placeholder: select.querySelector('option[disabled]')?.textContent || 'Pilih...',
+                allowEmptyOption: true,
+                onInitialize: function() {
+                    // Add custom classes to wrapper
+                    if (hasEmeraldFocus) {
+                        this.wrapper.classList.add('emerald-focus');
+                    }
+                    if (hasError) {
+                        this.wrapper.classList.add('error');
+                    }
+                },
+                onChange: function(value) {
+                    // Trigger original onchange if exists
+                    if (onChangeHandler) {
+                        // Execute the original onchange code
+                        eval(onChangeHandler);
+                    }
+                }
+            });
+        });
+    });
+</script>
+
 </body>
 </html>

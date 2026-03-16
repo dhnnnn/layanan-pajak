@@ -8,63 +8,87 @@
         </a>
     </x-slot:headerActions>
 
-    <div class="space-y-6">
-        {{-- Info Alert --}}
-        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3 text-blue-800 shadow-sm">
-            <svg class="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <div class="text-xs leading-relaxed">
-                <h4 class="font-bold mb-1">Konfirmasi Data Import</h4>
-                <p>Ditemukan <strong>{{ $totalRows }} baris data</strong> dalam file Anda. Silakan periksa sampel data di bawah ini. Klik <strong>"Konfirmasi & Simpan"</strong> untuk memproses seluruh data ke dalam sistem.</p>
-            </div>
-        </div>
-
+    <div class="space-y-6"> 
         {{-- Preview Table --}}
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h3 class="font-bold text-slate-800 text-sm italic uppercase tracking-wider">Sampel 10 Baris Pertama</h3>
+                <h3 class="font-bold text-slate-800 text-sm italic uppercase tracking-wider">Sampel Data Import</h3>
                 <span class="text-[10px] text-slate-400 font-mono">{{ $fileName }}</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-[11px] text-left text-slate-600">
                     <thead class="bg-slate-50 text-slate-700 font-bold uppercase border-b border-slate-200">
                         <tr>
-                            <th class="px-4 py-3">Jenis Pajak</th>
-                            <th class="px-4 py-3">Kecamatan</th>
-                            <th class="px-4 py-3">Tahun</th>
-                            <th class="px-4 py-3 text-center">Jan</th>
-                            <th class="px-4 py-3 text-center">Feb</th>
-                            <th class="px-4 py-3 text-center">Mar</th>
-                            <th class="px-4 py-3 text-center">Apr</th>
-                            <th class="px-4 py-3 text-center">Mei</th>
-                            <th class="px-4 py-3 text-center">Jun</th>
-                            <th class="px-4 py-3 text-center">Jul</th>
-                            <th class="px-4 py-3 text-center">Agu</th>
-                            <th class="px-4 py-3 text-center">Sep</th>
-                            <th class="px-4 py-3 text-center">Okt</th>
-                            <th class="px-4 py-3 text-center">Nov</th>
-                            <th class="px-4 py-3 text-center">Des</th>
+                            <th rowspan="2" class="px-4 py-3 border-r border-slate-200">Uraian</th>
+                            <th rowspan="2" class="px-4 py-3 border-r border-slate-200 text-center">Target<br>APBD {{ $year }}</th>
+                            <th colspan="2" class="px-4 py-2 border-r border-slate-200 text-center bg-blue-50">Triwulan I</th>
+                            <th colspan="2" class="px-4 py-2 border-r border-slate-200 text-center bg-green-50">Triwulan II</th>
+                            <th colspan="2" class="px-4 py-2 border-r border-slate-200 text-center bg-yellow-50">Triwulan III</th>
+                            <th colspan="2" class="px-4 py-2 border-r border-slate-200 text-center bg-purple-50">Triwulan IV</th>
+                        </tr>
+                        <tr class="border-t border-slate-200">
+                            <th class="px-2 py-2 text-center text-[10px] bg-blue-50">Target</th>
+                            <th class="px-2 py-2 text-center text-[10px] border-r border-slate-200 bg-blue-50">%</th>
+                            <th class="px-2 py-2 text-center text-[10px] bg-green-50">Target</th>
+                            <th class="px-2 py-2 text-center text-[10px] border-r border-slate-200 bg-green-50">%</th>
+                            <th class="px-2 py-2 text-center text-[10px] bg-yellow-50">Target</th>
+                            <th class="px-2 py-2 text-center text-[10px] border-r border-slate-200 bg-yellow-50">%</th>
+                            <th class="px-2 py-2 text-center text-[10px] bg-purple-50">Target</th>
+                            <th class="px-2 py-2 text-center text-[10px] border-r border-slate-200 bg-purple-50">%</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach($previewData as $row)
-                            <tr class="hover:bg-slate-50/50 transition-colors">
-                                <td class="px-4 py-3 font-semibold text-slate-900">{{ $row['jenis_pajak'] }}</td>
-                                <td class="px-4 py-3">{{ $row['kecamatan'] }}</td>
-                                <td class="px-4 py-3 font-mono">{{ $row['tahun'] }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['januari'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['februari'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['maret'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['april'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['mei'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['juni'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['juli'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['agustus'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['september'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['oktober'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['november'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-center">{{ number_format($row['desember'] ?? 0, 0, ',', '.') }}</td>
+                            @php
+                                // Get target from various possible keys in the row data
+                                $target_apbd = 0;
+                                if (isset($row['target']) && is_numeric($row['target'])) {
+                                    $target_apbd = (float) $row['target'];
+                                } elseif (isset($row[1]) && is_numeric($row[1])) {
+                                    $target_apbd = (float) $row[1];
+                                }
+                                
+                                // Target per quarter (cumulative, 25%, 50%, 75%, 100%)
+                                $q1_target = $target_apbd * 0.25;
+                                $q2_target = $target_apbd * 0.50;
+                                $q3_target = $target_apbd * 0.75;
+                                $q4_target = $target_apbd;
+                                
+                                // % Target = (Target Triwulan / Target APBD) × 100
+                                $q1_target_pct = $target_apbd > 0 ? ($q1_target / $target_apbd * 100) : 0;
+                                $q2_target_pct = $target_apbd > 0 ? ($q2_target / $target_apbd * 100) : 0;
+                                $q3_target_pct = $target_apbd > 0 ? ($q3_target / $target_apbd * 100) : 0;
+                                $q4_target_pct = $target_apbd > 0 ? ($q4_target / $target_apbd * 100) : 0;
+                            @endphp
+                            <tr class="hover:bg-slate-50/50 transition-colors {{ !$row['is_valid'] ? 'bg-red-50' : '' }}">
+                                <td class="px-4 py-3 border-r border-slate-100">
+                                    <div class="font-semibold text-slate-900">{{ $row['jenis_pajak'] ?? $row['uraian'] ?? '-' }}</div>
+                                    @if(!empty($row['errors']))
+                                        <div class="text-[10px] text-red-600 mt-1">
+                                            @foreach($row['errors'] as $error)
+                                                <div>• {{ $error }}</div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <div class="text-[9px] text-blue-600 mt-1">{{ $row['keterangan'] ?? '' }}</div>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold border-r border-slate-100">{{ number_format($target_apbd ?? 0, 0, ',', '.') }}</td>
+                                
+                                {{-- Triwulan I --}}
+                                <td class="px-2 py-3 text-right text-[10px] border-l-2 border-blue-300">{{ number_format($q1_target, 0, ',', '.') }}</td>
+                                <td class="px-2 py-3 text-right text-[10px] border-r-2 border-blue-300">{{ number_format($q1_target_pct, 2) }}%</td>
+                                
+                                {{-- Triwulan II --}}
+                                <td class="px-2 py-3 text-right text-[10px] border-l-2 border-green-300">{{ number_format($q2_target, 0, ',', '.') }}</td>
+                                <td class="px-2 py-3 text-right text-[10px] border-r-2 border-green-300">{{ number_format($q2_target_pct, 2) }}%</td>
+                                
+                                {{-- Triwulan III --}}
+                                <td class="px-2 py-3 text-right text-[10px] border-l-2 border-yellow-300">{{ number_format($q3_target, 0, ',', '.') }}</td>
+                                <td class="px-2 py-3 text-right text-[10px] border-r-2 border-yellow-300">{{ number_format($q3_target_pct, 2) }}%</td>
+                                
+                                {{-- Triwulan IV --}}
+                                <td class="px-2 py-3 text-right text-[10px] border-l-2 border-purple-300">{{ number_format($q4_target, 0, ',', '.') }}</td>
+                                <td class="px-2 py-3 text-right text-[10px] border-r-2 border-purple-300">{{ number_format($q4_target_pct, 2) }}%</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -73,13 +97,14 @@
             
             <div class="px-6 py-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
                 <div class="text-[11px] text-slate-500 italic">
-                    * Data yang sama (Tahun, Jenis Pajak, Kecamatan) akan diperbarui (overwrite).
+                    * Import akan membuat/update data untuk semua {{ $districtCount }} kecamatan secara otomatis.
                 </div>
                 
-                <form action="{{ route('admin.confirm') }}" method="POST">
+                <form action="{{ route('admin.import.confirm') }}" method="POST">
                     @csrf
                     <input type="hidden" name="stored_path" value="{{ $storedPath }}">
                     <input type="hidden" name="file_name" value="{{ $fileName }}">
+                    <input type="hidden" name="year" value="{{ $year }}">
                     
                     <button type="submit" class="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-all shadow-md transform active:scale-95 inline-flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

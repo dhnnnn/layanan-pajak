@@ -52,6 +52,17 @@
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
+
+                        <div>
+                            <label for="password_confirmation" class="block text-sm font-semibold text-slate-700 mb-1">Konfirmasi Password</label>
+                            <input type="password" name="password_confirmation" id="password_confirmation" 
+                                class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500" 
+                                placeholder="Ulangi password baru">
+                            <p class="mt-1 text-[10px] text-slate-500">Kata sandi wajib diisi.</p>
+                            @error('password_confirmation')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
 
                     {{-- District Assignment --}}
