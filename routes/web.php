@@ -74,9 +74,11 @@ Route::middleware(['auth', 'role:admin'])
                 Route::post('/preview', [UptComparisonController::class, 'preview'])->name('preview');
                 Route::post('/import', [UptComparisonController::class, 'import'])->name('import');
                 Route::get('/report', [UptComparisonController::class, 'report'])->name('report');
+                Route::get('/report/export', [UptComparisonController::class, 'exportReport'])->name('report.export');
             });
 
         // Target Pajak (APBD)
+        Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
         Route::resource(
             'tax-targets',
             TaxTargetController::class,

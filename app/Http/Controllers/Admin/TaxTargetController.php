@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Tax\CreateTaxTargetAction;
 use App\Actions\Tax\DeleteTaxTargetAction;
 use App\Actions\Tax\UpdateTaxTargetAction;
+use App\Exports\TaxTargetExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTaxTargetRequest;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TaxTargetController extends Controller
 {
@@ -21,7 +24,7 @@ class TaxTargetController extends Controller
         // Search functionality
         if (request()->filled('search')) {
             $search = request('search');
-            $query->whereHas('taxType', function ($q) use ($search) {
+            $query->whereHas('taxType', function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%");
             });
@@ -35,7 +38,7 @@ class TaxTargetController extends Controller
         $taxTargets = $query
             ->orderByDesc('year')
             ->orderBy('tax_type_id')
-            ->paginate(20)
+            ->paginate(8)
             ->withQueryString();
 
         // Get available years for filter dropdown
@@ -46,6 +49,14 @@ class TaxTargetController extends Controller
             ->pluck('year');
 
         return view('admin.tax-targets.index', compact('taxTargets', 'availableYears'));
+    }
+
+    public function export(): BinaryFileResponse
+    {
+        $year = request()->integer('year') ?: (int) date('Y');
+        $filename = "target-pajak-{$year}.xlsx";
+
+        return Excel::download(new TaxTargetExport($year), $filename);
     }
 
     public function create(): View

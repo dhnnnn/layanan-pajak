@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Upt\ImportUptComparisonAction;
 use App\Actions\Upt\PreviewUptComparisonAction;
 use App\Exports\TaxRealizationTemplateExport;
+use App\Exports\UptComparisonReportExport;
 use App\Exports\UptComparisonTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ImportUptComparisonRequest;
+use App\Models\TaxTarget;
+use App\Models\TaxType;
 use App\Models\Upt;
+use App\Models\UptComparison;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -97,15 +101,43 @@ class UptComparisonController extends Controller
     public function report(Request $request): View
     {
         $year = $request->integer('year', (int) date('Y'));
+        $search = $request->string('search')->trim();
 
         $upts = Upt::query()
             ->with(['comparisons' => function ($query) use ($year): void {
-                $query->where('year', $year)
-                    ->with('taxType');
+                $query->where('year', $year)->with('taxType');
             }])
             ->orderBy('code')
             ->get();
 
-        return view('admin.upt-comparisons.report', compact('upts', 'year'));
+        $taxTypes = TaxType::query()
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            }))
+            ->orderBy('code')
+            ->paginate(8)
+            ->withQueryString();
+
+        // Pre-load targets for the current year
+        $targets = TaxTarget::query()
+            ->where('year', $year)
+            ->pluck('target_amount', 'tax_type_id');
+
+        $availableYears = UptComparison::query()
+            ->select('year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year');
+
+        return view('admin.upt-comparisons.report', compact('upts', 'year', 'taxTypes', 'targets', 'availableYears'));
+    }
+
+    public function exportReport(Request $request): BinaryFileResponse
+    {
+        $year = $request->integer('year', (int) date('Y'));
+        $filename = "perbandingan-target-apbd-dengan-upt-{$year}.xlsx";
+
+        return Excel::download(new UptComparisonReportExport($year), $filename);
     }
 }
