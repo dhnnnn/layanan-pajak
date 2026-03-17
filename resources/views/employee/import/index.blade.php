@@ -12,7 +12,7 @@
                         <select name="district_id" id="district_id" class="block w-full text-sm border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 @error('district_id') border-red-500 @enderror" required>
                             <option value="">-- Pilih Kecamatan --</option>
                             @foreach($districts as $district)
-                                <option value="{{ $district->id }}" {{ old('district_id') == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
+                                <option value="{{ $district->id }}" {{ old('district_id') == (string) $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
                             @endforeach
                         </select>
                         @error('district_id')

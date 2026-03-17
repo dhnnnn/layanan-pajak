@@ -21,6 +21,12 @@ class RealizationController extends Controller
     {
         $user = $request->user();
         $year = $request->integer('year', (int) date('Y'));
+        $search = $request->string('search')->trim();
+
+        $districts = $user->districts()
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->orderBy('name')
+            ->get();
 
         $realizations = TaxRealization::query()
             ->with(['taxType', 'district'])
@@ -29,7 +35,7 @@ class RealizationController extends Controller
             ->orderBy('tax_type_id')
             ->paginate(15);
 
-        return view('employee.realizations.index', compact('realizations', 'year'));
+        return view('employee.realizations.index', compact('realizations', 'year', 'districts', 'search'));
     }
 
     public function create(Request $request): View

@@ -18,7 +18,7 @@ class AssignUptDistrictRequest extends FormRequest
     {
         return [
             'district_ids' => ['required', 'array', 'min:1'],
-            'district_ids.*' => ['required', 'integer', 'exists:districts,id'],
+            'district_ids.*' => ['required', 'string', 'exists:districts,id'],
         ];
     }
 
@@ -32,7 +32,7 @@ class AssignUptDistrictRequest extends FormRequest
             'district_ids.array' => 'Format data kecamatan tidak valid.',
             'district_ids.min' => 'Pilih minimal satu kecamatan.',
             'district_ids.*.required' => 'ID kecamatan wajib diisi.',
-            'district_ids.*.integer' => 'ID kecamatan harus berupa angka.',
+            'district_ids.*.string' => 'ID kecamatan tidak valid.',
             'district_ids.*.exists' => 'Kecamatan tidak ditemukan.',
         ];
     }

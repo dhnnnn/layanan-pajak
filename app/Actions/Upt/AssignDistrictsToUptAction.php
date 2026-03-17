@@ -7,9 +7,9 @@ use App\Models\Upt;
 class AssignDistrictsToUptAction
 {
     /**
-     * @param  array<int>  $districtIds
+     * @param  array<string>  $districtIds
      */
-    public function execute(Upt $upt, array $districtIds): void
+    public function __invoke(Upt $upt, array $districtIds): void
     {
         $upt->districts()->sync($districtIds);
     }

@@ -6,7 +6,7 @@ use App\Models\Upt;
 
 class DeleteUptAction
 {
-    public function execute(Upt $upt): void
+    public function __invoke(Upt $upt): void
     {
         $upt->delete();
     }

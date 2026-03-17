@@ -107,7 +107,7 @@ class UptController extends Controller
     {
         $validated = request()->validate([
             'user_ids' => ['nullable', 'array'],
-            'user_ids.*' => ['integer', 'exists:users,id'],
+            'user_ids.*' => ['required', 'string', 'exists:users,id'],
         ]);
 
         $userIds = $validated['user_ids'] ?? [];

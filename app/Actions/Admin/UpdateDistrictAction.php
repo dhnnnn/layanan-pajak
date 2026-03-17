@@ -9,7 +9,7 @@ class UpdateDistrictAction
     /**
      * @param  array{name: string, code: string}  $data
      */
-    public function execute(array $data, District $district): District
+    public function __invoke(array $data, District $district): District
     {
         $district->update($data);
 

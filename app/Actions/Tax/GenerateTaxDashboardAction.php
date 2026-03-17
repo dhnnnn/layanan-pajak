@@ -15,7 +15,7 @@ class GenerateTaxDashboardAction
 
     /**
      * @return Collection<int, array{
-     *     tax_type_id: int,
+     *     tax_type_id: string,
      *     tax_type_name: string,
      *     tax_type_code: string,
      *     year: int,
@@ -29,7 +29,7 @@ class GenerateTaxDashboardAction
      *     achievement_percentage: float,
      * }>
      */
-    public function __invoke(int $year, ?int $districtId = null): Collection
+    public function __invoke(int $year, ?string $districtId = null): Collection
     {
         $taxTypes = TaxType::query()
             ->with([

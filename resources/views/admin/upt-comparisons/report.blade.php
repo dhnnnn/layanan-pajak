@@ -117,8 +117,7 @@
                             $uptAmounts = [];
 
                             foreach ($upts as $upt) {
-                                $comparison = $upt->comparisons->where('tax_type_id', $taxType->id)->first();
-                                $amount = (float) ($comparison?->target_amount ?? 0);
+                                $amount = (float) ($uptRealizationTotals[$upt->id][$taxType->id] ?? 0);
                                 $uptAmounts[$upt->id] = $amount;
                                 $totalUpt += $amount;
                             }
@@ -166,6 +165,36 @@
                         </tr>
                     @endforelse
                 </tbody>
+                @if($taxTypes->isNotEmpty())
+                    @php
+                        $grandSelisih = $grandTotalTarget - $grandTotalAllUpt;
+                        $grandPercentTarget = $grandTotalTarget > 0 ? ($grandTotalAllUpt / $grandTotalTarget) * 100 : 0;
+                        $grandPercentSelisih = $grandTotalTarget > 0 ? ($grandSelisih / $grandTotalTarget) * 100 : 0;
+                    @endphp
+                    <tfoot>
+                        <tr class="bg-slate-100 font-bold text-slate-800 text-xs border-t-2 border-slate-300">
+                            <td class="px-4 py-3" colspan="2">TOTAL</td>
+                            <td class="px-4 py-3 text-right">Rp {{ number_format($grandTotalTarget, 0, ',', '.') }}</td>
+                            @foreach($upts as $upt)
+                                <td class="px-4 py-3 text-right">Rp {{ number_format($grandTotalUpt[$upt->id], 0, ',', '.') }}</td>
+                            @endforeach
+                            <td class="px-4 py-3 text-right bg-blue-100">Rp {{ number_format($grandTotalAllUpt, 0, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-center bg-green-100">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $grandPercentTarget >= 100 ? 'bg-green-200 text-green-800' : 'bg-orange-200 text-orange-800' }}">
+                                    {{ number_format($grandPercentTarget, 1) }}%
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-center bg-orange-100">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ abs($grandPercentSelisih) < 0.1 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800' }}">
+                                    {{ number_format($grandPercentSelisih, 1) }}%
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right {{ $grandSelisih >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                Rp {{ number_format($grandSelisih, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
         @if($taxTypes->hasPages())

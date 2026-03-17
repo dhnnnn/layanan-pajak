@@ -49,13 +49,11 @@
     </div>
 
     <!-- Daftar Jenis Pajak -->
-    <div class="space-y-4">
+    <div class="space-y-4" id="tax-cards">
         @foreach($taxTypes as $index => $taxType)
             @php
                 $total = $yearlyTotals[$taxType->id] ?? 0;
                 $hasData = (float) $total > 0;
-
-                // Entries bulan ini untuk jenis pajak ini
                 $entries = $monthlyEntries->where('tax_type_id', $taxType->id)->values();
                 $monthTotal = $entries->sum('amount');
             @endphp
@@ -102,7 +100,8 @@
                                     <label class="block text-xs font-medium text-slate-600 mb-1">Jumlah (Rp)</label>
                                     <input type="number" id="amount-{{ $taxType->id }}"
                                         min="0" placeholder="0"
-                                        class="w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
+                                        class="entry-amount w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
+                                        data-tax-type-id="{{ $taxType->id }}">
                                 </div>
                             </div>
                             <div>
@@ -111,16 +110,7 @@
                                     placeholder="Keterangan tambahan..."
                                     class="w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
                             </div>
-                            <button id="btn-{{ $taxType->id }}"
-                                onclick="submitEntry({{ $taxType->id }}, {{ $district->id }})"
-                                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                Simpan
-                            </button>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-2">Data harian otomatis diakumulasi ke laporan bulanan.</p>
                     </div>
 
                     <!-- Riwayat bulan ini -->
@@ -145,14 +135,14 @@
                                                 <th class="px-3 py-2 w-12"></th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y divide-slate-100" id="history-body-{{ $taxType->id }}">
+                                        <tbody class="divide-y divide-slate-100">
                                             @foreach($entries as $entry)
                                                 <tr id="entry-row-{{ $entry->id }}">
                                                     <td class="px-3 py-2 text-slate-700">{{ $entry->entry_date->format('d/m/Y') }}</td>
                                                     <td class="px-3 py-2 text-right font-semibold text-emerald-700">Rp {{ number_format($entry->amount, 0, ',', '.') }}</td>
                                                     <td class="px-3 py-2 text-slate-500">{{ $entry->note ?: '-' }}</td>
                                                     <td class="px-3 py-2 text-right">
-                                                        <button onclick="deleteEntry({{ $entry->id }}, {{ $taxType->id }}, {{ $district->id }})"
+                                                        <button onclick="deleteEntry('{{ $entry->id }}', '{{ $taxType->id }}', '{{ $district->id }}')"
                                                             class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
                                                     </td>
                                                 </tr>
@@ -168,56 +158,67 @@
         @endforeach
     </div>
 
+    <!-- Tombol Simpan Semua -->
+    <div class="sticky bottom-0 mt-6 bg-white border-t border-slate-200 shadow-lg px-6 py-4 -mx-6 flex items-center justify-between gap-4">
+        <p class="text-xs text-slate-400">Hanya baris yang diisi jumlahnya yang akan disimpan.</p>
+        <button id="btn-save-all" onclick="submitAll('{{ $district->id }}')"
+            class="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Simpan Semua
+        </button>
+    </div>
+
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const currentYear = {{ $year }};
         const currentMonth = {{ $currentMonth }};
+        const districtId = '{{ $district->id }}';
 
         function formatRp(num) {
             return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
         }
 
-        async function submitEntry(taxTypeId, districtId) {
-            const date = document.getElementById(`date-${taxTypeId}`).value;
-            const amount = document.getElementById(`amount-${taxTypeId}`).value;
-            const note = document.getElementById(`note-${taxTypeId}`).value;
-            const btn = document.getElementById(`btn-${taxTypeId}`);
+        async function submitAll(districtId) {
+            const amountInputs = document.querySelectorAll('.entry-amount');
+            const entries = [];
 
-            if (!date || !amount || parseFloat(amount) <= 0) {
-                alert('Tanggal dan jumlah wajib diisi dengan nilai lebih dari 0.');
+            amountInputs.forEach(input => {
+                const taxTypeId = input.dataset.taxTypeId;
+                const amount = parseFloat(input.value);
+                if (!amount || amount <= 0) return;
+
+                const date = document.getElementById(`date-${taxTypeId}`).value;
+                const note = document.getElementById(`note-${taxTypeId}`).value;
+                entries.push({ tax_type_id: taxTypeId, entry_date: date, amount, note });
+            });
+
+            if (entries.length === 0) {
+                alert('Tidak ada data yang diisi. Masukkan jumlah minimal satu jenis pajak.');
                 return;
             }
 
+            const btn = document.getElementById('btn-save-all');
             btn.disabled = true;
             btn.innerHTML = `<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Menyimpan...`;
 
             try {
-                const res = await fetch('/pegawai/daily-entries', {
+                const res = await fetch('/pegawai/daily-entries/batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                    body: JSON.stringify({ tax_type_id: taxTypeId, district_id: districtId, entry_date: date, amount, note }),
+                    body: JSON.stringify({ district_id: districtId, entries }),
                 });
+
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Gagal menyimpan.');
 
-                // Update total tahunan
-                const totalEl = document.getElementById(`total-${taxTypeId}`);
-                const newTotal = parseFloat(totalEl.dataset.raw || 0) + parseFloat(amount);
-                totalEl.dataset.raw = newTotal;
-                totalEl.textContent = formatRp(newTotal);
-
-                // Reset input
-                document.getElementById(`amount-${taxTypeId}`).value = '';
-                document.getElementById(`note-${taxTypeId}`).value = '';
-
-                // Refresh riwayat bulan ini
-                await refreshHistory(taxTypeId, districtId);
-
+                // Reload halaman untuk refresh semua total & riwayat
+                window.location.reload();
             } catch (e) {
                 alert(e.message);
-            } finally {
                 btn.disabled = false;
-                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Simpan`;
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Simpan Semua`;
             }
         }
 
@@ -232,17 +233,12 @@
 
                 await refreshHistory(taxTypeId, districtId);
 
-                // Refresh total tahunan
-                const res2 = await fetch(`/pegawai/daily-entries?tax_type_id=${taxTypeId}&district_id=${districtId}&year=${currentYear}&month=1`);
-                // Recalculate from all months - simpler: just subtract from display
-                const totalEl = document.getElementById(`total-${taxTypeId}`);
-                // Re-fetch yearly total
                 const res3 = await fetch(`/pegawai/realizations/district/${districtId}/tax-types?year=${currentYear}`);
                 const d = await res3.json();
                 const newTotal = d.yearlyTotals?.[taxTypeId] ?? 0;
+                const totalEl = document.getElementById(`total-${taxTypeId}`);
                 totalEl.dataset.raw = newTotal;
                 totalEl.textContent = formatRp(newTotal);
-
             } catch (e) {
                 alert(e.message);
             }
@@ -283,14 +279,13 @@
                         <td class="px-3 py-2 text-right font-semibold text-emerald-700">${formatRp(e.amount)}</td>
                         <td class="px-3 py-2 text-slate-500">${e.note || '-'}</td>
                         <td class="px-3 py-2 text-right">
-                            <button onclick="deleteEntry(${e.id}, ${taxTypeId}, ${districtId})" class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
+                            <button onclick="deleteEntry('${e.id}', '${taxTypeId}', '${districtId}')" class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
                         </td>
                     </tr>`;
                 });
 
                 html += '</tbody></table></div>';
                 histEl.innerHTML = html;
-
             } catch (e) {
                 console.error(e);
             }

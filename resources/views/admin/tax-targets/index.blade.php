@@ -7,12 +7,6 @@
             </svg>
             Export Excel
         </a>
-        <a href="{{ route('admin.tax-targets.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-            </svg>
-            Tambah Target APBD
-        </a>
     </x-slot:headerActions>
 
     <!-- Filter Section -->
@@ -127,6 +121,7 @@
                 form.submit();
             });
         });
+
     </script>
 
     @if(request()->hasAny(['search', 'year']))
@@ -144,7 +139,7 @@
                             Tahun {{ request('year') }}
                         </span>
                     @endif
-                    <span class="text-sm text-blue-700">({{ $taxTargets->total() }} data)</span>
+                    <span class="text-sm text-blue-700">({{ $taxTypes->total() }} data)</span>
                 </div>
                 <a href="{{ route('admin.tax-targets.index') }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Hapus semua filter</a>
             </div>
@@ -156,7 +151,7 @@
             <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
                 <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
                     <tr>
-                        <th class="px-4 py-3">Tahun</th>
+                        <th class="px-4 py-3">No.</th>
                         <th class="px-4 py-3">Jenis Pajak</th>
                         <th class="px-4 py-3 text-right">Target APBD</th>
                         <th class="px-4 py-3 text-right">Q1</th>
@@ -167,50 +162,77 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
-                    @forelse($taxTargets as $target)
+                    @forelse($taxTypes as $taxType)
+                        @php $target = $targets[$taxType->id] ?? null; @endphp
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-3 py-3 font-bold text-slate-900">
-                                {{ $target->year }}
-                            </td>
+                            <td class="px-3 py-3 text-slate-500">{{ $taxTypes->firstItem() + $loop->index }}</td>
                             <td class="px-3 py-3">
-                                <div class="font-medium text-slate-800">{{ $target->taxType->name }}</div>
-                                <div class="text-[10px] text-slate-400 font-mono">{{ $target->taxType->code }}</div>
+                                <div class="font-medium text-slate-800">{{ $taxType->name }}</div>
+                                <div class="text-[10px] text-slate-400 font-mono">{{ $taxType->code }}</div>
                             </td>
                             <td class="px-3 py-3 text-right font-semibold text-blue-600">
-                                Rp {{ number_format($target->target_amount, 0, ',', '.') }}
+                                @if($target)
+                                    Rp {{ number_format($target->target_amount, 0, ',', '.') }}
+                                @else
+                                    <span class="text-slate-300 text-xs">—</span>
+                                @endif
+                            </td>                            <td class="px-3 py-3 text-right">
+                                @if($target)
+                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q1_target ?? ($target->target_amount * 0.25), 0, ',', '.') }}</div>
+                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ1Percentage(), 1) }}%</div>
+                                @else
+                                    <span class="text-slate-300 text-xs">—</span>
+                                @endif
                             </td>
                             <td class="px-3 py-3 text-right">
-                                <div class="text-slate-600 text-xs">Rp {{ number_format($target->q1_target ?? ($target->target_amount * 0.25), 0, ',', '.') }}</div>
-                                <div class="text-[10px] text-slate-400">{{ number_format($target->getQ1Percentage(), 1) }}%</div>
+                                @if($target)
+                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q2_target ?? ($target->target_amount * 0.50), 0, ',', '.') }}</div>
+                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ2Percentage(), 1) }}%</div>
+                                @else
+                                    <span class="text-slate-300 text-xs">—</span>
+                                @endif
                             </td>
                             <td class="px-3 py-3 text-right">
-                                <div class="text-slate-600 text-xs">Rp {{ number_format($target->q2_target ?? ($target->target_amount * 0.50), 0, ',', '.') }}</div>
-                                <div class="text-[10px] text-slate-400">{{ number_format($target->getQ2Percentage(), 1) }}%</div>
+                                @if($target)
+                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q3_target ?? ($target->target_amount * 0.75), 0, ',', '.') }}</div>
+                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ3Percentage(), 1) }}%</div>
+                                @else
+                                    <span class="text-slate-300 text-xs">—</span>
+                                @endif
                             </td>
                             <td class="px-3 py-3 text-right">
-                                <div class="text-slate-600 text-xs">Rp {{ number_format($target->q3_target ?? ($target->target_amount * 0.75), 0, ',', '.') }}</div>
-                                <div class="text-[10px] text-slate-400">{{ number_format($target->getQ3Percentage(), 1) }}%</div>
-                            </td>
-                            <td class="px-3 py-3 text-right">
-                                <div class="text-slate-600 text-xs">Rp {{ number_format($target->q4_target ?? $target->target_amount, 0, ',', '.') }}</div>
-                                <div class="text-[10px] text-slate-400">{{ number_format($target->getQ4Percentage(), 1) }}%</div>
+                                @if($target)
+                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q4_target ?? $target->target_amount, 0, ',', '.') }}</div>
+                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ4Percentage(), 1) }}%</div>
+                                @else
+                                    <span class="text-slate-300 text-xs">—</span>
+                                @endif
                             </td>
                             <td class="px-3 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('admin.tax-targets.edit', $target) }}" class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </a>
-                                    <form action="{{ route('admin.tax-targets.destroy', $target) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors" title="Hapus">
+                                    @if($target)
+                                        <a href="{{ route('admin.tax-targets.edit', $target) }}" class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
-                                        </button>
-                                    </form>
+                                        </a>
+                                        <form action="{{ route('admin.tax-targets.destroy', $target) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors" title="Hapus">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <a href="{{ route('admin.tax-targets.create', ['tax_type_id' => $taxType->id, 'year' => $year]) }}"
+                                            class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Tambah Target">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            </svg>
+                                        </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -225,8 +247,7 @@
                                         <p class="font-medium text-slate-700 mb-1">Tidak ada hasil yang ditemukan</p>
                                         <a href="{{ route('admin.tax-targets.index') }}" class="mt-2 text-blue-600 hover:underline font-medium">Reset filter</a>
                                     @else
-                                        <p>Belum ada target APBD yang terdaftar.</p>
-                                        <a href="{{ route('admin.tax-targets.create') }}" class="mt-4 text-blue-600 hover:underline font-medium">Tambah target pertama</a>
+                                        <p>Belum ada jenis pajak yang terdaftar.</p>
                                     @endif
                                 </div>
                             </td>
@@ -235,9 +256,9 @@
                 </tbody>
             </table>
         </div>
-        @if($taxTargets->hasPages())
+        @if($taxTypes->hasPages())
             <div class="px-6 py-4 bg-slate-50 border-t border-slate-200">
-                {{ $taxTargets->links() }}
+                {{ $taxTypes->links() }}
             </div>
         @endif
     </div>

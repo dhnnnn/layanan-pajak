@@ -28,14 +28,17 @@ class DashboardController extends Controller
             $availableYears->first() ?? date('Y'),
         );
 
-        $selectedDistrictId = $request->integer('district_id') ?: null;
+        // Auto-select first district if not specified or invalid
+        $selectedDistrictId = $request->filled('district_id')
+            ? $request->string('district_id')->toString()
+            : null;
 
-        // Restrict to only assigned districts
+        // If no district selected or invalid, auto-select first assigned district
         if (
-            $selectedDistrictId !== null &&
+            $selectedDistrictId === null ||
             ! $assignedDistricts->contains('id', $selectedDistrictId)
         ) {
-            $selectedDistrictId = null;
+            $selectedDistrictId = $assignedDistricts->first()?->id;
         }
 
         $dashboard = $generateDashboard($selectedYear, $selectedDistrictId);

@@ -15,10 +15,17 @@ class TaxTypeController extends Controller
 {
     public function index(): View
     {
+        $search = request()->string('search')->trim();
+
         $taxTypes = TaxType::query()
             ->withCount(['taxTargets', 'taxRealizations'])
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            }))
             ->latest()
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.tax-types.index', compact('taxTypes'));
     }

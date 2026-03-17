@@ -11,12 +11,12 @@ class UpdateEmployeeAction
      * @param array{
      *     name: string,
      *     email: string,
-     *     upt_id?: int|null,
+     *     upt_id?: string|null,
      *     password?: string|null,
-     *     district_ids?: array<int>|null,
+     *     district_ids?: array<string>|null,
      * } $data
      */
-    public function execute(array $data, User $employee): User
+    public function __invoke(array $data, User $employee): User
     {
         $updateData = [
             'name' => $data['name'],

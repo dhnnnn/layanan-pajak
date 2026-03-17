@@ -13,7 +13,6 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             DistrictSeeder::class,
             UptSeeder::class,
-            TaxTypeSeeder::class,
             MonthSeeder::class,
         ]);
     }

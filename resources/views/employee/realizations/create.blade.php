@@ -20,7 +20,7 @@
                         <select name="tax_type_id" id="tax_type_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 @error('tax_type_id') ring-2 ring-red-500/20 @endif" required>
                             <option value="" disabled selected>Pilih Jenis Pajak</option>
                             @foreach($taxTypes as $type)
-                                <option value="{{ $type->id }}" @selected(old('tax_type_id') == $type->id)>{{ $type->name }} ({{ $type->code }})</option>
+                                <option value="{{ $type->id }}" @selected(old('tax_type_id') == (string) $type->id)>{{ $type->name }} ({{ $type->code }})</option>
                             @endforeach
                         </select>
                         @error('tax_type_id')
@@ -33,7 +33,7 @@
                         <select name="district_id" id="district_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 @error('district_id') ring-2 ring-red-500/20 @endif" required>
                             <option value="" disabled selected>Pilih Kecamatan</option>
                             @foreach($districts as $district)
-                                <option value="{{ $district->id }}" @selected(old('district_id') == $district->id)>{{ $district->name }}</option>
+                                <option value="{{ $district->id }}" @selected(old('district_id') == (string) $district->id)>{{ $district->name }}</option>
                             @endforeach
                         </select>
                         @error('district_id')

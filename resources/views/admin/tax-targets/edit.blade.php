@@ -18,7 +18,7 @@
                     <label for="tax_type_id" class="block text-sm font-semibold text-slate-700 mb-1">Jenis Pajak <span class="text-red-500">*</span></label>
                     <select name="tax_type_id" id="tax_type_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('tax_type_id') ring-2 ring-red-500/20 @endif" required>
                         @foreach($taxTypes as $type)
-                            <option value="{{ $type->id }}" @selected(old('tax_type_id', $taxTarget->tax_type_id) == $type->id)>{{ $type->name }} ({{ $type->code }})</option>
+                            <option value="{{ $type->id }}" @selected(old('tax_type_id', (string) $taxTarget->tax_type_id) == (string) $type->id)>{{ $type->name }} ({{ $type->code }})</option>
                         @endforeach
                     </select>
                     @error('tax_type_id')

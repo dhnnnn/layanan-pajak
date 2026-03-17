@@ -6,7 +6,7 @@ use App\Models\TaxType;
 
 class DeleteTaxTypeAction
 {
-    public function execute(TaxType $taxType): void
+    public function __invoke(TaxType $taxType): void
     {
         $taxType->delete();
     }

@@ -15,10 +15,17 @@ class DistrictController extends Controller
 {
     public function index(): View
     {
+        $search = request()->string('search')->trim();
+
         $districts = District::query()
             ->withCount('users')
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            }))
             ->orderBy('code')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.districts.index', compact('districts'));
     }

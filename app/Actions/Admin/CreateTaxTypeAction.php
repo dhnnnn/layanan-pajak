@@ -9,7 +9,7 @@ class CreateTaxTypeAction
     /**
      * @param  array{name: string, code: string}  $data
      */
-    public function execute(array $data): TaxType
+    public function __invoke(array $data): TaxType
     {
         return TaxType::query()->create($data);
     }

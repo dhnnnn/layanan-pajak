@@ -6,7 +6,7 @@ use App\Models\District;
 
 class DeleteDistrictAction
 {
-    public function execute(District $district): void
+    public function __invoke(District $district): void
     {
         $district->delete();
     }

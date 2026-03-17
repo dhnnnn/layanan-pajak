@@ -17,7 +17,7 @@ class DailyEntryController extends Controller
     /**
      * Show the daily entry page for a specific district.
      */
-    public function show(Request $request, int $districtId): View
+    public function show(Request $request, string $districtId): View
     {
         $user = $request->user();
         $year = $request->integer('year', (int) date('Y'));
@@ -65,21 +65,21 @@ class DailyEntryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'tax_type_id' => ['required', 'integer', 'exists:tax_types,id'],
-            'district_id' => ['required', 'integer', 'exists:districts,id'],
+            'tax_type_id' => ['required', 'string', 'exists:tax_types,id'],
+            'district_id' => ['required', 'string', 'exists:districts,id'],
             'year' => ['required', 'integer'],
             'month' => ['required', 'integer', 'min:1', 'max:12'],
         ]);
 
         $user = $request->user();
 
-        if (! $user->districts()->where('districts.id', $request->integer('district_id'))->exists()) {
+        if (! $user->districts()->where('districts.id', $request->input('district_id'))->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $entries = TaxRealizationDailyEntry::query()
-            ->where('tax_type_id', $request->integer('tax_type_id'))
-            ->where('district_id', $request->integer('district_id'))
+            ->where('tax_type_id', $request->input('tax_type_id'))
+            ->where('district_id', $request->input('district_id'))
             ->whereYear('entry_date', $request->integer('year'))
             ->whereMonth('entry_date', $request->integer('month'))
             ->orderBy('entry_date')
@@ -89,13 +89,46 @@ class DailyEntryController extends Controller
     }
 
     /**
+     * Store multiple daily entries at once (batch).
+     */
+    public function storeBatch(Request $request, StoreDailyEntryAction $storeDailyEntry): JsonResponse
+    {
+        $validated = $request->validate([
+            'district_id' => ['required', 'string', 'exists:districts,id'],
+            'entries' => ['required', 'array', 'min:1'],
+            'entries.*.tax_type_id' => ['required', 'string', 'exists:tax_types,id'],
+            'entries.*.entry_date' => ['required', 'date'],
+            'entries.*.amount' => ['required', 'numeric', 'min:0.01'],
+            'entries.*.note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user = $request->user();
+
+        if (! $user->districts()->where('districts.id', $validated['district_id'])->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        foreach ($validated['entries'] as $item) {
+            $storeDailyEntry([
+                'tax_type_id' => $item['tax_type_id'],
+                'district_id' => $validated['district_id'],
+                'entry_date' => $item['entry_date'],
+                'amount' => $item['amount'],
+                'note' => $item['note'] ?? null,
+            ], $user);
+        }
+
+        return response()->json(['message' => count($validated['entries']).' data berhasil disimpan.'], 201);
+    }
+
+    /**
      * Store a new daily entry.
      */
     public function store(Request $request, StoreDailyEntryAction $storeDailyEntry): JsonResponse
     {
         $validated = $request->validate([
-            'tax_type_id' => ['required', 'integer', 'exists:tax_types,id'],
-            'district_id' => ['required', 'integer', 'exists:districts,id'],
+            'tax_type_id' => ['required', 'string', 'exists:tax_types,id'],
+            'district_id' => ['required', 'string', 'exists:districts,id'],
             'entry_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:255'],

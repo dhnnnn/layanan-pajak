@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 
 class DeleteDailyEntryAction
 {
-    public function execute(TaxRealizationDailyEntry $dailyEntry): void
+    public function __invoke(TaxRealizationDailyEntry $dailyEntry): void
     {
         $taxTypeId = $dailyEntry->tax_type_id;
         $districtId = $dailyEntry->district_id;

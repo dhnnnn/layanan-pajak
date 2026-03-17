@@ -12,10 +12,10 @@ class CreateEmployeeAction
      *     name: string,
      *     email: string,
      *     password: string,
-     *     upt_id?: int|null,
+     *     upt_id?: string|null,
      * } $data
      */
-    public function execute(array $data): User
+    public function __invoke(array $data): User
     {
         $employee = User::query()->create([
             'name' => $data['name'],

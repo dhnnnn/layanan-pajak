@@ -6,7 +6,7 @@ use App\Models\TaxTarget;
 
 class DeleteTaxTargetAction
 {
-    public function execute(TaxTarget $taxTarget): void
+    public function __invoke(TaxTarget $taxTarget): void
     {
         $taxTarget->delete();
     }

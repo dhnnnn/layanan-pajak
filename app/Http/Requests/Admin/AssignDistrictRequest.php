@@ -16,7 +16,7 @@ class AssignDistrictRequest extends FormRequest
     {
         return [
             'district_ids' => ['required', 'array', 'min:1'],
-            'district_ids.*' => ['required', 'integer', 'exists:districts,id'],
+            'district_ids.*' => ['required', 'string', 'exists:districts,id'],
         ];
     }
 

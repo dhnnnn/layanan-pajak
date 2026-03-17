@@ -53,7 +53,7 @@ class EmployeeController extends Controller
             'name' => $request->string('name')->toString(),
             'email' => $request->string('email')->toString(),
             'password' => $request->string('password')->toString(),
-            'upt_id' => $request->integer('upt_id', null),
+            'upt_id' => $request->filled('upt_id') ? $request->string('upt_id')->toString() : null,
         ]);
 
         if ($request->filled('district_ids')) {
@@ -97,7 +97,7 @@ class EmployeeController extends Controller
         $updateEmployee([
             'name' => $request->string('name')->toString(),
             'email' => $request->string('email')->toString(),
-            'upt_id' => $request->integer('upt_id', null),
+            'upt_id' => $request->filled('upt_id') ? $request->string('upt_id')->toString() : null,
             'password' => $request->filled('password') ? $request->string('password')->toString() : null,
         ], $employee);
 

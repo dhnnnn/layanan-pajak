@@ -36,7 +36,7 @@ class ImportController extends Controller
 
         $result = $previewImport(
             file: $request->file('file'),
-            districtId: $request->integer('district_id'),
+            districtId: $request->string('district_id')->toString(),
             year: $request->integer('year')
         );
 
@@ -45,7 +45,7 @@ class ImportController extends Controller
             'totalRows' => $result['total_rows'],
             'previewData' => $result['preview_data'],
             'fileName' => $request->file('file')->getClientOriginalName(),
-            'district_id' => $request->integer('district_id'),
+            'district_id' => $request->string('district_id')->toString(),
             'year' => $request->integer('year'),
         ]);
     }
@@ -65,7 +65,7 @@ class ImportController extends Controller
             storedPath: $request->string('stored_path')->toString(),
             originalFileName: $request->string('file_name')->toString(),
             user: $request->user(),
-            districtId: $request->integer('district_id'),
+            districtId: $request->string('district_id')->toString(),
             year: $request->integer('year'),
         );
 

@@ -8,11 +8,6 @@
         </a>
     </x-slot:headerActions>
 
-    @php
-        $user = auth()->user();
-        $districts = $user->districts;
-    @endphp
-
     @if($districts->isEmpty())
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
             <div class="flex flex-col items-center">
@@ -24,15 +19,40 @@
             </div>
         </div>
     @else
-        <!-- Filter Tahun -->
+        <!-- Filter Tahun & Search -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
-            <div class="flex items-center gap-4">
-                <label for="yearFilter" class="text-sm font-semibold text-slate-700">Filter Tahun:</label>
-                <select id="yearFilter" class="text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
-                    @for($y = (int) date('Y'); $y <= (int) date('Y') + 2; $y++)
-                        <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
-                </select>
+            <div class="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                <div class="flex items-center gap-4">
+                    <label for="yearFilter" class="text-sm font-semibold text-slate-700">Filter Tahun:</label>
+                    <select id="yearFilter" class="text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
+                        @for($y = (int) date('Y'); $y <= (int) date('Y') + 2; $y++)
+                            <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
+                    </select>
+                </div>
+                <div class="flex-1"></div>
+                <form method="GET" action="{{ route('pegawai.realizations.index') }}" class="flex gap-2 w-full md:w-auto">
+                    <input type="hidden" name="year" value="{{ $year }}">
+                    <div class="relative flex-1 md:w-64">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input
+                            type="text"
+                            name="search"
+                            value="{{ $search }}"
+                            placeholder="Cari nama kecamatan..."
+                            class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        Cari
+                    </button>
+                    @if($search)
+                        <a href="{{ route('pegawai.realizations.index', ['year' => $year]) }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors">
+                            Reset
+                        </a>
+                    @endif
+                </form>
             </div>
         </div>
 
@@ -41,7 +61,7 @@
             @foreach($districts as $district)
                 @php
                     $realizationCount = \App\Models\TaxRealization::query()
-                        ->where('user_id', $user->id)
+                        ->where('user_id', auth()->id())
                         ->where('district_id', $district->id)
                         ->where('year', $year)
                         ->count();
@@ -61,7 +81,6 @@
                                 </div>
                                 <div>
                                     <h3 class="font-bold text-slate-900">{{ $district->name }}</h3>
-                                    <p class="text-xs text-slate-500 font-mono">{{ $district->code }}</p>
                                 </div>
                             </div>
                             @if($isComplete)
@@ -82,7 +101,7 @@
                         <div class="space-y-2 mb-4">
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-slate-500">Petugas Lapangan:</span>
-                                <span class="font-semibold text-slate-900 text-right">{{ $user->name }}</span>
+                                <span class="font-semibold text-slate-900 text-right">{{ auth()->user()->name }}</span>
                             </div>
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-slate-500">Data Realisasi:</span>

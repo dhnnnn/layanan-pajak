@@ -73,6 +73,8 @@
 </head>
 <body class="bg-slate-100 font-sans antialiased">
 
+<div x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false">
+
 <div class="flex h-screen overflow-hidden">
 
     {{-- Sidebar Slot --}}
@@ -82,7 +84,15 @@
     <div class="flex-1 flex flex-col overflow-hidden">
 
         <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
-            <h1 class="text-base font-semibold text-slate-800">{{ $header ?? '' }}</h1>
+            <div class="flex items-center gap-3">
+                <button @click="sidebarOpen = !sidebarOpen" 
+                        class="lg:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <h1 class="text-base font-semibold text-slate-800">{{ $header ?? '' }}</h1>
+            </div>
             <div class="flex items-center gap-3">{{ $headerActions ?? '' }}</div>
         </header>
 
@@ -116,47 +126,28 @@
 <script>
     // Initialize Tom Select on all select elements
     document.addEventListener('DOMContentLoaded', function() {
-        // Get all select elements
         const selectElements = document.querySelectorAll('select:not(.no-search)');
         
         selectElements.forEach(function(select) {
-            // Skip if already initialized
             if (select.tomselect) return;
             
-            // Check if select has onchange attribute
             const hasOnChange = select.hasAttribute('onchange');
             const onChangeHandler = hasOnChange ? select.getAttribute('onchange') : null;
-            
-            // Check for emerald focus class
             const hasEmeraldFocus = select.classList.contains('focus:ring-emerald-500') || 
                                    select.classList.contains('focus:border-emerald-500');
-            
-            // Check for error state
             const hasError = select.classList.contains('border-red-500');
             
-            const tomSelectInstance = new TomSelect(select, {
+            new TomSelect(select, {
                 create: false,
-                sortField: {
-                    field: "text",
-                    direction: "asc"
-                },
+                sortField: { field: "text", direction: "asc" },
                 placeholder: select.querySelector('option[disabled]')?.textContent || 'Pilih...',
                 allowEmptyOption: true,
                 onInitialize: function() {
-                    // Add custom classes to wrapper
-                    if (hasEmeraldFocus) {
-                        this.wrapper.classList.add('emerald-focus');
-                    }
-                    if (hasError) {
-                        this.wrapper.classList.add('error');
-                    }
+                    if (hasEmeraldFocus) this.wrapper.classList.add('emerald-focus');
+                    if (hasError) this.wrapper.classList.add('error');
                 },
                 onChange: function(value) {
-                    // Trigger original onchange if exists
-                    if (onChangeHandler) {
-                        // Execute the original onchange code
-                        eval(onChangeHandler);
-                    }
+                    if (onChangeHandler) eval(onChangeHandler);
                 }
             });
         });

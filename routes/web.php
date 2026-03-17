@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\ImportController as AdminImportController;
+use App\Http\Controllers\Admin\RealizationMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
 use App\Http\Controllers\Admin\TemplateController;
@@ -77,6 +78,11 @@ Route::middleware(['auth', 'role:admin'])
                 Route::get('/report/export', [UptComparisonController::class, 'exportReport'])->name('report.export');
             });
 
+        // Monitoring Realisasi
+        Route::get('realization-monitoring', [RealizationMonitoringController::class, 'index'])->name('realization-monitoring.index');
+        Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
+        Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');
+
         // Target Pajak (APBD)
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
         Route::resource(
@@ -115,6 +121,7 @@ Route::middleware(['auth', 'role:pegawai'])
         Route::get('districts/{districtId}/entries', [DailyEntryController::class, 'show'])->name('daily-entries.show');
         Route::get('daily-entries', [DailyEntryController::class, 'index'])->name('daily-entries.index');
         Route::post('daily-entries', [DailyEntryController::class, 'store'])->name('daily-entries.store');
+        Route::post('daily-entries/batch', [DailyEntryController::class, 'storeBatch'])->name('daily-entries.batch');
         Route::delete('daily-entries/{dailyEntry}', [DailyEntryController::class, 'destroy'])->name('daily-entries.destroy');
 
         // Realisasi Pajak

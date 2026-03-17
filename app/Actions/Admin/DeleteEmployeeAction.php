@@ -6,7 +6,7 @@ use App\Models\User;
 
 class DeleteEmployeeAction
 {
-    public function execute(User $employee): void
+    public function __invoke(User $employee): void
     {
         $employee->delete();
     }

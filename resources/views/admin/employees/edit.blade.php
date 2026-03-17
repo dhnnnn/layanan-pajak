@@ -46,7 +46,7 @@
                                 @foreach($upts as $upt)
                                     <option value="{{ $upt->id }}" 
                                         data-district-ids="{{ $upt->districts->pluck('id')->join(',') }}"
-                                        @selected(old('upt_id', $employee->upt_id) == $upt->id)>
+                                        @selected(old('upt_id', (string) $employee->upt_id) == $upt->id)>
                                         {{ $upt->name }}
                                     </option>
                                 @endforeach

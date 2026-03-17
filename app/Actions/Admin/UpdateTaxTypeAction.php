@@ -9,7 +9,7 @@ class UpdateTaxTypeAction
     /**
      * @param  array{name: string, code: string}  $data
      */
-    public function execute(array $data, TaxType $taxType): TaxType
+    public function __invoke(array $data, TaxType $taxType): TaxType
     {
         $taxType->update($data);
 

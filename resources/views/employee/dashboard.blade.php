@@ -4,7 +4,6 @@
             <div class="flex items-center gap-2">
                 <label for="district_id" class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</label>
                 <select name="district_id" id="district_id" onchange="this.form.submit()" class="text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 block">
-                    <option value="">Semua Wilayah Saya</option>
                     @foreach($assignedDistricts as $district)
                         <option value="{{ $district->id }}" {{ $selectedDistrictId == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
                     @endforeach
@@ -34,9 +33,9 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wilayah Tugas Aktif</p>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wilayah Tugas</p>
                     <p class="text-sm font-bold text-slate-800">
-                        {{ $selectedDistrictId ? $assignedDistricts->firstWhere('id', $selectedDistrictId)->name : 'Seluruh Wilayah Penugasan' }}
+                        {{ $selectedDistrictId ? $assignedDistricts->firstWhere('id', $selectedDistrictId)->name : 'Pilih Wilayah' }}
                     </p>
                 </div>
             </div>

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
@@ -9,7 +10,6 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTitle
@@ -29,9 +29,21 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
         $targets = TaxTarget::query()
             ->with('taxType')
             ->when($this->year, fn ($q) => $q->where('year', $this->year))
-            ->orderByDesc('year')
-            ->orderBy('tax_type_id')
+            ->join('tax_types', 'tax_targets.tax_type_id', '=', 'tax_types.id')
+            ->select('tax_targets.*')
+            ->orderByDesc('tax_targets.year')
+            ->orderBy('tax_types.name')
             ->get();
+
+        // Load realization totals from daily entries per tax_type per month (all UPTs)
+        // realizations[tax_type_id][month] = total
+        $realizations = TaxRealizationDailyEntry::query()
+            ->whereYear('entry_date', $year)
+            ->selectRaw('tax_type_id, MONTH(entry_date) as month, SUM(amount) as total')
+            ->groupBy('tax_type_id', 'month')
+            ->get()
+            ->groupBy('tax_type_id')
+            ->map(fn ($rows) => $rows->pluck('total', 'month')->map(fn ($v) => (float) $v));
 
         $rows = [];
 
@@ -74,26 +86,53 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
             $q3 = (float) ($target->q3_target ?? $amount * 0.75);
             $q4 = (float) ($target->q4_target ?? $amount);
 
+            $monthTotals = $realizations->get($target->tax_type_id, collect());
+
+            // Cumulative realization per quarter
+            $r1 = 0.0;
+            for ($m = 1; $m <= 3; $m++) {
+                $r1 += $monthTotals->get($m, 0.0);
+            }
+            $r2 = $r1;
+            for ($m = 4; $m <= 6; $m++) {
+                $r2 += $monthTotals->get($m, 0.0);
+            }
+            $r3 = $r2;
+            for ($m = 7; $m <= 9; $m++) {
+                $r3 += $monthTotals->get($m, 0.0);
+            }
+            $r4 = $r3;
+            for ($m = 10; $m <= 12; $m++) {
+                $r4 += $monthTotals->get($m, 0.0);
+            }
+
+            $pR1 = $amount > 0 ? round($r1 / $amount * 100, 1) : 0;
+            $pR2 = $amount > 0 ? round($r2 / $amount * 100, 1) : 0;
+            $pR3 = $amount > 0 ? round($r3 / $amount * 100, 1) : 0;
+            $pR4 = $amount > 0 ? round($r4 / $amount * 100, 1) : 0;
+
+            $lebihKurang = $r4 - $amount;
+
             $rows[] = [
                 $target->taxType->name,
                 $amount,
                 $q1,
                 round($target->getQ1Percentage(), 1).'%',
-                null, // Q1 Realisasi (kosong)
-                null,
+                $r1,
+                $pR1.'%',
                 $q2,
                 round($target->getQ2Percentage(), 1).'%',
-                null, // Q2 Realisasi
-                null,
+                $r2,
+                $pR2.'%',
                 $q3,
                 round($target->getQ3Percentage(), 1).'%',
-                null, // Q3 Realisasi
-                null,
+                $r3,
+                $pR3.'%',
                 $q4,
                 round($target->getQ4Percentage(), 1).'%',
-                null, // Q4 Realisasi
-                null,
-                null, // Lebih/Kurang
+                $r4,
+                $pR4.'%',
+                $lebihKurang,
             ];
         }
 
@@ -126,20 +165,21 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
         $sheet->mergeCells('B1:B2');
         $sheet->mergeCells('S1:S2');
 
+        $borderThin = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
+
         $sheet->getStyle('A1:S2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E40AF']],
+            'font' => ['bold' => true],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
                 'vertical' => Alignment::VERTICAL_CENTER,
                 'wrapText' => true,
             ],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
+            'borders' => ['allBorders' => $borderThin],
         ]);
 
         if ($lastRow > 2) {
             $sheet->getStyle("A3:S{$lastRow}")->applyFromArray([
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
+                'borders' => ['allBorders' => $borderThin],
             ]);
 
             foreach (['B', 'C', 'E', 'G', 'I', 'K', 'M', 'O', 'Q', 'S'] as $col) {

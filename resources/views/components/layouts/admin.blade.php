@@ -1,9 +1,7 @@
 <x-layouts.app :title="$title" :header="$header">
     <x-slot:sidebar>
         {{-- Mobile Overlay --}}
-        <div x-data="{ sidebarOpen: false }" 
-             @keydown.escape.window="sidebarOpen = false"
-             class="lg:contents">
+        <div class="lg:contents">
             
             {{-- Overlay for mobile --}}
             <div x-show="sidebarOpen" 
@@ -20,14 +18,15 @@
 
             {{-- Sidebar --}}
             <aside x-show="sidebarOpen || window.innerWidth >= 1024"
-                   x-transition:enter="transition ease-in-out duration-300 transform"
-                   x-transition:enter-start="-translate-x-full"
-                   x-transition:enter-end="translate-x-0"
-                   x-transition:leave="transition ease-in-out duration-300 transform"
-                   x-transition:leave-start="translate-x-0"
-                   x-transition:leave-end="-translate-x-full"
-                   @click.away="if (window.innerWidth < 1024) sidebarOpen = false"
                    class="fixed lg:relative inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col flex-shrink-0">
+                
+                {{-- Close button for mobile --}}
+                <button @click="sidebarOpen = false" 
+                        class="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
                 
                 {{-- Close button for mobile --}}
                 <button @click="sidebarOpen = false" 
@@ -124,6 +123,13 @@
                     </x-layouts.sidebar-submenu-item>
                 </x-layouts.sidebar-dropdown>
 
+                <x-layouts.sidebar-item route="admin.realization-monitoring.index" :active="request()->routeIs('admin.realization-monitoring.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Monitoring Realisasi
+                </x-layouts.sidebar-item>
+
                 <x-layouts.sidebar-item route="admin.template.index" :active="request()->routeIs('admin.template.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -146,16 +152,8 @@
                     </button>
                 </form>
             </div>
-        </aside>
-
-        {{-- Mobile Menu Button (Floating) --}}
-        <button @click="sidebarOpen = true" 
-                class="lg:hidden fixed bottom-6 right-6 z-30 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-        </button>
-    </div>
+            </aside>
+        </div>
     </x-slot:sidebar>
 
     <x-slot:headerActions>

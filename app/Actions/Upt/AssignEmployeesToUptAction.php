@@ -8,9 +8,9 @@ use App\Models\User;
 class AssignEmployeesToUptAction
 {
     /**
-     * @param  array<int>  $userIds
+     * @param  array<string>  $userIds
      */
-    public function execute(Upt $upt, array $userIds): void
+    public function __invoke(Upt $upt, array $userIds): void
     {
         User::query()
             ->where('upt_id', $upt->id)

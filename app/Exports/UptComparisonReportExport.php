@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
 use App\Models\Upt;
@@ -12,7 +13,6 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class UptComparisonReportExport implements FromArray, WithColumnWidths, WithStyles, WithTitle
@@ -22,7 +22,6 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithStyl
     public function __construct(private readonly int $year)
     {
         $this->upts = Upt::query()
-            ->with(['comparisons' => fn ($q) => $q->where('year', $year)])
             ->orderBy('code')
             ->get();
     }
@@ -37,6 +36,21 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithStyl
     {
         $rows = [];
 
+        // Build realization totals from daily entries: upt_id -> tax_type_id -> total
+        $uptTotals = [];
+        foreach ($this->upts as $upt) {
+            $userIds = $upt->users()->role('pegawai')->pluck('users.id');
+
+            $totals = TaxRealizationDailyEntry::query()
+                ->whereIn('user_id', $userIds)
+                ->whereYear('entry_date', $this->year)
+                ->selectRaw('tax_type_id, SUM(amount) as total')
+                ->groupBy('tax_type_id')
+                ->pluck('total', 'tax_type_id');
+
+            $uptTotals[$upt->id] = $totals->map(fn ($v) => (float) $v)->toArray();
+        }
+
         // Header row
         $header = ['NO.', 'JENIS PAJAK', "TARGET {$this->year}"];
         foreach ($this->upts as $upt) {
@@ -48,7 +62,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithStyl
         $header[] = 'SELISIH (RP.)';
         $rows[] = $header;
 
-        $taxTypes = TaxType::query()->orderBy('code')->get();
+        $taxTypes = TaxType::query()->orderBy('name')->get();
         $no = 1;
 
         foreach ($taxTypes as $taxType) {
@@ -62,8 +76,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithStyl
             $row = [$no++, $taxType->name, $targetAmount];
 
             foreach ($this->upts as $upt) {
-                $comparison = $upt->comparisons->where('tax_type_id', $taxType->id)->first();
-                $amount = (float) ($comparison?->target_amount ?? 0);
+                $amount = (float) ($uptTotals[$upt->id][$taxType->id] ?? 0);
                 $row[] = $amount;
                 $totalUpt += $amount;
             }
@@ -109,31 +122,20 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithStyl
         $lastCol = $sheet->getHighestColumn();
 
         $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E40AF']],
+            'font' => ['bold' => true],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
                 'vertical' => Alignment::VERTICAL_CENTER,
                 'wrapText' => true,
             ],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
         ]);
 
         if ($lastRow > 1) {
             $sheet->getStyle("A2:{$lastCol}{$lastRow}")->applyFromArray([
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
             ]);
 
-            // Number format for currency columns (C onwards except % columns)
-            $uptCount = $this->upts->count();
-            $cols = range('C', 'Z');
-            $currencyCols = array_merge(
-                [$cols[0]], // Target APBD
-                array_slice($cols, 1, $uptCount), // UPT columns
-                [$cols[$uptCount + 1 - 1]], // Total UPT — offset fix
-            );
-
-            // Simpler: format all numeric cols
             $sheet->getStyle("C2:{$lastCol}{$lastRow}")
                 ->getNumberFormat()
                 ->setFormatCode('#,##0');
