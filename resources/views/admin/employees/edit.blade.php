@@ -40,6 +40,24 @@
                         </div>
 
                         <div>
+                            <label for="upt_id" class="block text-sm font-semibold text-slate-700 mb-1">UPT</label>
+                            <select name="upt_id" id="upt_id" class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('upt_id') border-red-500 @enderror">
+                                <option value="">-- Pilih UPT --</option>
+                                @foreach($upts as $upt)
+                                    <option value="{{ $upt->id }}" 
+                                        data-district-ids="{{ $upt->districts->pluck('id')->join(',') }}"
+                                        @selected(old('upt_id', $employee->upt_id) == $upt->id)>
+                                        {{ $upt->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-slate-500 italic">Pegawai akan bekerja di wilayah dalam scope UPT yang dipilih.</p>
+                            @error('upt_id')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
                             <div class="flex items-center justify-between mb-1">
                                 <label for="password" class="block text-sm font-semibold text-slate-700">Password</label>
                                 <span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Opsional</span>
@@ -71,9 +89,9 @@
                         
                         <div>
                             <p class="block text-sm font-semibold text-slate-700 mb-2">Pilih Kecamatan:</p>
-                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-64 overflow-y-auto space-y-2">
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-64 overflow-y-auto space-y-2" id="districts-container">
                                 @foreach($districts as $district)
-                                    <label class="flex items-center gap-3 p-2 hover:bg-white rounded transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                                    <label class="district-item flex items-center gap-3 p-2 hover:bg-white rounded transition-colors cursor-pointer border border-transparent hover:border-slate-200" data-district-id="{{ $district->id }}">
                                         <input type="checkbox" name="district_ids[]" value="{{ $district->id }}" 
                                             @checked(in_array($district->id, old('district_ids', $assignedIds)))
                                             class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
@@ -81,7 +99,7 @@
                                     </label>
                                 @endforeach
                             </div>
-                            <p class="mt-2 text-[10px] text-slate-500 italic">Satu pegawai dapat ditugaskan ke lebih dari satu kecamatan.</p>
+                            <p class="mt-2 text-[10px] text-slate-500 italic">Kecamatan akan otomatis difilter berdasarkan UPT yang dipilih.</p>
                             @error('district_ids')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                             @enderror
@@ -98,4 +116,48 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uptSelect = document.getElementById('upt_id');
+            const districtItems = document.querySelectorAll('.district-item');
+            
+            function filterDistricts() {
+                const selectedOption = uptSelect.options[uptSelect.selectedIndex];
+                const districtIds = selectedOption.getAttribute('data-district-ids');
+                
+                if (!districtIds || districtIds === '') {
+                    // Jika tidak ada UPT dipilih, tampilkan semua kecamatan
+                    districtItems.forEach(item => {
+                        item.style.display = 'flex';
+                        const checkbox = item.querySelector('input[type="checkbox"]');
+                        checkbox.disabled = false;
+                    });
+                    return;
+                }
+                
+                const allowedIds = districtIds.split(',').map(id => id.trim());
+                
+                districtItems.forEach(item => {
+                    const districtId = item.getAttribute('data-district-id');
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    
+                    if (allowedIds.includes(districtId)) {
+                        item.style.display = 'flex';
+                        checkbox.disabled = false;
+                    } else {
+                        item.style.display = 'none';
+                        checkbox.checked = false;
+                        checkbox.disabled = true;
+                    }
+                });
+            }
+            
+            // Filter saat UPT berubah
+            uptSelect.addEventListener('change', filterDistricts);
+            
+            // Filter saat halaman dimuat (untuk old values)
+            filterDistricts();
+        });
+    </script>
 </x-layouts.admin>

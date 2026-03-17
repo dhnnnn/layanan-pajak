@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,7 +18,7 @@ class User extends Authenticatable
     use HasFactory, HasRoles, Notifiable;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password', 'upt_id'];
 
     /** @var list<string> */
     protected $hidden = ['password', 'remember_token'];
@@ -46,5 +47,10 @@ class User extends Authenticatable
     public function importLogs(): HasMany
     {
         return $this->hasMany(ImportLog::class);
+    }
+
+    public function upt(): BelongsTo
+    {
+        return $this->belongsTo(Upt::class);
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\AssignDistrictRequest;
 use App\Http\Requests\Admin\StoreEmployeeRequest;
 use App\Http\Requests\Admin\UpdateEmployeeRequest;
 use App\Models\District;
+use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
@@ -19,7 +20,7 @@ class EmployeeController extends Controller
     {
         $employees = User::query()
             ->role('pegawai')
-            ->with('districts')
+            ->with(['districts', 'upt'])
             ->latest()
             ->paginate(15);
 
@@ -29,8 +30,9 @@ class EmployeeController extends Controller
     public function create(): View
     {
         $districts = District::query()->orderBy('name')->get();
+        $upts = Upt::query()->with('districts')->orderBy('code')->get();
 
-        return view('admin.employees.create', compact('districts'));
+        return view('admin.employees.create', compact('districts', 'upts'));
     }
 
     public function store(
@@ -41,6 +43,7 @@ class EmployeeController extends Controller
             'name' => $request->string('name'),
             'email' => $request->string('email'),
             'password' => Hash::make($request->string('password')),
+            'upt_id' => $request->integer('upt_id', null),
         ]);
 
         $employee->assignRole('pegawai');
@@ -68,11 +71,12 @@ class EmployeeController extends Controller
     public function edit(User $employee): View
     {
         $districts = District::query()->orderBy('name')->get();
+        $upts = Upt::query()->with('districts')->orderBy('code')->get();
         $assignedIds = $employee->districts()->pluck('districts.id')->all();
 
         return view(
             'admin.employees.edit',
-            compact('employee', 'districts', 'assignedIds'),
+            compact('employee', 'districts', 'upts', 'assignedIds'),
         );
     }
 
@@ -84,6 +88,7 @@ class EmployeeController extends Controller
         $data = [
             'name' => $request->string('name'),
             'email' => $request->string('email'),
+            'upt_id' => $request->integer('upt_id', null),
         ];
 
         if ($request->filled('password')) {

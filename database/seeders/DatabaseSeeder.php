@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             DistrictSeeder::class,
+            UptSeeder::class,
             TaxTypeSeeder::class,
             MonthSeeder::class,
         ]);

@@ -1,0 +1,111 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Actions\Upt\ImportUptComparisonAction;
+use App\Actions\Upt\PreviewUptComparisonAction;
+use App\Exports\TaxRealizationTemplateExport;
+use App\Exports\UptComparisonTemplateExport;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ImportUptComparisonRequest;
+use App\Models\Upt;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+class UptComparisonController extends Controller
+{
+    public function index(): View
+    {
+        return view('admin.upt-comparisons.index');
+    }
+
+    public function downloadTemplate(Request $request): BinaryFileResponse
+    {
+        $type = $request->query('type', 'apbd'); // 'apbd' or 'upt'
+        $year = $request->integer('year', (int) date('Y'));
+
+        if ($type === 'upt') {
+            $filename = 'template-perbandingan-target-upt-'.$year.'.xlsx';
+
+            return Excel::download(
+                new UptComparisonTemplateExport($year),
+                $filename
+            );
+        }
+
+        // Default: APBD template
+        $filename = 'template-target-apbd-'.$year.'.xlsx';
+
+        return Excel::download(
+            new TaxRealizationTemplateExport($year, null),
+            $filename
+        );
+    }
+
+    public function preview(ImportUptComparisonRequest $request): View|RedirectResponse
+    {
+        $file = $request->file('file');
+        $year = $request->integer('year');
+
+        if ($file === null) {
+            return redirect()
+                ->back()
+                ->with('error', 'File tidak ditemukan.');
+        }
+
+        $previewAction = app(PreviewUptComparisonAction::class);
+
+        $result = $previewAction($file, $year);
+
+        $upts = Upt::query()->orderBy('code')->get();
+
+        return view('admin.upt-comparisons.preview', [
+            'storedPath' => $result['stored_path'],
+            'totalRows' => $result['total_rows'],
+            'previewData' => $result['preview_data'],
+            'fileName' => $file->getClientOriginalName(),
+            'year' => $year,
+            'upts' => $upts,
+        ]);
+    }
+
+    public function import(ImportUptComparisonRequest $request): RedirectResponse
+    {
+        $storedPath = $request->string('stored_path')->toString();
+
+        $importAction = app(ImportUptComparisonAction::class);
+
+        $importLog = $importAction(
+            storedPath: $storedPath,
+            originalFileName: $request->string('file_name')->toString(),
+            user: auth()->user(),
+            year: $request->integer('year'),
+        );
+
+        // Clean up stored file
+        Storage::disk('local')->delete($storedPath);
+
+        return redirect()
+            ->route('admin.upt-comparisons.index')
+            ->with('success', "Import selesai. Berhasil: {$importLog->success_rows}, Gagal: {$importLog->failed_rows}");
+    }
+
+    public function report(Request $request): View
+    {
+        $year = $request->integer('year', (int) date('Y'));
+
+        $upts = Upt::query()
+            ->with(['comparisons' => function ($query) use ($year): void {
+                $query->where('year', $year)
+                    ->with('taxType');
+            }])
+            ->orderBy('code')
+            ->get();
+
+        return view('admin.upt-comparisons.report', compact('upts', 'year'));
+    }
+}

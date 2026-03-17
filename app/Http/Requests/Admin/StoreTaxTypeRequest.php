@@ -16,9 +16,11 @@ class StoreTaxTypeRequest extends FormRequest
      */
     public function rules(): array
     {
+        $taxTypeId = $this->route('tax_type')?->id;
+
         return [
             'name' => ['required', 'string', 'max:100'],
-            'code' => ['required', 'string', 'max:20', 'unique:tax_types,code'],
+            'code' => ['nullable', 'string', 'max:20', 'unique:tax_types,code,'.$taxTypeId],
         ];
     }
 
@@ -30,7 +32,6 @@ class StoreTaxTypeRequest extends FormRequest
         return [
             'name.required' => 'Nama jenis pajak wajib diisi.',
             'name.max' => 'Nama jenis pajak maksimal 100 karakter.',
-            'code.required' => 'Kode jenis pajak wajib diisi.',
             'code.max' => 'Kode jenis pajak maksimal 20 karakter.',
             'code.unique' => 'Kode jenis pajak sudah digunakan.',
         ];

@@ -25,14 +25,11 @@
                 </div>
 
                 <div>
-                    <label for="code" class="block text-sm font-semibold text-slate-700 mb-1">Kode Kecamatan <span class="text-red-500">*</span></label>
-                    <input type="text" name="code" id="code" value="{{ old('code', $district->code) }}" 
-                        class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm uppercase @error('code') border-red-500 @enderror" 
-                        placeholder="Contoh: 35.14.01" required>
-                    <p class="mt-1 text-xs text-slate-500 italic">Kode unik kecamatan (misal: kode Kemendagri).</p>
-                    @error('code')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
+                    <label for="code" class="block text-sm font-semibold text-slate-700 mb-1">Kode Kecamatan</label>
+                    <input type="text" id="code" value="{{ $district->code }}" 
+                        class="w-full rounded-lg border-slate-200 bg-slate-50 text-slate-600 font-mono text-sm uppercase cursor-not-allowed" 
+                        readonly>
+                    <p class="mt-1 text-xs text-slate-500 italic">Kode tidak dapat diubah setelah dibuat.</p>
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">

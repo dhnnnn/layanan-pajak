@@ -40,21 +40,16 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($previewData as $row)
                             @php
-                                // Get target from various possible keys in the row data
-                                $target_apbd = 0;
-                                if (isset($row['target']) && is_numeric($row['target'])) {
-                                    $target_apbd = (float) $row['target'];
-                                } elseif (isset($row[1]) && is_numeric($row[1])) {
-                                    $target_apbd = (float) $row[1];
-                                }
+                                // Get target APBD
+                                $target_apbd = (float) ($row['target'] ?? 0);
                                 
-                                // Target per quarter (cumulative, 25%, 50%, 75%, 100%)
-                                $q1_target = $target_apbd * 0.25;
-                                $q2_target = $target_apbd * 0.50;
-                                $q3_target = $target_apbd * 0.75;
-                                $q4_target = $target_apbd;
+                                // Get target per quarter from Excel
+                                $q1_target = (float) ($row['q1_target'] ?? 0);
+                                $q2_target = (float) ($row['q2_target'] ?? 0);
+                                $q3_target = (float) ($row['q3_target'] ?? 0);
+                                $q4_target = (float) ($row['q4_target'] ?? 0);
                                 
-                                // % Target = (Target Triwulan / Target APBD) × 100
+                                // Calculate % Target = (Target Triwulan / Target APBD) × 100
                                 $q1_target_pct = $target_apbd > 0 ? ($q1_target / $target_apbd * 100) : 0;
                                 $q2_target_pct = $target_apbd > 0 ? ($q2_target / $target_apbd * 100) : 0;
                                 $q3_target_pct = $target_apbd > 0 ? ($q3_target / $target_apbd * 100) : 0;
@@ -72,7 +67,7 @@
                                     @endif
                                     <div class="text-[9px] text-blue-600 mt-1">{{ $row['keterangan'] ?? '' }}</div>
                                 </td>
-                                <td class="px-4 py-3 text-right font-bold border-r border-slate-100">{{ number_format($target_apbd ?? 0, 0, ',', '.') }}</td>
+                                <td class="px-4 py-3 text-right font-bold border-r border-slate-100">{{ number_format($target_apbd, 0, ',', '.') }}</td>
                                 
                                 {{-- Triwulan I --}}
                                 <td class="px-2 py-3 text-right text-[10px] border-l-2 border-blue-300">{{ number_format($q1_target, 0, ',', '.') }}</td>

@@ -18,18 +18,8 @@
                     <input type="text" name="name" id="name" value="{{ old('name') }}" 
                         class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror" 
                         placeholder="Contoh: Pajak Penerangan Jalan" required>
+                    <p class="mt-1 text-xs text-slate-500 italic">Kode pajak akan dibuat otomatis dari nama (contoh: "Pajak Bumi dan Bangunan" → "TAX-PBB").</p>
                     @error('name')
-                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
-                    <label for="code" class="block text-sm font-semibold text-slate-700 mb-1">Kode Pajak <span class="text-red-500">*</span></label>
-                    <input type="text" name="code" id="code" value="{{ old('code') }}" 
-                        class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm uppercase @error('code') border-red-500 @enderror" 
-                        placeholder="Contoh: PPJ" required>
-                    <p class="mt-1 text-xs text-slate-500 italic">Singkatan atau kode unik untuk identifikasi jenis pajak.</p>
-                    @error('code')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
                 </div>

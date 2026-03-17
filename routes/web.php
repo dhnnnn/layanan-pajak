@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\ImportController as AdminImportController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
 use App\Http\Controllers\Admin\TemplateController;
+use App\Http\Controllers\Admin\UptComparisonController;
+use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\Employee\ImportController as EmployeeImportController;
@@ -55,6 +57,21 @@ Route::middleware(['auth', 'role:admin'])
         Route::resource('employees', EmployeeController::class);
         Route::post('employees/{employee}/districts', [EmployeeController::class, 'assignDistricts'])->name('employees.districts.assign');
 
+        // UPT
+        Route::resource('upts', UptController::class);
+        Route::get('upts/{upt}/districts', [UptController::class, 'assignDistricts'])->name('upts.districts');
+        Route::post('upts/{upt}/districts', [UptController::class, 'storeDistricts'])->name('upts.districts.store');
+
+        // Perbandingan Target UPT
+        Route::prefix('upt-comparisons')
+            ->name('upt-comparisons.')
+            ->group(function (): void {
+                Route::get('/', [UptComparisonController::class, 'index'])->name('index');
+                Route::post('/preview', [UptComparisonController::class, 'preview'])->name('preview');
+                Route::post('/import', [UptComparisonController::class, 'import'])->name('import');
+                Route::get('/report', [UptComparisonController::class, 'report'])->name('report');
+            });
+
         // Target Pajak (APBD)
         Route::resource(
             'tax-targets',
@@ -71,6 +88,7 @@ Route::middleware(['auth', 'role:admin'])
             });
 
         // Download Template
+        Route::get('/template', [TemplateController::class, 'index'])->name('template.index');
         Route::get('/template/download', [TemplateController::class, 'download'])->name('template.download');
     });
 
@@ -103,5 +121,6 @@ Route::middleware(['auth', 'role:pegawai'])
             });
 
         // Download Template
+        Route::get('/template', [TemplateController::class, 'index'])->name('template.index');
         Route::get('/template/download', [TemplateController::class, 'download'])->name('template.download');
     });

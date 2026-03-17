@@ -16,6 +16,34 @@ class District extends Model
     /** @var list<string> */
     protected $fillable = ['name', 'code'];
 
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (District $district): void {
+            if (empty($district->code)) {
+                $district->code = self::generateCode($district->name);
+            }
+        });
+    }
+
+    private static function generateCode(string $name): string
+    {
+        // Generate code from name: "Kecamatan Satu" -> "KEC-SATU"
+        $words = preg_split('/\s+/', trim($name));
+        $code = 'KEC-'.strtoupper(implode('-', array_slice($words, -2)));
+
+        // Ensure uniqueness
+        $originalCode = $code;
+        $counter = 1;
+        while (self::query()->where('code', $code)->exists()) {
+            $code = $originalCode.'-'.$counter;
+            $counter++;
+        }
+
+        return $code;
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'employee_districts');
@@ -24,5 +52,10 @@ class District extends Model
     public function taxRealizations(): HasMany
     {
         return $this->hasMany(TaxRealization::class);
+    }
+
+    public function upts(): BelongsToMany
+    {
+        return $this->belongsToMany(Upt::class, 'upt_districts');
     }
 }

@@ -16,9 +16,11 @@ class StoreDistrictRequest extends FormRequest
      */
     public function rules(): array
     {
+        $districtId = $this->route('district')?->id;
+
         return [
             'name' => ['required', 'string', 'max:100'],
-            'code' => ['required', 'string', 'max:20', 'unique:districts,code'],
+            'code' => ['nullable', 'string', 'max:20', 'unique:districts,code,'.$districtId],
         ];
     }
 
@@ -30,7 +32,6 @@ class StoreDistrictRequest extends FormRequest
         return [
             'name.required' => 'Nama kecamatan wajib diisi.',
             'name.max' => 'Nama kecamatan maksimal 100 karakter.',
-            'code.required' => 'Kode kecamatan wajib diisi.',
             'code.max' => 'Kode kecamatan maksimal 20 karakter.',
             'code.unique' => 'Kode kecamatan sudah digunakan.',
         ];

@@ -28,6 +28,9 @@ class UpdateEmployeeRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($employeeId),
             ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'upt_id' => ['nullable', 'integer', 'exists:upts,id'],
+            'district_ids' => ['nullable', 'array'],
+            'district_ids.*' => ['integer', 'exists:districts,id'],
         ];
     }
 
@@ -44,6 +47,11 @@ class UpdateEmployeeRequest extends FormRequest
             'email.unique' => 'Email sudah terdaftar.',
             'password.min' => 'Kata sandi minimal 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+            'upt_id.integer' => 'UPT tidak valid.',
+            'upt_id.exists' => 'UPT tidak ditemukan.',
+            'district_ids.array' => 'Format data kecamatan tidak valid.',
+            'district_ids.*.integer' => 'ID kecamatan harus berupa angka.',
+            'district_ids.*.exists' => 'Kecamatan tidak ditemukan.',
         ];
     }
 }

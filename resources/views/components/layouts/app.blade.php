@@ -7,6 +7,9 @@
     <title>{{ $title ?? 'Page' }} — Sistem Realisasi Pajak Kab. Pasuruan</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
+    {{-- Alpine.js for interactive components --}}
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     {{-- Tom Select for searchable dropdowns --}}
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>

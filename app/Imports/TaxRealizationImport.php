@@ -307,6 +307,60 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
                 0
             );
 
+            // Support target columns per quarter
+            // Try multiple possible column names and indices
+            $q1_target = (float) (
+                $rowArray['q1_target'] ??
+                $rowArray['target_q1'] ??
+                $rowArray['target_triwulan_i'] ??
+                $rowArray[2] ??
+                0
+            );
+
+            $q2_target = (float) (
+                $rowArray['q2_target'] ??
+                $rowArray['target_q2'] ??
+                $rowArray['target_triwulan_ii'] ??
+                $rowArray[6] ??
+                0
+            );
+
+            $q3_target = (float) (
+                $rowArray['q3_target'] ??
+                $rowArray['target_q3'] ??
+                $rowArray['target_triwulan_iii'] ??
+                $rowArray[10] ??
+                0
+            );
+
+            $q4_target = (float) (
+                $rowArray['q4_target'] ??
+                $rowArray['target_q4'] ??
+                $rowArray['target_triwulan_iv'] ??
+                $rowArray[14] ??
+                0
+            );
+
+            // If no quarterly targets found, calculate from target APBD (cumulative: 25%, 50%, 75%, 100%)
+            if ($q1_target === 0.0 && $q2_target === 0.0 && $q3_target === 0.0 && $q4_target === 0.0 && $targetValue > 0) {
+                $q1_target = $targetValue * 0.25;
+                $q2_target = $targetValue * 0.50;
+                $q3_target = $targetValue * 0.75;
+                $q4_target = $targetValue;
+            }
+
+            // Debug logging for first row
+            if ($index === 0) {
+                Log::info('First row target values:', [
+                    'target_apbd' => $targetValue,
+                    'q1_target' => $q1_target,
+                    'q2_target' => $q2_target,
+                    'q3_target' => $q3_target,
+                    'q4_target' => $q4_target,
+                    'available_keys' => implode(', ', array_keys($rowArray)),
+                ]);
+            }
+
             // 1. Resolve Tax Type - check kode_jenis_pajak first
             $taxTypeCode = trim((string) ($rowArray['kode_jenis_pajak'] ?? ''));
             $taxType = $taxTypes->get($taxTypeCode);
@@ -351,6 +405,10 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
                 'keterangan' => $taxType ? "Data akan dibuat untuk {$districtCount} kecamatan" : 'Jenis pajak akan dibuat otomatis',
                 'tahun' => $year ?: null,
                 'target' => $targetValue,
+                'q1_target' => $q1_target,
+                'q2_target' => $q2_target,
+                'q3_target' => $q3_target,
+                'q4_target' => $q4_target,
                 'q1_realisasi' => $q1_realisasi,
                 'q2_realisasi' => $q2_realisasi,
                 'q3_realisasi' => $q3_realisasi,
