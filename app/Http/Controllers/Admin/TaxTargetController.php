@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Tax\CreateTaxTargetAction;
+use App\Actions\Tax\DeleteTaxTargetAction;
+use App\Actions\Tax\UpdateTaxTargetAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTaxTargetRequest;
 use App\Models\TaxTarget;
@@ -52,9 +55,9 @@ class TaxTargetController extends Controller
         return view('admin.tax-targets.create', compact('taxTypes'));
     }
 
-    public function store(StoreTaxTargetRequest $request): RedirectResponse
+    public function store(StoreTaxTargetRequest $request, CreateTaxTargetAction $createTaxTarget): RedirectResponse
     {
-        TaxTarget::query()->create($request->validated());
+        $createTaxTarget($request->validated());
 
         return redirect()
             ->route('admin.tax-targets.index')
@@ -71,17 +74,18 @@ class TaxTargetController extends Controller
     public function update(
         StoreTaxTargetRequest $request,
         TaxTarget $taxTarget,
+        UpdateTaxTargetAction $updateTaxTarget,
     ): RedirectResponse {
-        $taxTarget->update($request->validated());
+        $updateTaxTarget($request->validated(), $taxTarget);
 
         return redirect()
             ->route('admin.tax-targets.index')
             ->with('success', 'Target pajak berhasil diperbarui.');
     }
 
-    public function destroy(TaxTarget $taxTarget): RedirectResponse
+    public function destroy(TaxTarget $taxTarget, DeleteTaxTargetAction $deleteTaxTarget): RedirectResponse
     {
-        $taxTarget->delete();
+        $deleteTaxTarget($taxTarget);
 
         return redirect()
             ->route('admin.tax-targets.index')

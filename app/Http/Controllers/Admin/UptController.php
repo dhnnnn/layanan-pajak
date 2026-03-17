@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Upt\AssignDistrictsToUptAction;
+use App\Actions\Upt\AssignEmployeesToUptAction;
+use App\Actions\Upt\CreateUptAction;
+use App\Actions\Upt\DeleteUptAction;
+use App\Actions\Upt\UpdateUptAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignUptDistrictRequest;
 use App\Http\Requests\Admin\StoreUptRequest;
@@ -35,9 +40,9 @@ class UptController extends Controller
         return view('admin.upts.show', compact('upt'));
     }
 
-    public function store(StoreUptRequest $request): RedirectResponse
+    public function store(StoreUptRequest $request, CreateUptAction $createUpt): RedirectResponse
     {
-        Upt::query()->create($request->validated());
+        $createUpt($request->validated());
 
         return redirect()
             ->route('admin.upts.index')
@@ -49,18 +54,18 @@ class UptController extends Controller
         return view('admin.upts.edit', compact('upt'));
     }
 
-    public function update(StoreUptRequest $request, Upt $upt): RedirectResponse
+    public function update(StoreUptRequest $request, Upt $upt, UpdateUptAction $updateUpt): RedirectResponse
     {
-        $upt->update($request->validated());
+        $updateUpt($request->validated(), $upt);
 
         return redirect()
             ->route('admin.upts.index')
             ->with('success', 'UPT berhasil diperbarui.');
     }
 
-    public function destroy(Upt $upt): RedirectResponse
+    public function destroy(Upt $upt, DeleteUptAction $deleteUpt): RedirectResponse
     {
-        $upt->delete();
+        $deleteUpt($upt);
 
         return redirect()
             ->route('admin.upts.index')
@@ -98,7 +103,7 @@ class UptController extends Controller
         return view('admin.upts.assign-employee-districts', compact('upt', 'employee', 'assignedDistrictIds'));
     }
 
-    public function storeEmployees(Upt $upt): RedirectResponse
+    public function storeEmployees(Upt $upt, AssignEmployeesToUptAction $assignEmployees): RedirectResponse
     {
         $validated = request()->validate([
             'user_ids' => ['nullable', 'array'],
@@ -107,18 +112,7 @@ class UptController extends Controller
 
         $userIds = $validated['user_ids'] ?? [];
 
-        // Remove employees that were unassigned from this UPT
-        User::query()
-            ->where('upt_id', $upt->id)
-            ->whereNotIn('id', $userIds)
-            ->update(['upt_id' => null]);
-
-        // Assign selected employees to this UPT
-        if (! empty($userIds)) {
-            User::query()
-                ->whereIn('id', $userIds)
-                ->update(['upt_id' => $upt->id]);
-        }
+        $assignEmployees($upt, $userIds);
 
         return redirect()
             ->route('admin.upts.show', $upt)
@@ -136,8 +130,9 @@ class UptController extends Controller
     public function storeDistricts(
         AssignUptDistrictRequest $request,
         Upt $upt,
+        AssignDistrictsToUptAction $assignDistricts,
     ): RedirectResponse {
-        $upt->districts()->sync($request->validated('district_ids'));
+        $assignDistricts($upt, $request->validated('district_ids'));
 
         return redirect()
             ->route('admin.upts.index')

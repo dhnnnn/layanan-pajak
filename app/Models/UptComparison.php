@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UptComparisonFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,10 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UptComparison extends Model
 {
     /** @use HasFactory<UptComparisonFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     /** @var list<string> */
     protected $fillable = ['tax_type_id', 'upt_id', 'year', 'target_amount'];
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     /**
      * @return array<string, string>

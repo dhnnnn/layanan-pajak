@@ -9,12 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tax_targets', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('tax_type_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->uuid('tax_type_id');
             $table->unsignedSmallInteger('year');
             $table->decimal('target_amount', 15, 2)->default(0);
             $table->timestamps();
 
+            $table->foreign('tax_type_id')->references('id')->on('tax_types')->cascadeOnDelete();
             $table->unique(['tax_type_id', 'year']);
         });
     }

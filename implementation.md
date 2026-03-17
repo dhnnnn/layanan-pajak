@@ -1,576 +1,395 @@
-# 📋 Implementation Plan — Sistem Layanan Pajak
+## Refactored Professional Prompt
 
-## 📖 Project Overview
+**Role:**
+Act as a **Lead Backend Architect, Laravel Specialist, and Code Refactoring Expert** responsible for executing a large-scale architectural refactor across an entire Laravel codebase.
 
-Sistem ini adalah **aplikasi manajemen realisasi pajak daerah** berbasis Laravel yang memungkinkan:
+Your mission is to analyze the **entire Laravel project directory** and perform a **system-wide architectural improvement** while maintaining application stability, clean architecture, and strict adherence to **SOLID principles, Laravel best practices, and maintainable code structure**.
 
-* Admin mengelola **jenis pajak, target APBD, kecamatan, dan pegawai**
-* Pegawai menginput **realisasi pajak per kecamatan**
-* Import data menggunakan **Excel**
-* Dashboard untuk melihat **pencapaian target pajak**
-
-### Roles
-
-| Role        | Akses                                                       |
-| ----------- | ----------------------------------------------------------- |
-| **Admin**   | Mengelola master data, target pajak, pegawai, dan dashboard |
-| **Pegawai** | Menginput realisasi pajak sesuai kecamatan yang ditugaskan  |
+Work carefully and **execute the following tasks sequentially**.
 
 ---
 
-# 🧱 Current State
+# Task 1 — Implement Action Pattern (Thin Controllers)
 
-Project menggunakan:
+Perform a full audit of all **Controller classes** within the application.
 
-* **Laravel 12 (Fresh Install)**
-* Default hanya memiliki:
+### Objective
 
-  * `User` model
-  * 3 default migrations
-* Belum ada:
+Transform all Controllers into **Thin Controllers** by extracting business logic into dedicated **Action classes**.
 
-  * Role Permission
-  * Excel Import
-  * Controllers
-  * Routes
-  * Views
-  * Action Classes
+### Rules
 
----
+1. Controllers must only be responsible for:
 
-# 🚀 Phase 1 — Dependencies & Foundation
+   * Authorization
+   * Request validation (via **FormRequest** classes)
+   * Calling an **Action class**
+   * Returning **HTTP Response / JSON / View**
 
-Install package yang dibutuhkan:
+2. All business logic must be moved to **Action classes**.
 
-| Package                     | Kegunaan                  |
-| --------------------------- | ------------------------- |
-| `spatie/laravel-permission` | Role-based access control |
-| `maatwebsite/excel`         | Import & export Excel     |
+3. If the project already contains an `app/Actions` directory:
 
-### Install Packages
+   * Reuse existing Actions whenever possible
+   * Refactor them if necessary
 
-```bash
-composer require spatie/laravel-permission
-composer require maatwebsite/excel
-```
+4. If an Action does not exist:
 
-### Publish Config
+   * Create a new Action inside `app/Actions/<Module>/`
 
-```bash
-php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
+### Business Logic That MUST Be Extracted
 
-php artisan vendor:publish --provider="Maatwebsite\Excel\ExcelServiceProvider"
-```
+Move the following out of Controllers:
 
-### Run Migration
+* Complex database queries
+* Business rules
+* Data transformation
+* CUD operations (Create, Update, Delete)
+* External API calls
+* File processing
+* Transaction handling
 
-```bash
-php artisan migrate
-```
+### Example Structure
 
-Output:
-
-* `composer.json` updated
-* Migration & config dari kedua package terpublish
-
----
-
-# 🗄 Phase 2 — Database Schema & Migrations
-
-Total migration baru: **7 tabel**
-
-## Tables
-
-### users
-
-(sudah ada, hanya extend relasi)
-
-```
-id
-name
-email
-password
-timestamps
-```
-
----
-
-### districts
-
-```
-id
-name
-code
-timestamps
-```
-
----
-
-### employee_districts (pivot)
-
-```
-user_id
-district_id
-```
-
-Relasi:
-
-```
-User <-> District
-many to many
-```
-
----
-
-### tax_types
-
-```
-id
-name
-code
-timestamps
-```
-
----
-
-### tax_targets
-
-```
-id
-tax_type_id
-year
-target_amount
-timestamps
-```
-
----
-
-### tax_realizations
-
-```
-id
-tax_type_id
-district_id
-user_id
-year
-
-jan
-feb
-mar
-apr
-may
-jun
-jul
-aug
-sep
-oct
-nov
-dec
-
-timestamps
-```
-
----
-
-### import_logs
-
-```
-id
-user_id
-file_name
-status
-total_rows
-success_rows
-failed_rows
-notes
-timestamps
-```
-
----
-
-# 🧩 Phase 3 — Models & Relationships
-
-## User
-
-```
-belongsToMany(District)
-hasMany(TaxRealization)
-hasMany(ImportLog)
-```
-
----
-
-## District
-
-```
-belongsToMany(User)
-hasMany(TaxRealization)
-```
-
----
-
-## TaxType
-
-```
-hasMany(TaxTarget)
-hasMany(TaxRealization)
-```
-
----
-
-## TaxTarget
-
-```
-belongsTo(TaxType)
-```
-
----
-
-## TaxRealization
-
-```
-belongsTo(TaxType)
-belongsTo(District)
-belongsTo(User)
-```
-
----
-
-## ImportLog
-
-```
-belongsTo(User)
-```
-
----
-
-### Factory & Seeder
-
-Setiap model memiliki:
-
-```
-database/factories/*
-database/seeders/*
-```
-
----
-
-# ⚙️ Phase 4 — Action Classes
-
-Struktur folder:
-
-```
-app/Actions
-```
-
-```
-app/Actions
-├── Tax
-│
-│   ImportTaxRealizationAction.php
-│   StoreTaxRealizationAction.php
-│   CalculateTaxRealizationAction.php
-│   GenerateTaxDashboardAction.php
-│   CalculateAchievementPercentageAction.php
-│
-└── Employee
-    AssignEmployeeDistrictAction.php
-```
-
-### Fungsi Action
-
-| Action                               | Deskripsi                   |
-| ------------------------------------ | --------------------------- |
-| ImportTaxRealizationAction           | Parsing Excel + validasi    |
-| StoreTaxRealizationAction            | Simpan realisasi manual     |
-| CalculateTaxRealizationAction        | Hitung total bulanan        |
-| GenerateTaxDashboardAction           | Query data dashboard        |
-| CalculateAchievementPercentageAction | Hitung % pencapaian         |
-| AssignEmployeeDistrictAction         | Assign pegawai ke kecamatan |
-
----
-
-# 📊 Phase 5 — Excel Import Class
-
-File:
-
-```
-app/Imports/TaxRealizationImport.php
-```
-
-Interface yang digunakan:
-
-```
-ToCollection
-WithHeadingRow
-WithValidation
-```
-
-### Kolom Excel
-
-| Column      | Description         |
-| ----------- | ------------------- |
-| Jenis Pajak | Nama pajak          |
-| Kecamatan   | Nama kecamatan      |
-| Tahun       | Tahun laporan       |
-| Jan–Des     | Realisasi per bulan |
-
-### Features
-
-* Database transaction
-* Preview sebelum save
-* Validasi data
-* Logging hasil import
-
-Log disimpan di:
-
-```
-import_logs
-```
-
----
-
-# 🧭 Phase 6 — Controllers & Routes
-
-## Admin Controllers
-
-```
-app/Http/Controllers/Admin
-```
-
-| Controller          | Fungsi            |
-| ------------------- | ----------------- |
-| DistrictController  | CRUD kecamatan    |
-| TaxTypeController   | CRUD jenis pajak  |
-| TaxTargetController | CRUD target pajak |
-| EmployeeController  | CRUD pegawai      |
-| ImportController    | Upload Excel      |
-| DashboardController | Dashboard admin   |
-
----
-
-## Employee Controllers
-
-```
-app/Http/Controllers/Employee
-```
-
-| Controller            | Fungsi                |
-| --------------------- | --------------------- |
-| RealizationController | Input realisasi pajak |
-| ImportController      | Import Excel          |
-
-Pegawai hanya bisa akses **district yang ditugaskan**.
-
----
-
-# 🛣 Phase 7 — Routes
-
-File:
-
-```
-routes/web.php
-```
-
-### Middleware
-
-```
-auth
-role:admin
-role:pegawai
-```
-
-Contoh:
+**Before (Bad Controller)**
 
 ```php
-Route::middleware(['auth','role:admin'])->prefix('admin')->group(function(){
-    Route::resource('districts', DistrictController::class);
-});
+class UserController extends Controller
+{
+    public function store(Request $request)
+    {
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email
+        ]);
+
+        Mail::to($user->email)->send(new WelcomeMail($user));
+
+        return redirect()->route('users.index');
+    }
+}
+```
+
+**After (Thin Controller)**
+
+Controller:
+
+```php
+class UserController extends Controller
+{
+    public function store(StoreUserRequest $request, CreateUserAction $action)
+    {
+        $action->execute($request->validated());
+
+        return redirect()->route('users.index');
+    }
+}
+```
+
+Action:
+
+```php
+class CreateUserAction
+{
+    public function execute(array $data): User
+    {
+        $user = User::create($data);
+
+        Mail::to($user->email)->send(new WelcomeMail($user));
+
+        return $user;
+    }
+}
 ```
 
 ---
 
-# 📈 Phase 8 — Dashboard & Aggregation Logic
+# Task 2 — Global UUID Migration
 
-Data dashboard dihasilkan oleh:
+Refactor the entire database architecture to replace **auto-increment integer IDs** with **UUIDs**.
 
-```
-GenerateTaxDashboardAction
-```
-
-### Dashboard Data
-
-Untuk setiap:
-
-```
-TaxType × Year
-```
-
-Hitung:
-
-| Data            | Rumus                      |
-| --------------- | -------------------------- |
-| Q1              | Jan + Feb + Mar            |
-| Q2              | Apr + Mei + Jun            |
-| Q3              | Jul + Agu + Sep            |
-| Q4              | Okt + Nov + Des            |
-| Total Realisasi | Sum Jan–Des                |
-| Sisa Target     | Target - Realisasi         |
-| Persentase      | (Realisasi / Target) × 100 |
+This must be applied **consistently across all modules**.
 
 ---
 
-# 🖥 Phase 9 — Views & Frontend
+## Model Changes
 
-Halaman yang dibuat:
+For all Eloquent Models:
 
-### Dashboard
+1. Use the `HasUuids` trait
 
-Tabel:
-
+```php
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 ```
-Jenis Pajak
-Target
-Q1
-Q2
-Q3
-Q4
-Total
-Sisa Target
-Persentase
+
+2. Configure the model:
+
+```php
+class User extends Model
+{
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
+}
 ```
+
+3. Ensure all model relationships continue to function correctly.
 
 ---
 
-### Input Realisasi
+## Migration Changes
 
-Form:
+Update all migrations:
 
+### Primary Keys
+
+Replace:
+
+```php
+$table->id();
 ```
-Jenis Pajak
-Kecamatan
-Tahun
-Jan–Des
+
+With:
+
+```php
+$table->uuid('id')->primary();
 ```
 
 ---
 
-### Excel Import
+### Foreign Keys
 
-Flow:
+Replace:
 
-```
-Upload File
-↓
-Preview Data
-↓
-Confirm Import
+```php
+$table->foreignId('user_id')->constrained();
 ```
 
----
+With:
 
-### Management Pages
+```php
+$table->uuid('user_id');
 
-Admin:
-
-* Manage districts
-* Manage tax types
-* Manage targets
-* Manage employees
-
----
-
-# 🌱 Phase 10 — Seeder & Roles Setup
-
-Seeder yang dibuat:
-
-```
-RoleSeeder
-UserSeeder
-DistrictSeeder
-TaxTypeSeeder
-```
-
-### Roles
-
-```
-admin
-pegawai
-```
-
-### Default Admin
-
-```
-email: admin@mail.com
-password: password
+$table->foreign('user_id')
+    ->references('id')
+    ->on('users')
+    ->cascadeOnDelete();
 ```
 
 ---
 
-# 🧪 Phase 11 — Testing
+### Pivot Tables
 
-Testing menggunakan:
+Ensure pivot tables also use UUID references.
 
-```
-Pest PHP
-```
+Example:
 
-Feature tests:
-
-```
-Login
-Role permission
-Import Excel
-Dashboard calculation
-Tax realization input
+```php
+$table->uuid('user_id');
+$table->uuid('role_id');
 ```
 
 ---
 
-# 📌 Execution Order
+### Data Integrity
 
-Urutan implementasi:
+Ensure:
 
-```
-1. Install dependencies
-2. Publish package configs
-3. Run migrations
-4. Create Models + Factories + Seeders
-5. Create Action Classes
-6. Create Excel Import class
-7. Create Form Requests
-8. Create Controllers
-9. Define Routes
-10. Build Views
-11. Write Feature Tests
+* Foreign keys match the **UUID type**
+* Indexes remain optimized
+* Cascade rules remain intact
+
+---
+
+# Task 3 — Global N+1 Query Resolution
+
+Audit all database interactions across the application.
+
+Focus particularly on:
+
+* Action classes
+* Models
+* Service layers
+* API Resources
+* Controllers (if any logic remains)
+
+---
+
+## Objective
+
+Identify and eliminate **N+1 Query Problems**.
+
+---
+
+## Required Fixes
+
+Implement **Eager Loading** where necessary:
+
+### Using `with()`
+
+```php
+Post::with('author')->get();
 ```
 
 ---
 
-# 🏗 Suggested Folder Structure
+### Using `load()`
 
-```
-app
-├── Actions
-├── Imports
-├── Models
-├── Http
-│   ├── Controllers
-│   │   ├── Admin
-│   │   └── Employee
-│   └── Requests
+```php
+$posts->load('comments');
 ```
 
 ---
 
-# 🎯 Final Goal
+### Using `loadMissing()`
 
-Sistem mampu:
+```php
+$post->loadMissing('author');
+```
 
-* Mengelola target pajak daerah
-* Menginput realisasi pajak
-* Import data Excel
-* Menampilkan dashboard pencapaian target pajak
-* Mengontrol akses berdasarkan role
+---
+
+### Nested Relationships
+
+```php
+Post::with([
+    'author',
+    'comments.user'
+])->get();
+```
+
+---
+
+### Performance Considerations
+
+Avoid:
+
+```php
+foreach ($posts as $post) {
+    $post->comments;
+}
+```
+
+Replace with eager loading.
+
+---
+
+# Code Quality Requirements
+
+During refactoring, ensure:
+
+### SOLID Principles
+
+* Single Responsibility
+* Dependency Injection
+* Decoupled Architecture
+
+### Laravel Best Practices
+
+* FormRequests for validation
+* Resource classes for API responses
+* Proper Service Container usage
+* Clean folder structure
+
+### Clean Code
+
+* Meaningful naming
+* No duplicated logic
+* Readable and maintainable code
+* Small, focused classes
+
+---
+
+# Expected Output (Important)
+
+After completing the refactor, produce a **structured report** containing the following sections:
+
+---
+
+## 1. Controllers Refactored
+
+List every Controller that was simplified.
+
+Example:
+
+```
+UserController
+ → Business logic moved to:
+   - CreateUserAction
+   - UpdateUserAction
+   - DeleteUserAction
+```
+
+---
+
+## 2. Action Classes Created or Updated
+
+Provide a list such as:
+
+```
+app/Actions/User/CreateUserAction.php
+app/Actions/User/UpdateUserAction.php
+app/Actions/Post/PublishPostAction.php
+```
+
+Explain briefly what each Action does.
+
+---
+
+## 3. UUID Migration Changes
+
+Provide a list of:
+
+### Updated Models
+
+```
+User
+Post
+Order
+Invoice
+```
+
+### Updated Migrations
+
+```
+create_users_table
+create_posts_table
+create_orders_table
+```
+
+Include notes about foreign key conversions.
+
+---
+
+## 4. N+1 Query Issues Fixed
+
+Provide specific examples.
+
+Example:
+
+```
+Problem:
+User::all() then accessing $user->posts in loop.
+
+Fix:
+User::with('posts')->get()
+```
+
+List all similar fixes across the project.
+
+---
+
+# Execution Strategy
+
+Perform the refactor **incrementally**:
+
+1️⃣ Analyze project structure
+2️⃣ Refactor Controllers → Actions
+3️⃣ Implement UUID changes
+4️⃣ Resolve N+1 queries
+5️⃣ Generate final report
+
+Ensure the application **remains functional at every stage**.
 
 ---

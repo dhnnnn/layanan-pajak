@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\CreateTaxTypeAction;
+use App\Actions\Admin\DeleteTaxTypeAction;
+use App\Actions\Admin\UpdateTaxTypeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTaxTypeRequest;
 use App\Models\TaxType;
@@ -25,9 +28,9 @@ class TaxTypeController extends Controller
         return view('admin.tax-types.create');
     }
 
-    public function store(StoreTaxTypeRequest $request): RedirectResponse
+    public function store(StoreTaxTypeRequest $request, CreateTaxTypeAction $createTaxType): RedirectResponse
     {
-        TaxType::query()->create($request->validated());
+        $createTaxType($request->validated());
 
         return redirect()
             ->route('admin.tax-types.index')
@@ -49,17 +52,18 @@ class TaxTypeController extends Controller
     public function update(
         StoreTaxTypeRequest $request,
         TaxType $taxType,
+        UpdateTaxTypeAction $updateTaxType,
     ): RedirectResponse {
-        $taxType->update($request->validated());
+        $updateTaxType($request->validated(), $taxType);
 
         return redirect()
             ->route('admin.tax-types.index')
             ->with('success', 'Jenis pajak berhasil diperbarui.');
     }
 
-    public function destroy(TaxType $taxType): RedirectResponse
+    public function destroy(TaxType $taxType, DeleteTaxTypeAction $deleteTaxType): RedirectResponse
     {
-        $taxType->delete();
+        $deleteTaxType($taxType);
 
         return redirect()
             ->route('admin.tax-types.index')

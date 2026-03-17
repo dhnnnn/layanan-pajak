@@ -12,13 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('upt_comparisons', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tax_type_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('upt_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->uuid('tax_type_id');
+            $table->uuid('upt_id');
             $table->year('year');
             $table->decimal('target_amount', 20, 2);
             $table->timestamps();
 
+            $table->foreign('tax_type_id')->references('id')->on('tax_types')->cascadeOnDelete();
+            $table->foreign('upt_id')->references('id')->on('upts')->cascadeOnDelete();
             $table->unique(['tax_type_id', 'upt_id', 'year']);
         });
     }

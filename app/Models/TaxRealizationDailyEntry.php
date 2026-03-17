@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TaxRealizationDailyEntry extends Model
 {
+    use HasUuids;
+
     /** @var list<string> */
     protected $fillable = [
         'tax_type_id',
@@ -16,6 +19,10 @@ class TaxRealizationDailyEntry extends Model
         'amount',
         'note',
     ];
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     /**
      * @return array<string, string>

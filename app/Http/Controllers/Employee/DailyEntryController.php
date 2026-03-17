@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Employee;
 
+use App\Actions\Tax\DeleteDailyEntryAction;
 use App\Actions\Tax\StoreDailyEntryAction;
 use App\Http\Controllers\Controller;
 use App\Models\District;
-use App\Models\TaxRealization;
 use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxType;
 use Illuminate\Http\JsonResponse;
@@ -115,7 +115,7 @@ class DailyEntryController extends Controller
     /**
      * Delete a daily entry and re-sync the monthly total.
      */
-    public function destroy(Request $request, TaxRealizationDailyEntry $dailyEntry): JsonResponse
+    public function destroy(Request $request, TaxRealizationDailyEntry $dailyEntry, DeleteDailyEntryAction $deleteDailyEntry): JsonResponse
     {
         $user = $request->user();
 
@@ -123,30 +123,7 @@ class DailyEntryController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $taxTypeId = $dailyEntry->tax_type_id;
-        $districtId = $dailyEntry->district_id;
-        $date = $dailyEntry->entry_date;
-
-        $dailyEntry->delete();
-
-        $columnName = match ((int) $date->month) {
-            1 => 'january', 2 => 'february', 3 => 'march', 4 => 'april',
-            5 => 'may', 6 => 'june', 7 => 'july', 8 => 'august',
-            9 => 'september', 10 => 'october', 11 => 'november', 12 => 'december',
-        };
-
-        $monthlyTotal = TaxRealizationDailyEntry::query()
-            ->where('tax_type_id', $taxTypeId)
-            ->where('district_id', $districtId)
-            ->whereYear('entry_date', $date->year)
-            ->whereMonth('entry_date', $date->month)
-            ->sum('amount');
-
-        TaxRealization::query()
-            ->where('tax_type_id', $taxTypeId)
-            ->where('district_id', $districtId)
-            ->where('year', $date->year)
-            ->update([$columnName => $monthlyTotal]);
+        $deleteDailyEntry($dailyEntry);
 
         return response()->json(['message' => 'Data berhasil dihapus.']);
     }

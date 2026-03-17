@@ -12,12 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('upt_districts', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('upt_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('district_id')->constrained()->cascadeOnDelete();
+            $table->uuid('upt_id');
+            $table->uuid('district_id');
             $table->timestamps();
 
-            $table->unique(['upt_id', 'district_id']);
+            $table->foreign('upt_id')->references('id')->on('upts')->cascadeOnDelete();
+            $table->foreign('district_id')->references('id')->on('districts')->cascadeOnDelete();
+            $table->primary(['upt_id', 'district_id']);
         });
     }
 

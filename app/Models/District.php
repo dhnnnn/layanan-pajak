@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\DistrictFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,10 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class District extends Model
 {
     /** @use HasFactory<DistrictFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     /** @var list<string> */
     protected $fillable = ['name', 'code'];
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     protected static function boot(): void
     {

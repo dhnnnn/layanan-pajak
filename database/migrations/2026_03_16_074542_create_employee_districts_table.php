@@ -9,12 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employee_districts', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('district_id')->constrained()->cascadeOnDelete();
+            $table->uuid('user_id');
+            $table->uuid('district_id');
             $table->timestamps();
 
-            $table->unique(['user_id', 'district_id']);
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreign('district_id')->references('id')->on('districts')->cascadeOnDelete();
+            $table->primary(['user_id', 'district_id']);
         });
     }
 

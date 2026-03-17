@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\CreateDistrictAction;
+use App\Actions\Admin\DeleteDistrictAction;
+use App\Actions\Admin\UpdateDistrictAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreDistrictRequest;
 use App\Models\District;
@@ -25,9 +28,9 @@ class DistrictController extends Controller
         return view('admin.districts.create');
     }
 
-    public function store(StoreDistrictRequest $request): RedirectResponse
+    public function store(StoreDistrictRequest $request, CreateDistrictAction $createDistrict): RedirectResponse
     {
-        District::query()->create($request->validated());
+        $createDistrict($request->validated());
 
         return redirect()
             ->route('admin.districts.index')
@@ -42,17 +45,18 @@ class DistrictController extends Controller
     public function update(
         StoreDistrictRequest $request,
         District $district,
+        UpdateDistrictAction $updateDistrict,
     ): RedirectResponse {
-        $district->update($request->validated());
+        $updateDistrict($request->validated(), $district);
 
         return redirect()
             ->route('admin.districts.index')
             ->with('success', 'Kecamatan berhasil diperbarui.');
     }
 
-    public function destroy(District $district): RedirectResponse
+    public function destroy(District $district, DeleteDistrictAction $deleteDistrict): RedirectResponse
     {
-        $district->delete();
+        $deleteDistrict($district);
 
         return redirect()
             ->route('admin.districts.index')

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\TaxTargetFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,10 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TaxTarget extends Model
 {
     /** @use HasFactory<TaxTargetFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     /** @var list<string> */
     protected $fillable = ['tax_type_id', 'year', 'target_amount', 'q1_target', 'q2_target', 'q3_target', 'q4_target', 'q1_percentage', 'q2_percentage', 'q3_percentage', 'q4_percentage'];
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     /**
      * @return array<string, string>

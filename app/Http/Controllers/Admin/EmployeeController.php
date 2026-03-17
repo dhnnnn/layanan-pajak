@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\CreateEmployeeAction;
+use App\Actions\Admin\DeleteEmployeeAction;
+use App\Actions\Admin\UpdateEmployeeAction;
 use App\Actions\Employee\AssignEmployeeDistrictAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignDistrictRequest;
@@ -11,7 +14,6 @@ use App\Models\District;
 use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -44,16 +46,15 @@ class EmployeeController extends Controller
 
     public function store(
         StoreEmployeeRequest $request,
+        CreateEmployeeAction $createEmployee,
         AssignEmployeeDistrictAction $assignDistricts,
     ): RedirectResponse {
-        $employee = User::query()->create([
-            'name' => $request->string('name'),
-            'email' => $request->string('email'),
-            'password' => Hash::make($request->string('password')),
+        $employee = $createEmployee([
+            'name' => $request->string('name')->toString(),
+            'email' => $request->string('email')->toString(),
+            'password' => $request->string('password')->toString(),
             'upt_id' => $request->integer('upt_id', null),
         ]);
-
-        $employee->assignRole('pegawai');
 
         if ($request->filled('district_ids')) {
             $assignDistricts($employee, $request->array('district_ids'));
@@ -90,19 +91,15 @@ class EmployeeController extends Controller
     public function update(
         UpdateEmployeeRequest $request,
         User $employee,
+        UpdateEmployeeAction $updateEmployee,
         AssignEmployeeDistrictAction $assignDistricts,
     ): RedirectResponse {
-        $data = [
-            'name' => $request->string('name'),
-            'email' => $request->string('email'),
+        $updateEmployee([
+            'name' => $request->string('name')->toString(),
+            'email' => $request->string('email')->toString(),
             'upt_id' => $request->integer('upt_id', null),
-        ];
-
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->string('password'));
-        }
-
-        $employee->update($data);
+            'password' => $request->filled('password') ? $request->string('password')->toString() : null,
+        ], $employee);
 
         $assignDistricts($employee, $request->array('district_ids', []));
 
@@ -111,9 +108,9 @@ class EmployeeController extends Controller
             ->with('success', 'Data pegawai berhasil diperbarui.');
     }
 
-    public function destroy(User $employee): RedirectResponse
+    public function destroy(User $employee, DeleteEmployeeAction $deleteEmployee): RedirectResponse
     {
-        $employee->delete();
+        $deleteEmployee($employee);
 
         return redirect()
             ->route('admin.employees.index')

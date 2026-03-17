@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tax_realizations', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('tax_type_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('district_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->uuid('tax_type_id');
+            $table->uuid('district_id');
+            $table->uuid('user_id');
             $table->year('year');
             $table->decimal('january', 15, 2)->default(0);
             $table->decimal('february', 15, 2)->default(0);
@@ -28,6 +28,9 @@ return new class extends Migration
             $table->decimal('december', 15, 2)->default(0);
             $table->timestamps();
 
+            $table->foreign('tax_type_id')->references('id')->on('tax_types')->cascadeOnDelete();
+            $table->foreign('district_id')->references('id')->on('districts')->cascadeOnDelete();
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->unique(
                 ['tax_type_id', 'district_id', 'year'],
                 'unique_realization',

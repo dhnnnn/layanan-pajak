@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('months', function (Blueprint $table): void {
-            $table->tinyIncrements('id');
+            $table->uuid('id')->primary();
             $table->unsignedTinyInteger('number')->unique();
             $table->string('name', 20);
             $table->string('abbreviation', 5);

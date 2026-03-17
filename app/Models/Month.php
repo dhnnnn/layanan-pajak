@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Month extends Model
 {
+    use HasUuids;
+
     public $timestamps = false;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
 
     /** @var list<string> */
     protected $fillable = ['number', 'name', 'abbreviation', 'column_name'];

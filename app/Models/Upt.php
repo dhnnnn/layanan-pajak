@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UptFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,10 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Upt extends Model
 {
     /** @use HasFactory<UptFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     /** @var list<string> */
     protected $fillable = ['name', 'code', 'description'];
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     protected static function boot(): void
     {
