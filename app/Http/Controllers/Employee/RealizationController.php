@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\StoreTaxRealizationRequest;
 use App\Models\Month;
 use App\Models\TaxRealization;
+use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,6 +20,7 @@ class RealizationController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $year = $request->integer('year', (int) date('Y'));
 
         $realizations = TaxRealization::query()
             ->with(['taxType', 'district'])
@@ -26,7 +29,7 @@ class RealizationController extends Controller
             ->orderBy('tax_type_id')
             ->paginate(15);
 
-        return view('employee.realizations.index', compact('realizations'));
+        return view('employee.realizations.index', compact('realizations', 'year'));
     }
 
     public function create(Request $request): View
@@ -120,5 +123,36 @@ class RealizationController extends Controller
             403,
             'Anda tidak memiliki akses ke data realisasi ini.',
         );
+    }
+
+    public function getTaxTypesByDistrict(Request $request, int $districtId): JsonResponse
+    {
+        $user = $request->user();
+        $year = $request->integer('year', date('Y'));
+
+        if (! $user->districts()->where('districts.id', $districtId)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $taxTypes = TaxType::query()->orderBy('code')->get();
+
+        $realizations = TaxRealization::query()
+            ->where('district_id', $districtId)
+            ->where('year', $year)
+            ->get();
+
+        // Total daily entries per tax type for the year
+        $yearlyTotals = TaxRealizationDailyEntry::query()
+            ->where('district_id', $districtId)
+            ->whereYear('entry_date', $year)
+            ->selectRaw('tax_type_id, SUM(amount) as total')
+            ->groupBy('tax_type_id')
+            ->pluck('total', 'tax_type_id');
+
+        return response()->json([
+            'taxTypes' => $taxTypes,
+            'realizations' => $realizations,
+            'yearlyTotals' => $yearlyTotals,
+        ]);
     }
 }

@@ -17,7 +17,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 border-b border-slate-100">
                     <div>
                         <label for="tax_type_id" class="block text-sm font-semibold text-slate-700 mb-1">Jenis Pajak <span class="text-red-500">*</span></label>
-                        <select name="tax_type_id" id="tax_type_id" class="w-full rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('tax_type_id') border-red-500 @enderror" required>
+                        <select name="tax_type_id" id="tax_type_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 @error('tax_type_id') ring-2 ring-red-500/20 @endif" required>
                             <option value="" disabled selected>Pilih Jenis Pajak</option>
                             @foreach($taxTypes as $type)
                                 <option value="{{ $type->id }}" @selected(old('tax_type_id') == $type->id)>{{ $type->name }} ({{ $type->code }})</option>
@@ -30,7 +30,7 @@
 
                     <div>
                         <label for="district_id" class="block text-sm font-semibold text-slate-700 mb-1">Kecamatan <span class="text-red-500">*</span></label>
-                        <select name="district_id" id="district_id" class="w-full rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('district_id') border-red-500 @enderror" required>
+                        <select name="district_id" id="district_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 @error('district_id') ring-2 ring-red-500/20 @endif" required>
                             <option value="" disabled selected>Pilih Kecamatan</option>
                             @foreach($districts as $district)
                                 <option value="{{ $district->id }}" @selected(old('district_id') == $district->id)>{{ $district->name }}</option>
@@ -43,7 +43,7 @@
 
                     <div>
                         <label for="year" class="block text-sm font-semibold text-slate-700 mb-1">Tahun <span class="text-red-500">*</span></label>
-                        <select name="year" id="year" class="w-full rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 @error('year') border-red-500 @enderror" required>
+                        <select name="year" id="year" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 @error('year') ring-2 ring-red-500/20 @endif" required>
                             @foreach($availableYears as $year)
                                 <option value="{{ $year }}" @selected(old('year', date('Y')) == $year)>{{ $year }}</option>
                             @endforeach

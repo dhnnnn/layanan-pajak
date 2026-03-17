@@ -56,9 +56,18 @@
 
         {{-- Pegawai dan Wilayah Mereka --}}
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200">
-                <h3 class="font-bold text-slate-800">Pegawai dan Wilayah Tugasnya</h3>
-                <p class="text-xs text-slate-500 mt-1">Setiap pegawai dapat ditugaskan ke kecamatan dalam cakupan UPT ini</p>
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-800">Pegawai dan Wilayah Tugasnya</h3>
+                    <p class="text-xs text-slate-500 mt-1">Setiap pegawai dapat ditugaskan ke kecamatan dalam cakupan UPT ini</p>
+                </div>
+                <a href="{{ route('admin.upts.employees.manage', $upt) }}"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Kelola Pegawai
+                </a>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left text-slate-600">
@@ -93,17 +102,19 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <button 
-                                        onclick="openAssignModal({{ $user->id }}, '{{ $user->name }}', {{ $user->districts->pluck('id') }})"
+                                    <a href="{{ route('admin.upts.employees.districts', [$upt, $user]) }}"
                                         class="text-blue-600 hover:text-blue-800 font-medium transition-colors">
                                         Atur Wilayah
-                                    </button>
+                                    </a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="4" class="px-6 py-10 text-center text-slate-500">
                                     <p>Belum ada pegawai di UPT ini.</p>
+                                    <a href="{{ route('admin.upts.employees.manage', $upt) }}" class="mt-2 text-blue-600 hover:underline text-sm font-medium">
+                                        Tambah pegawai sekarang
+                                    </a>
                                 </td>
                             </tr>
                         @endforelse
@@ -113,88 +124,4 @@
         </div>
     </div>
 
-    {{-- Modal Assign Wilayah --}}
-    <div id="assignModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h3 class="font-bold text-slate-800">Atur Wilayah Tugas</h3>
-                <button onclick="closeAssignModal()" class="text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            
-            <form id="assignForm" method="POST" action="">
-                @csrf
-                <div class="p-6 overflow-y-auto max-h-[60vh]">
-                    <p class="text-sm text-slate-600 mb-4">
-                        Pegawai: <span id="modalEmployeeName" class="font-semibold text-slate-900"></span>
-                    </p>
-                    
-                    <div class="space-y-2">
-                        @foreach($upt->districts as $district)
-                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-                                <input 
-                                    type="checkbox" 
-                                    name="district_ids[]" 
-                                    value="{{ $district->id }}"
-                                    class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                                    {{ in_array($district->id, $assignedToOtherUpts) ? 'disabled' : '' }}>
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium text-slate-900">{{ $district->name }}</span>
-                                    @if(in_array($district->id, $assignedToOtherUpts))
-                                        <span class="ml-2 text-xs text-red-600">(Sudah ditugaskan ke UPT lain)</span>
-                                    @endif
-                                </div>
-                            </label>
-                        @endforeach
-                    </div>
-                </div>
-                
-                <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
-                    <button type="button" onclick="closeAssignModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-                        Simpan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        function openAssignModal(userId, userName, currentDistricts) {
-            document.getElementById('modalEmployeeName').textContent = userName;
-            document.getElementById('assignForm').action = `/admin/employees/${userId}/districts`;
-            
-            // Reset all checkboxes
-            document.querySelectorAll('input[name="district_ids[]"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            
-            // Check current districts
-            currentDistricts.forEach(districtId => {
-                const checkbox = document.querySelector(`input[name="district_ids[]"][value="${districtId}"]`);
-                if (checkbox) checkbox.checked = true;
-            });
-            
-            document.getElementById('assignModal').classList.remove('hidden');
-        }
-        
-        function closeAssignModal() {
-            document.getElementById('assignModal').classList.add('hidden');
-        }
-        
-        // Close modal on escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeAssignModal();
-        });
-        
-        // Close modal on backdrop click
-        document.getElementById('assignModal').addEventListener('click', function(e) {
-            if (e.target === this) closeAssignModal();
-        });
-    </script>
 </x-layouts.admin>

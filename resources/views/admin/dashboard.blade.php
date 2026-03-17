@@ -2,7 +2,7 @@
     <x-slot:headerActions>
         <form action="{{ route('admin.dashboard') }}" method="GET" class="flex items-center gap-2">
             <label for="year" class="text-sm font-medium text-slate-600">Tahun:</label>
-            <select name="year" id="year" onchange="this.form.submit()" class="text-sm rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 block p-1.5 bg-white border">
+            <select name="year" id="year" onchange="this.form.submit()" class="text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 block">
                 @forelse($availableYears as $year)
                     <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                 @empty

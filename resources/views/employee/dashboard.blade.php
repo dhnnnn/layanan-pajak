@@ -3,7 +3,7 @@
         <form action="{{ route('pegawai.dashboard') }}" method="GET" class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label for="district_id" class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</label>
-                <select name="district_id" id="district_id" onchange="this.form.submit()" class="text-sm rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 block p-1.5 bg-white border">
+                <select name="district_id" id="district_id" onchange="this.form.submit()" class="text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 block">
                     <option value="">Semua Wilayah Saya</option>
                     @foreach($assignedDistricts as $district)
                         <option value="{{ $district->id }}" {{ $selectedDistrictId == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
@@ -12,7 +12,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <label for="year" class="text-xs font-semibold text-slate-500 uppercase">Tahun:</label>
-                <select name="year" id="year" onchange="this.form.submit()" class="text-sm rounded-lg border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 block p-1.5 bg-white border">
+                <select name="year" id="year" onchange="this.form.submit()" class="text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 block">
                     @forelse($availableYears as $year)
                         <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                     @empty

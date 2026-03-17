@@ -21,7 +21,7 @@
                         <div>
                             <label for="name" class="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap <span class="text-red-500">*</span></label>
                             <input type="text" name="name" id="name" value="{{ old('name') }}" 
-                                class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror" 
+                                class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('name') ring-2 ring-red-500/20 @enderror" 
                                 placeholder="Nama Pegawai" required>
                             @error('name')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -31,7 +31,7 @@
                         <div>
                             <label for="email" class="block text-sm font-semibold text-slate-700 mb-1">Email <span class="text-red-500">*</span></label>
                             <input type="email" name="email" id="email" value="{{ old('email') }}" 
-                                class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-500 @enderror" 
+                                class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('name') ring-2 ring-red-500/20 @enderror" 
                                 placeholder="email@example.com" required>
                             @error('email')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -40,7 +40,7 @@
 
                         <div>
                             <label for="upt_id" class="block text-sm font-semibold text-slate-700 mb-1">UPT</label>
-                            <select name="upt_id" id="upt_id" class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('upt_id') border-red-500 @enderror">
+                            <select name="upt_id" id="upt_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('upt_id') ring-2 ring-red-500/20 @enderror">
                                 <option value="">-- Pilih UPT --</option>
                                 @foreach($upts as $upt)
                                     <option value="{{ $upt->id }}" 
@@ -59,7 +59,7 @@
                         <div>
                             <label for="password" class="block text-sm font-semibold text-slate-700 mb-1">Password <span class="text-red-500">*</span></label>
                             <input type="password" name="password" id="password" 
-                                class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-500 @enderror" 
+                                class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('password') ring-2 ring-red-500/20 @enderror" 
                                 placeholder="••••••••" required>
                             @error('password')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -69,7 +69,7 @@
                         <div>
                             <label for="password_confirmation" class="block text-sm font-semibold text-slate-700 mb-1">Konfirmasi Password <span class="text-red-500">*</span></label>
                             <input type="password" name="password_confirmation" id="password_confirmation" 
-                                class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500" 
+                                class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20" 
                                 placeholder="••••••••" required>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                                     <label class="district-item flex items-center gap-3 p-2 hover:bg-white rounded transition-colors cursor-pointer border border-transparent hover:border-slate-200" data-district-id="{{ $district->id }}">
                                         <input type="checkbox" name="district_ids[]" value="{{ $district->id }}" 
                                             @checked(is_array(old('district_ids')) && in_array($district->id, old('district_ids')))
-                                            class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                            class="rounded text-blue-600 bg-slate-100 border-0 focus:ring-2 focus:ring-blue-500">
                                         <span class="text-sm text-slate-700">{{ $district->name }}</span>
                                     </label>
                                 @endforeach

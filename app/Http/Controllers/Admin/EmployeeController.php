@@ -18,11 +18,18 @@ class EmployeeController extends Controller
 {
     public function index(): View
     {
+        $search = request()->string('search')->trim();
+
         $employees = User::query()
             ->role('pegawai')
             ->with(['districts', 'upt'])
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            }))
             ->latest()
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.employees.index', compact('employees'));
     }
@@ -119,6 +126,12 @@ class EmployeeController extends Controller
         AssignEmployeeDistrictAction $assignDistricts,
     ): RedirectResponse {
         $assignDistricts($employee, $request->array('district_ids'));
+
+        if ($employee->upt_id) {
+            return redirect()
+                ->route('admin.upts.show', $employee->upt_id)
+                ->with('success', 'Kecamatan berhasil diperbarui.');
+        }
 
         return redirect()
             ->route('admin.employees.show', $employee)

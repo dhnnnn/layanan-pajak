@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\AssignUptDistrictRequest;
 use App\Http\Requests\Admin\StoreUptRequest;
 use App\Models\District;
 use App\Models\Upt;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -31,16 +32,7 @@ class UptController extends Controller
     {
         $upt->load(['districts', 'users.districts']);
 
-        // Get available districts (districts in this UPT that are not assigned to other UPTs)
-        $allDistricts = District::query()->orderBy('name')->get();
-        $assignedToOtherUpts = District::query()
-            ->whereHas('upts', function ($query) use ($upt) {
-                $query->where('upts.id', '!=', $upt->id);
-            })
-            ->pluck('id')
-            ->toArray();
-
-        return view('admin.upts.show', compact('upt', 'allDistricts', 'assignedToOtherUpts'));
+        return view('admin.upts.show', compact('upt'));
     }
 
     public function store(StoreUptRequest $request): RedirectResponse
@@ -73,6 +65,64 @@ class UptController extends Controller
         return redirect()
             ->route('admin.upts.index')
             ->with('success', 'UPT berhasil dihapus.');
+    }
+
+    public function manageEmployees(Upt $upt): View
+    {
+        $search = request()->string('search')->trim();
+
+        $allEmployees = User::query()
+            ->role('pegawai')
+            ->with('upt')
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            }))
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
+        // IDs of employees already in this UPT (needed to preserve checked state across pages)
+        $assignedIds = User::query()
+            ->where('upt_id', $upt->id)
+            ->pluck('id');
+
+        return view('admin.upts.manage-employees', compact('upt', 'allEmployees', 'assignedIds'));
+    }
+
+    public function assignEmployeeDistricts(Upt $upt, User $employee): View
+    {
+        $upt->load('districts');
+        $assignedDistrictIds = $employee->districts()->pluck('districts.id');
+
+        return view('admin.upts.assign-employee-districts', compact('upt', 'employee', 'assignedDistrictIds'));
+    }
+
+    public function storeEmployees(Upt $upt): RedirectResponse
+    {
+        $validated = request()->validate([
+            'user_ids' => ['nullable', 'array'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $userIds = $validated['user_ids'] ?? [];
+
+        // Remove employees that were unassigned from this UPT
+        User::query()
+            ->where('upt_id', $upt->id)
+            ->whereNotIn('id', $userIds)
+            ->update(['upt_id' => null]);
+
+        // Assign selected employees to this UPT
+        if (! empty($userIds)) {
+            User::query()
+                ->whereIn('id', $userIds)
+                ->update(['upt_id' => $upt->id]);
+        }
+
+        return redirect()
+            ->route('admin.upts.show', $upt)
+            ->with('success', 'Pegawai UPT berhasil diperbarui.');
     }
 
     public function assignDistricts(Upt $upt): View

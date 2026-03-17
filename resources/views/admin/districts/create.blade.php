@@ -16,7 +16,7 @@
                 <div>
                     <label for="name" class="block text-sm font-semibold text-slate-700 mb-1">Nama Kecamatan <span class="text-red-500">*</span></label>
                     <input type="text" name="name" id="name" value="{{ old('name') }}" 
-                        class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror" 
+                        class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('name') ring-2 ring-red-500/20 @endif" 
                         placeholder="Contoh: Bangil" required>
                     <p class="mt-1 text-xs text-slate-500 italic">Kode kecamatan akan dibuat otomatis dari nama.</p>
                     @error('name')

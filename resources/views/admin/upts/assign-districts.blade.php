@@ -36,7 +36,7 @@
                             <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors border border-transparent hover:border-slate-200">
                                 <input type="checkbox" name="district_ids[]" value="{{ $district->id }}" 
                                     {{ in_array($district->id, $assignedDistrictIds) ? 'checked' : '' }}
-                                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                    class="rounded text-blue-600 focus:ring-2 focus:ring-blue-500 bg-slate-100">
                                 <div class="flex-1">
                                     <span class="font-medium text-slate-900">{{ $district->name }}</span>
                                     <span class="ml-2 text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{{ $district->code }}</span>

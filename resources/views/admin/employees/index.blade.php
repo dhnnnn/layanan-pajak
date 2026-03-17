@@ -9,6 +9,22 @@
     </x-slot:headerActions>
 
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {{-- Search --}}
+        <div class="px-6 py-4 border-b border-slate-200">
+            <form method="GET" action="{{ route('admin.employees.index') }}">
+                <div class="relative max-w-sm">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ request('search') }}"
+                        placeholder="Cari nama atau email..."
+                        class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+            </form>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left text-slate-600">
                 <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
@@ -57,9 +73,10 @@
                                     <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                                     </svg>
-                                    <p>Belum ada pegawai yang terdaftar.</p>
-                                    <a href="{{ route('admin.employees.create') }}" class="mt-4 text-blue-600 hover:underline font-medium">Tambah pegawai pertama</a>
-                                </div>
+                                    <p>{{ request('search') ? 'Tidak ada pegawai yang cocok.' : 'Belum ada pegawai yang terdaftar.' }}</p>
+                                    @if(!request('search'))
+                                        <a href="{{ route('admin.employees.create') }}" class="mt-4 text-blue-600 hover:underline font-medium">Tambah pegawai pertama</a>
+                                    @endif                                </div>
                             </td>
                         </tr>
                     @endforelse

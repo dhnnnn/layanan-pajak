@@ -17,7 +17,7 @@
                 <div>
                     <label for="name" class="block text-sm font-semibold text-slate-700 mb-1">Nama UPT <span class="text-red-500">*</span></label>
                     <input type="text" name="name" id="name" value="{{ old('name', $upt->name) }}" 
-                        class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror" 
+                        class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('name') ring-2 ring-red-500/20 @enderror" 
                         placeholder="Contoh: UPT I" required>
                     @error('name')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -27,7 +27,7 @@
                 <div>
                     <label for="code" class="block text-sm font-semibold text-slate-700 mb-1">Kode UPT</label>
                     <input type="text" id="code" value="{{ $upt->code }}" 
-                        class="w-full rounded-lg border-slate-200 bg-slate-50 text-slate-600 font-mono text-sm uppercase cursor-not-allowed" 
+                        class="w-full rounded-lg bg-slate-100 text-slate-500 font-mono text-sm uppercase cursor-not-allowed" 
                         readonly>
                     <p class="mt-1 text-xs text-slate-500 italic">Kode tidak dapat diubah setelah dibuat.</p>
                 </div>
@@ -35,7 +35,7 @@
                 <div>
                     <label for="description" class="block text-sm font-semibold text-slate-700 mb-1">Deskripsi</label>
                     <textarea name="description" id="description" rows="3"
-                        class="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 @error('description') border-red-500 @enderror" 
+                        class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-blue-500/20 @error('description') ring-2 ring-red-500/20 @endif" 
                         placeholder="Deskripsi singkat tentang UPT ini">{{ old('description', $upt->description) }}</textarea>
                     @error('description')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
