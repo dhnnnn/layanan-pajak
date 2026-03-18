@@ -16,15 +16,15 @@ class UserSeeder extends Seeder
     {
         $admin = User::factory()->create([
             'name' => 'Administrator',
-            'email' => 'admin@layananpajak.test',
+            'email' => 'admin@upp.pendapatan',
             'password' => Hash::make('password'),
         ]);
 
         $admin->assignRole('admin');
 
         $pegawai = User::factory()->create([
-            'name' => 'Pegawai Tester',
-            'email' => 'pegawai@layananpajak.test',
+            'name' => 'Pegawai Test',
+            'email' => 'pegawai@upp.pendapatan',
             'password' => Hash::make('password'),
         ]);
 
