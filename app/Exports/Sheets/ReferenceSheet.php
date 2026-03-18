@@ -10,7 +10,6 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ReferenceSheet implements FromArray, ShouldAutoSize, WithStyles, WithTitle
@@ -58,76 +57,33 @@ class ReferenceSheet implements FromArray, ShouldAutoSize, WithStyles, WithTitle
     public function styles(Worksheet $sheet): void
     {
         $lastRow = count($this->array());
+        $thinBlack = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
 
-        // Title row
         $sheet->mergeCells('A1:B1');
         $sheet->mergeCells('D1:E1');
+
+        // Title row
         $sheet->getStyle('A1:E1')->applyFromArray([
             'font' => ['bold' => true, 'size' => 12],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '1F4E79'],
-            ],
-            'font' => [
-                'bold' => true,
-                'color' => ['rgb' => 'FFFFFF'],
-                'size' => 12,
-            ],
+            'borders' => ['allBorders' => $thinBlack],
         ]);
 
         // Header row
         $sheet->getStyle('A2:E2')->applyFromArray([
             'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'BDD7EE'],
-            ],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            'borders' => ['allBorders' => $thinBlack],
         ]);
 
-        // Separator column C
-        $sheet->getStyle("C1:C{$lastRow}")->applyFromArray([
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'F2F2F2'],
-            ],
-        ]);
-
-        // Data rows alternating
-        for ($row = 3; $row <= $lastRow; $row++) {
-            $color = $row % 2 === 0 ? 'DDEBF7' : 'FFFFFF';
-            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray([
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => $color],
-                ],
+        // Data rows
+        if ($lastRow > 2) {
+            $sheet->getStyle("A3:B{$lastRow}")->applyFromArray([
+                'borders' => ['allBorders' => $thinBlack],
             ]);
-            $sheet->getStyle("D{$row}:E{$row}")->applyFromArray([
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => $color],
-                ],
+            $sheet->getStyle("D3:E{$lastRow}")->applyFromArray([
+                'borders' => ['allBorders' => $thinBlack],
             ]);
         }
-
-        // Borders for data area
-        $sheet->getStyle("A2:B{$lastRow}")->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'BDD7EE'],
-                ],
-            ],
-        ]);
-
-        $sheet->getStyle("D2:E{$lastRow}")->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'BDD7EE'],
-                ],
-            ],
-        ]);
     }
 }

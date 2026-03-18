@@ -13,6 +13,7 @@ use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
 use App\Models\Upt;
+use App\Models\UptComparison;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -119,6 +120,14 @@ class UptComparisonController extends Controller
             ->where('year', $year)
             ->pluck('target_amount', 'tax_type_id');
 
+        // Pre-load UPT targets: upt_id -> tax_type_id -> target_amount
+        $uptTargets = UptComparison::query()
+            ->where('year', $year)
+            ->get()
+            ->groupBy('upt_id')
+            ->map(fn ($rows) => $rows->pluck('target_amount', 'tax_type_id')->map(fn ($v) => (float) $v)->toArray())
+            ->toArray();
+
         // Load realization totals from daily entries, grouped by UPT + tax type
         // upt_id -> tax_type_id -> total
         $uptRealizationTotals = [];
@@ -138,11 +147,16 @@ class UptComparisonController extends Controller
         // Grand totals across all tax types (not paginated)
         $grandTotalTarget = 0.0;
         $grandTotalUpt = [];
+        $grandTotalUptTarget = [];
         $grandTotalAllUpt = 0.0;
 
         foreach ($upts as $upt) {
             $grandTotalUpt[$upt->id] = array_sum($uptRealizationTotals[$upt->id] ?? []);
             $grandTotalAllUpt += $grandTotalUpt[$upt->id];
+            $grandTotalUptTarget[$upt->id] = (float) UptComparison::query()
+                ->where('upt_id', $upt->id)
+                ->where('year', $year)
+                ->sum('target_amount');
         }
         $grandTotalTarget = (float) TaxTarget::query()->where('year', $year)->sum('target_amount');
 
@@ -154,7 +168,8 @@ class UptComparisonController extends Controller
 
         return view('admin.upt-comparisons.report', compact(
             'upts', 'year', 'taxTypes', 'targets', 'availableYears',
-            'uptRealizationTotals', 'grandTotalTarget', 'grandTotalUpt', 'grandTotalAllUpt'
+            'uptRealizationTotals', 'uptTargets', 'grandTotalTarget', 'grandTotalUpt',
+            'grandTotalUptTarget', 'grandTotalAllUpt'
         ));
     }
 

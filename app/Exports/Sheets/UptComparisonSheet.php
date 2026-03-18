@@ -12,8 +12,6 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Conditional;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -34,6 +32,11 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
     {
         $taxTypes = TaxType::query()->orderBy('code')->get();
         $upts = Upt::query()->orderBy('code')->get();
+
+        // Pre-load APBD targets keyed by tax_type_id
+        $apbdTargets = TaxTarget::query()
+            ->where('year', $this->year)
+            ->pluck('target_amount', 'tax_type_id');
 
         $rows = [];
 
@@ -58,12 +61,7 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
         // Data Rows
         $no = 1;
         foreach ($taxTypes as $taxType) {
-            $target = TaxTarget::query()
-                ->where('tax_type_id', $taxType->id)
-                ->where('year', $this->year)
-                ->first();
-
-            $dataRow = [$no++, $taxType->name, $target?->target_amount ?? 0];
+            $dataRow = [$no++, $taxType->name, (float) ($apbdTargets[$taxType->id] ?? 0)];
 
             // UPT columns (empty for user input)
             foreach ($upts as $upt) {
@@ -125,113 +123,74 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
         $lastRow = count($this->array());
         $upts = Upt::query()->orderBy('code')->get();
 
-        // Calculate column positions
-        $totalUptCol = 4 + $upts->count(); // Column after all UPT columns
+        $totalUptCol = 4 + $upts->count();
         $percentTargetCol = $totalUptCol + 1;
         $percentSelisihCol = $totalUptCol + 2;
         $selisihCol = $totalUptCol + 3;
         $metadataStartCol = $selisihCol + 1;
 
-        // Header Style
         $lastHeaderCol = Coordinate::stringFromColumnIndex($selisihCol);
+        $totalColLetter = Coordinate::stringFromColumnIndex($totalUptCol);
+        $percentTargetColLetter = Coordinate::stringFromColumnIndex($percentTargetCol);
+        $percentSelisihColLetter = Coordinate::stringFromColumnIndex($percentSelisihCol);
+        $selisihColLetter = Coordinate::stringFromColumnIndex($selisihCol);
+
+        $thinBlack = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
+
+        // Header
         $sheet->getStyle("A1:{$lastHeaderCol}1")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '1E40AF'],
-            ],
+            'font' => ['bold' => true],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
                 'vertical' => Alignment::VERTICAL_CENTER,
                 'wrapText' => true,
             ],
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'FFFFFF'],
-                ],
-            ],
+            'borders' => ['allBorders' => $thinBlack],
         ]);
 
-        // Data styles
-        $sheet->getStyle("A2:{$lastHeaderCol}{$lastRow}")->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'E2E8F0'],
-                ],
-            ],
-        ]);
+        // Data rows
+        if ($lastRow > 1) {
+            $sheet->getStyle("A2:{$lastHeaderCol}{$lastRow}")->applyFromArray([
+                'borders' => ['allBorders' => $thinBlack],
+            ]);
+        }
 
-        // Number format for currency columns
+        // Number formats
         $sheet->getStyle("C2:C{$lastRow}")->getNumberFormat()
             ->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1);
 
-        // UPT columns currency format
         for ($col = 4; $col < $totalUptCol; $col++) {
             $colLetter = Coordinate::stringFromColumnIndex($col);
             $sheet->getStyle("{$colLetter}2:{$colLetter}{$lastRow}")->getNumberFormat()
                 ->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1);
         }
 
-        // Total UPT column
-        $totalColLetter = Coordinate::stringFromColumnIndex($totalUptCol);
         $sheet->getStyle("{$totalColLetter}2:{$totalColLetter}{$lastRow}")->getNumberFormat()
             ->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1);
-
-        // Selisih column
-        $selisihColLetter = Coordinate::stringFromColumnIndex($selisihCol);
         $sheet->getStyle("{$selisihColLetter}2:{$selisihColLetter}{$lastRow}")->getNumberFormat()
             ->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1);
-
-        // Percentage columns
-        $percentTargetColLetter = Coordinate::stringFromColumnIndex($percentTargetCol);
-        $percentSelisihColLetter = Coordinate::stringFromColumnIndex($percentSelisihCol);
         $sheet->getStyle("{$percentTargetColLetter}2:{$percentTargetColLetter}{$lastRow}")->getNumberFormat()
             ->setFormatCode(NumberFormat::FORMAT_PERCENTAGE_00);
         $sheet->getStyle("{$percentSelisihColLetter}2:{$percentSelisihColLetter}{$lastRow}")->getNumberFormat()
             ->setFormatCode(NumberFormat::FORMAT_PERCENTAGE_00);
 
-        // Add formulas for calculated columns
+        // Formulas
         for ($row = 2; $row <= $lastRow; $row++) {
-            // TOTAL UPT = SUM of all UPT columns
             $firstUptCol = Coordinate::stringFromColumnIndex(4);
             $lastUptCol = Coordinate::stringFromColumnIndex($totalUptCol - 1);
-            $totalFormula = "=SUM({$firstUptCol}{$row}:{$lastUptCol}{$row})";
-            $sheet->setCellValue("{$totalColLetter}{$row}", $totalFormula);
 
-            // % TARGET = TOTAL UPT / TARGET
-            $targetCol = 'C';
-            $percentTargetFormula = "=IF({$targetCol}{$row}=0,0,{$totalColLetter}{$row}/{$targetCol}{$row})";
-            $sheet->setCellValue("{$percentTargetColLetter}{$row}", $percentTargetFormula);
-
-            // SELISIH = TARGET - TOTAL UPT
-            $selisihFormula = "={$targetCol}{$row}-{$totalColLetter}{$row}";
-            $sheet->setCellValue("{$selisihColLetter}{$row}", $selisihFormula);
-
-            // % SELISIH = SELISIH / TARGET
-            $percentSelisihFormula = "=IF({$targetCol}{$row}=0,0,{$selisihColLetter}{$row}/{$targetCol}{$row})";
-            $sheet->setCellValue("{$percentSelisihColLetter}{$row}", $percentSelisihFormula);
+            $sheet->setCellValue("{$totalColLetter}{$row}", "=SUM({$firstUptCol}{$row}:{$lastUptCol}{$row})");
+            $sheet->setCellValue("{$percentTargetColLetter}{$row}", "=IF(C{$row}=0,0,{$totalColLetter}{$row}/C{$row})");
+            $sheet->setCellValue("{$selisihColLetter}{$row}", "=C{$row}-{$totalColLetter}{$row}");
+            $sheet->setCellValue("{$percentSelisihColLetter}{$row}", "=IF(C{$row}=0,0,{$selisihColLetter}{$row}/C{$row})");
         }
-
-        // Conditional formatting for % SELISIH (red if not 0%)
-        $conditionalStyles = $sheet->getStyle("{$percentSelisihColLetter}2:{$percentSelisihColLetter}{$lastRow}");
-        $conditional = new Conditional;
-        $conditional->setConditionType(Conditional::CONDITION_CELLIS);
-        $conditional->setOperatorType(Conditional::OPERATOR_NOTEQUAL);
-        $conditional->addCondition('0');
-        $conditional->getStyle()->getFill()
-            ->setFillType(Fill::FILL_SOLID)
-            ->getStartColor()->setRGB('DC2626');
-        $conditional->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
-        $conditionalStyles->setConditionalStyles([$conditional]);
 
         // Hide metadata columns
         for ($i = $metadataStartCol; $i <= $metadataStartCol + 1; $i++) {
-            $colLetter = Coordinate::stringFromColumnIndex($i);
-            $sheet->getColumnDimension($colLetter)->setVisible(false);
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setVisible(false);
         }
 
+        $sheet->getRowDimension(1)->setRowHeight(25);
         $sheet->freezePane('C2');
     }
 

@@ -11,7 +11,6 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitle
@@ -163,11 +162,7 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
 
         // Header Style for both rows
         $sheet->getStyle('A1:S2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '1E40AF'],
-            ],
+            'font' => ['bold' => true],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
                 'vertical' => Alignment::VERTICAL_CENTER,
@@ -176,7 +171,7 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'FFFFFF'],
+                    'color' => ['rgb' => '000000'],
                 ],
             ],
         ]);
@@ -186,7 +181,7 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'E2E8F0'],
+                    'color' => ['rgb' => '000000'],
                 ],
             ],
         ]);

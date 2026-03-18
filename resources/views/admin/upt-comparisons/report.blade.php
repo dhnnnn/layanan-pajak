@@ -97,16 +97,22 @@
             <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
                 <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
                     <tr>
-                        <th class="px-4 py-3">No.</th>
-                        <th class="px-4 py-3">Jenis Pajak</th>
-                        <th class="px-4 py-3 text-right">Target {{ $year }}</th>
+                        <th class="px-3 py-3 sticky left-0 bg-slate-50 z-10 border-r border-slate-200" rowspan="2">No.</th>
+                        <th class="px-4 py-3 sticky left-9 bg-slate-50 z-10 border-r border-slate-200 min-w-56" rowspan="2">Jenis Pajak</th>
+                        <th class="px-4 py-3 text-right min-w-40" rowspan="2">Target APBD {{ $year }}</th>
                         @foreach($upts as $upt)
-                            <th class="px-4 py-3 text-right">{{ $upt->name }}</th>
+                            <th class="px-4 py-3 text-center border-l border-slate-200 min-w-64" colspan="2">{{ $upt->name }}</th>
                         @endforeach
-                        <th class="px-4 py-3 text-right bg-blue-50">Total {{ $upts->count() }} UPT</th>
-                        <th class="px-4 py-3 text-center bg-green-50">% Target</th>
-                        <th class="px-4 py-3 text-center bg-orange-50">% Selisih</th>
-                        <th class="px-4 py-3 text-right bg-red-50">Selisih (Rp.)</th>
+                        <th class="px-4 py-3 text-right bg-blue-50 min-w-36" rowspan="2">Total Realisasi</th>
+                        <th class="px-4 py-3 text-center bg-green-50" rowspan="2">% Target</th>
+                        <th class="px-4 py-3 text-center bg-orange-50" rowspan="2">% Selisih</th>
+                        <th class="px-4 py-3 text-right bg-red-50 min-w-36" rowspan="2">Selisih (Rp.)</th>
+                    </tr>
+                    <tr class="border-t border-slate-200">
+                        @foreach($upts as $upt)
+                            <th class="px-3 py-2 text-right text-[10px] border-l border-slate-200 font-medium text-slate-500 min-w-32">Target</th>
+                            <th class="px-3 py-2 text-right text-[10px] font-medium text-slate-500 min-w-32">Realisasi</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -115,11 +121,13 @@
                             $targetAmount = (float) ($targets[$taxType->id] ?? 0);
                             $totalUpt = 0;
                             $uptAmounts = [];
+                            $uptTargetAmounts = [];
 
                             foreach ($upts as $upt) {
                                 $amount = (float) ($uptRealizationTotals[$upt->id][$taxType->id] ?? 0);
                                 $uptAmounts[$upt->id] = $amount;
                                 $totalUpt += $amount;
+                                $uptTargetAmounts[$upt->id] = (float) ($uptTargets[$upt->id][$taxType->id] ?? 0);
                             }
 
                             $percentTarget = $targetAmount > 0 ? ($totalUpt / $targetAmount) * 100 : 0;
@@ -127,16 +135,19 @@
                             $percentSelisih = $targetAmount > 0 ? ($selisih / $targetAmount) * 100 : 0;
                         @endphp
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-4 py-3 text-slate-500">{{ $taxTypes->firstItem() + $loop->index }}</td>
-                            <td class="px-4 py-3">
-                                <div class="font-medium text-slate-800">{{ $taxType->name }}</div>
+                            <td class="px-3 py-3 text-slate-500 sticky left-0 bg-white border-r border-slate-100 z-10">{{ $taxTypes->firstItem() + $loop->index }}</td>
+                            <td class="px-4 py-3 sticky left-9 bg-white border-r border-slate-100 z-10">
+                                <div class="font-medium text-slate-800 whitespace-normal leading-snug">{{ $taxType->name }}</div>
                                 <div class="text-[10px] text-slate-400 font-mono">{{ $taxType->code }}</div>
                             </td>
                             <td class="px-4 py-3 text-right font-semibold text-blue-600 text-xs">
                                 Rp {{ number_format($targetAmount, 0, ',', '.') }}
                             </td>
                             @foreach($upts as $upt)
-                                <td class="px-4 py-3 text-right text-xs">
+                                <td class="px-3 py-3 text-right text-xs border-l border-slate-100">
+                                    Rp {{ number_format($uptTargetAmounts[$upt->id], 0, ',', '.') }}
+                                </td>
+                                <td class="px-3 py-3 text-right text-xs">
                                     Rp {{ number_format($uptAmounts[$upt->id], 0, ',', '.') }}
                                 </td>
                             @endforeach
@@ -159,7 +170,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ 4 + $upts->count() }}" class="px-6 py-10 text-center text-slate-500">
+                            <td colspan="{{ 3 + ($upts->count() * 2) + 4 }}" class="px-6 py-10 text-center text-slate-500">
                                 <p>{{ request('search') ? 'Tidak ada hasil yang ditemukan.' : 'Belum ada data.' }}</p>
                             </td>
                         </tr>
@@ -173,10 +184,16 @@
                     @endphp
                     <tfoot>
                         <tr class="bg-slate-100 font-bold text-slate-800 text-xs border-t-2 border-slate-300">
-                            <td class="px-4 py-3" colspan="2">TOTAL</td>
+                            <td class="px-3 py-3 sticky left-0 bg-slate-100 z-10 border-r border-slate-200"></td>
+                            <td class="px-4 py-3 sticky left-9 bg-slate-100 z-10 border-r border-slate-200">TOTAL</td>
                             <td class="px-4 py-3 text-right">Rp {{ number_format($grandTotalTarget, 0, ',', '.') }}</td>
                             @foreach($upts as $upt)
-                                <td class="px-4 py-3 text-right">Rp {{ number_format($grandTotalUpt[$upt->id], 0, ',', '.') }}</td>
+                                <td class="px-3 py-3 text-right border-l border-slate-200">
+                                    Rp {{ number_format($grandTotalUptTarget[$upt->id], 0, ',', '.') }}
+                                </td>
+                                <td class="px-3 py-3 text-right">
+                                    Rp {{ number_format($grandTotalUpt[$upt->id], 0, ',', '.') }}
+                                </td>
                             @endforeach
                             <td class="px-4 py-3 text-right bg-blue-100">Rp {{ number_format($grandTotalAllUpt, 0, ',', '.') }}</td>
                             <td class="px-4 py-3 text-center bg-green-100">

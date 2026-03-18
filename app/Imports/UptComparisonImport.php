@@ -5,20 +5,12 @@ namespace App\Imports;
 use App\Models\TaxType;
 use App\Models\Upt;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class UptComparisonImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas, WithHeadingRow
+class UptComparisonImport implements SkipsEmptyRows, ToCollection, WithCalculatedFormulas
 {
-    public function headingRow(): int
-    {
-        return 1;
-    }
-
     private int $totalRows = 0;
 
     private int $successRows = 0;
@@ -38,7 +30,9 @@ class UptComparisonImport implements SkipsEmptyRows, ToCollection, WithCalculate
 
     public function collection(Collection $rows): void
     {
-        $this->totalRows = $rows->count();
+        // Skip header row (row index 0)
+        $dataRows = $rows->slice(1)->values();
+        $this->totalRows = $dataRows->count();
 
         /** @var Collection<string, TaxType> $taxTypes */
         $taxTypes = TaxType::query()->get()->keyBy('code');
@@ -46,8 +40,7 @@ class UptComparisonImport implements SkipsEmptyRows, ToCollection, WithCalculate
         /** @var Collection<int, Upt> $upts */
         $upts = Upt::query()->orderBy('code')->get();
 
-        // Always build preview data for processing
-        $this->buildPreviewData($rows, $taxTypes, $upts);
+        $this->buildPreviewData($dataRows, $taxTypes, $upts);
     }
 
     /**
@@ -60,58 +53,37 @@ class UptComparisonImport implements SkipsEmptyRows, ToCollection, WithCalculate
         Collection $taxTypes,
         Collection $upts,
     ): void {
-        Log::info('buildPreviewData UPT: row count = '.$rows->count());
-
-        if ($rows->isNotEmpty()) {
-            $firstRow = $rows->first();
-            $firstArray = $firstRow?->toArray();
-            Log::info('First row keys: '.json_encode(array_keys($firstArray ?? [])));
-        }
+        $uptCount = $upts->count();
+        // Column layout: 0=NO, 1=JENIS PAJAK, 2=TARGET, 3..3+uptCount-1=UPT cols,
+        // then TOTAL, %TARGET, %SELISIH, SELISIH, kode_jenis_pajak, tahun
+        $kodeCol = 3 + $uptCount + 4;  // hidden kode_jenis_pajak
+        $tahunCol = $kodeCol + 1;       // hidden tahun
 
         foreach ($rows as $index => $row) {
             $rowArray = $row->toArray();
-            $rowNumber = $index + 2;
+            $rowNumber = $index + 2; // +2 because header is row 1
 
-            // Column 0: NO, Column 1: JENIS PAJAK
-            $jenisPajak = trim((string) ($rowArray['jenis_pajak'] ?? $rowArray[1] ?? ''));
+            $jenisPajak = trim((string) ($rowArray[1] ?? ''));
 
             if ($jenisPajak === '') {
-                Log::info("Row {$rowNumber} skipped: empty jenis pajak");
-
                 continue;
             }
 
-            // Skip header-like rows
-            if (mb_strtolower($jenisPajak) === 'nama jenis pajak' ||
-                mb_strtolower($jenisPajak) === 'jenis pajak' ||
-                mb_strtolower($jenisPajak) === 'uraian') {
-                Log::info("Row {$rowNumber} skipped: header row '{$jenisPajak}'");
-
+            if (in_array(mb_strtolower($jenisPajak), ['nama jenis pajak', 'jenis pajak', 'uraian', 'no.', 'no'])) {
                 continue;
             }
 
-            // Skip if this is a duplicate row (check if we already have this jenis_pajak)
-            $alreadyExists = false;
+            // Duplicate check
             foreach ($this->previewData as $existingRow) {
                 if (mb_strtolower($existingRow['jenis_pajak']) === mb_strtolower($jenisPajak)) {
-                    Log::info("Row {$rowNumber} skipped: duplicate jenis pajak '{$jenisPajak}'");
-                    $alreadyExists = true;
-                    break;
+                    continue 2;
                 }
             }
 
-            if ($alreadyExists) {
-                continue;
-            }
-
-            // Get tax type code from hidden column
-            $taxTypeCode = trim((string) ($rowArray['kode_jenis_pajak'] ?? ''));
-
-            // Find tax type
+            $taxTypeCode = trim((string) ($rowArray[$kodeCol] ?? ''));
             $taxType = $taxTypes->get($taxTypeCode);
 
             if ($taxType === null) {
-                // Try matching by name
                 foreach ($taxTypes as $type) {
                     if ($type && $type->name && mb_strtolower(trim($type->name)) === mb_strtolower($jenisPajak)) {
                         $taxType = $type;
@@ -121,40 +93,39 @@ class UptComparisonImport implements SkipsEmptyRows, ToCollection, WithCalculate
                 }
             }
 
-            // Get year
-            $year = (int) ($rowArray['tahun'] ?? 0);
+            $year = (int) ($rowArray[$tahunCol] ?? 0);
             if ($year === 0 && $this->year) {
                 $year = $this->year;
             }
 
-            // Get target
-            $target = (float) ($rowArray['target_'.$year] ?? $rowArray[2] ?? 0);
+            $rawTarget = $rowArray[2] ?? 0;
+            if (is_string($rawTarget)) {
+                $rawTarget = str_replace(['.', ',', ' '], '', $rawTarget);
+            }
+            $target = (float) $rawTarget;
 
             $errors = [];
-
             if ($taxType === null) {
                 $errors[] = 'Jenis pajak "'.$jenisPajak.'" tidak ditemukan dalam database.';
             }
-
             if ($year === 0) {
                 $errors[] = 'Tahun tidak teridentifikasi.';
             }
 
-            // Extract UPT values
+            // Extract UPT values by column index (col 3, 4, 5, ...)
             $uptValues = [];
             $totalUpt = 0;
-
-            foreach ($upts as $upt) {
-                // Laravel Excel converts headers to slug format
-                // e.g., "UPT I" becomes "upt_i"
-                $uptNameKey = Str::slug($upt->name, '_');
-                $value = (float) ($rowArray[$uptNameKey] ?? 0);
-
+            foreach ($upts as $i => $upt) {
+                $raw = $rowArray[3 + $i] ?? 0;
+                // Handle string numbers with thousand separators (e.g. "6.153.613" or "6,153,613")
+                if (is_string($raw)) {
+                    $raw = str_replace(['.', ',', ' '], '', $raw);
+                }
+                $value = (float) $raw;
                 $uptValues[$upt->id] = $value;
                 $totalUpt += $value;
             }
 
-            // Calculate percentages
             $percentTarget = $target > 0 ? ($totalUpt / $target) * 100 : 0;
             $selisih = $target - $totalUpt;
             $percentSelisih = $target > 0 ? ($selisih / $target) * 100 : 0;
