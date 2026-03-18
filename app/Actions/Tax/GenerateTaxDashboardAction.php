@@ -4,6 +4,7 @@ namespace App\Actions\Tax;
 
 use App\Models\TaxRealization;
 use App\Models\TaxType;
+use App\Models\UptComparison;
 use Illuminate\Support\Collection;
 
 class GenerateTaxDashboardAction
@@ -29,13 +30,23 @@ class GenerateTaxDashboardAction
      *     achievement_percentage: float,
      * }>
      */
-    public function __invoke(int $year, ?string $districtId = null): Collection
+    public function __invoke(int $year, ?string $districtId = null, ?string $uptId = null): Collection
     {
         $taxTypes = TaxType::query()
             ->with([
                 'taxTargets' => fn ($query) => $query->where('year', $year),
             ])
             ->get();
+
+        // If uptId provided, load UPT-specific targets keyed by tax_type_id
+        $uptTargets = collect();
+        if ($uptId !== null) {
+            $uptTargets = UptComparison::query()
+                ->where('upt_id', $uptId)
+                ->where('year', $year)
+                ->get()
+                ->keyBy('tax_type_id');
+        }
 
         // Preload all realizations for this year in one query, then group by
         // tax_type_id to avoid N+1 inside the map loop.
@@ -51,6 +62,7 @@ class GenerateTaxDashboardAction
         return $taxTypes->map(function (TaxType $taxType) use (
             $year,
             $realizationsByType,
+            $uptTargets,
         ): array {
             $realizations = $realizationsByType->get($taxType->id, collect());
 
@@ -68,8 +80,14 @@ class GenerateTaxDashboardAction
             }
 
             $totalRealization = $q1 + $q2 + $q3 + $q4;
-            $target = $taxType->taxTargets->first();
-            $targetAmount = $target ? (float) $target->target_amount : 0.0;
+
+            // Use UPT-specific target if available, otherwise fall back to global target
+            if ($uptTargets->has($taxType->id)) {
+                $targetAmount = (float) $uptTargets->get($taxType->id)->target_amount;
+            } else {
+                $target = $taxType->taxTargets->first();
+                $targetAmount = $target ? (float) $target->target_amount : 0.0;
+            }
 
             return [
                 'tax_type_id' => $taxType->id,

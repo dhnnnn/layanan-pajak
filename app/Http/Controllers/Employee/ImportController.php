@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Employee;
 
 use App\Actions\Tax\ImportTaxRealizationAction;
 use App\Actions\Tax\PreviewTaxRealizationAction;
+use App\Exports\EmployeeRealizationTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\ImportRequest;
 use App\Models\ImportLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ImportController extends Controller
 {
@@ -23,6 +26,21 @@ class ImportController extends Controller
         $districts = $request->user()->districts()->orderBy('name')->get();
 
         return view('employee.import.index', compact('importLogs', 'districts'));
+    }
+
+    public function downloadTemplate(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+        $year = $request->integer('year', (int) date('Y'));
+
+        $districtIds = $user->districts()->pluck('districts.id')->all();
+
+        $filename = "template-realisasi-{$year}.xlsx";
+
+        return Excel::download(
+            new EmployeeRealizationTemplateExport($year, (string) $user->upt_id, $districtIds),
+            $filename
+        );
     }
 
     public function preview(

@@ -82,6 +82,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('realization-monitoring', [RealizationMonitoringController::class, 'index'])->name('realization-monitoring.index');
         Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
         Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');
+        Route::get('realization-monitoring/{upt}/employee/{employee}', [RealizationMonitoringController::class, 'employeeDetail'])->name('realization-monitoring.employee');
 
         // Target Pajak (APBD)
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
@@ -136,6 +137,7 @@ Route::middleware(['auth', 'role:pegawai'])
             ->name('import.')
             ->group(function (): void {
                 Route::get('/', [EmployeeImportController::class, 'index'])->name('index');
+                Route::get('/template', [EmployeeImportController::class, 'downloadTemplate'])->name('template');
                 Route::post('/preview', [EmployeeImportController::class, 'preview'])->name('preview');
                 Route::post('/confirm', [EmployeeImportController::class, 'confirm'])->name('confirm');
             });

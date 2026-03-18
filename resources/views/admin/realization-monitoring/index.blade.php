@@ -57,7 +57,9 @@
                     @forelse($upts as $upt)
                         @php
                             $total = $uptTotals[$upt->id] ?? 0;
-                            $progress = $totalTarget > 0 ? min(($total / $totalTarget) * 100, 100) : 0;
+                            $uptTarget = $uptTargets[$upt->id] ?? 0;
+                            $rawProgress = $uptTarget > 0 ? ($total / $uptTarget) * 100 : 0;
+                            $barWidth = min($rawProgress, 100);
                         @endphp
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="px-4 py-4">
@@ -75,11 +77,16 @@
                             <td class="px-4 py-4 min-w-[180px]">
                                 <div class="flex items-center gap-2">
                                     <div class="flex-1 bg-slate-100 rounded-full h-2">
-                                        <div class="h-2 rounded-full {{ $progress >= 100 ? 'bg-green-500' : ($progress >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
-                                            style="width: {{ $progress }}%"></div>
+                                        <div class="h-2 rounded-full {{ $rawProgress >= 100 ? 'bg-green-500' : ($rawProgress >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
+                                            style="width: {{ $barWidth }}%"></div>
                                     </div>
-                                    <span class="text-xs font-semibold text-slate-600 w-12 text-right">{{ number_format($progress, 1) }}%</span>
+                                    <span class="text-xs font-semibold text-slate-600 w-14 text-right">{{ number_format($rawProgress, 1) }}%</span>
                                 </div>
+                                @if($uptTarget > 0)
+                                    <div class="text-xs text-slate-400 mt-1">Target: Rp {{ number_format($uptTarget, 0, ',', '.') }}</div>
+                                @else
+                                    <div class="text-xs text-slate-400 mt-1 italic">Belum ada target</div>
+                                @endif
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <a href="{{ route('admin.realization-monitoring.show', [$upt, 'year' => $year]) }}"

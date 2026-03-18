@@ -10,6 +10,7 @@ use App\Models\TaxRealization;
 use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
+use App\Models\UptComparison;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,23 @@ class RealizationController extends Controller
             ->orderBy('tax_type_id')
             ->paginate(15);
 
-        return view('employee.realizations.index', compact('realizations', 'year', 'districts', 'search'));
+        // UPT target for progress bar
+        $uptTarget = (float) UptComparison::query()
+            ->where('upt_id', $user->upt_id)
+            ->where('year', $year)
+            ->sum('target_amount');
+
+        // Total realization per district for the year
+        $districtTotals = TaxRealizationDailyEntry::query()
+            ->where('user_id', $user->id)
+            ->whereYear('entry_date', $year)
+            ->selectRaw('district_id, SUM(amount) as total')
+            ->groupBy('district_id')
+            ->pluck('total', 'district_id');
+
+        return view('employee.realizations.index', compact(
+            'realizations', 'year', 'districts', 'search', 'uptTarget', 'districtTotals'
+        ));
     }
 
     public function create(Request $request): View

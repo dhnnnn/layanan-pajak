@@ -110,12 +110,18 @@
                         </div>
 
                         <div class="mb-5">
+                            @php
+                                $districtTotal = (float) ($districtTotals[$district->id] ?? 0);
+                                $rawProgress = $uptTarget > 0 ? ($districtTotal / $uptTarget) * 100 : 0;
+                                $barWidth = min($rawProgress, 100);
+                            @endphp
                             <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
                                 <span>Progress {{ $year }}</span>
-                                <span class="font-semibold">{{ $taxTypesCount > 0 ? round(($realizationCount / $taxTypesCount) * 100) : 0 }}%</span>
+                                <span class="font-semibold {{ $rawProgress >= 100 ? 'text-emerald-600' : '' }}">{{ number_format($rawProgress, 1) }}%</span>
                             </div>
                             <div class="w-full bg-slate-200 rounded-full h-2">
-                                <div class="bg-emerald-500 h-2 rounded-full transition-all" style="width: {{ $taxTypesCount > 0 ? ($realizationCount / $taxTypesCount) * 100 : 0 }}%"></div>
+                                <div class="h-2 rounded-full transition-all {{ $rawProgress >= 100 ? 'bg-emerald-500' : ($rawProgress >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
+                                    style="width: {{ $barWidth }}%"></div>
                             </div>
                         </div>
 

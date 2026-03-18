@@ -1,23 +1,56 @@
 <x-layouts.employee title="Dashboard Pegawai" header="Dashboard Realisasi Pajak">
     <x-slot:headerActions>
-        <form action="{{ route('pegawai.dashboard') }}" method="GET" class="flex flex-wrap items-center gap-3">
-            <div class="flex items-center gap-2">
-                <label for="district_id" class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</label>
-                <select name="district_id" id="district_id" onchange="this.form.submit()" class="text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 block">
+        <form action="{{ route('pegawai.dashboard') }}" method="GET" id="filterForm" class="flex items-center gap-2">
+            {{-- Wilayah Dropdown --}}
+            <span class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</span>
+            <div class="relative" id="districtDropdownWrapper">
+                <button type="button" id="districtDropdownBtn"
+                    class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    <span id="districtDropdownLabel">
+                        {{ $isAllDistricts ? 'Semua Wilayah' : ($selectedDistrictId ? $assignedDistricts->firstWhere('id', $selectedDistrictId)?->name : 'Pilih Wilayah') }}
+                    </span>
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <input type="hidden" name="district_id" id="districtValue" value="{{ $isAllDistricts ? 'all' : $selectedDistrictId }}">
+                <div id="districtDropdownMenu" class="hidden absolute right-0 z-20 mt-1 min-w-max bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+                    <button type="button" data-value="all" data-label="Semua Wilayah"
+                        class="district-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ $isAllDistricts ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
+                        Semua Wilayah
+                    </button>
                     @foreach($assignedDistricts as $district)
-                        <option value="{{ $district->id }}" {{ $selectedDistrictId == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
+                        <button type="button" data-value="{{ $district->id }}" data-label="{{ $district->name }}"
+                            class="district-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ !$isAllDistricts && $selectedDistrictId == $district->id ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
+                            {{ $district->name }}
+                        </button>
                     @endforeach
-                </select>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <label for="year" class="text-xs font-semibold text-slate-500 uppercase">Tahun:</label>
-                <select name="year" id="year" onchange="this.form.submit()" class="text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 block">
-                    @forelse($availableYears as $year)
-                        <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
+
+            {{-- Tahun Dropdown --}}
+            <span class="text-xs font-semibold text-slate-500 uppercase">Tahun:</span>
+            <div class="relative" id="yearDropdownWrapper">
+                <button type="button" id="yearDropdownBtn"
+                    class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    <span id="yearDropdownLabel">{{ $selectedYear }}</span>
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <input type="hidden" name="year" id="yearValue" value="{{ $selectedYear }}">
+                <div id="yearDropdownMenu" class="hidden absolute right-0 z-20 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+                    @forelse($availableYears as $y)
+                        <button type="button" data-value="{{ $y }}"
+                            class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ $selectedYear == $y ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
+                            {{ $y }}
+                        </button>
                     @empty
-                        <option value="{{ date('Y') }}">{{ date('Y') }}</option>
+                        <button type="button" data-value="{{ date('Y') }}" class="year-option w-full text-left px-4 py-2 text-sm text-slate-700">
+                            {{ date('Y') }}
+                        </button>
                     @endforelse
-                </select>
+                </div>
             </div>
         </form>
     </x-slot:headerActions>
@@ -35,7 +68,7 @@
                 <div>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wilayah Tugas</p>
                     <p class="text-sm font-bold text-slate-800">
-                        {{ $selectedDistrictId ? $assignedDistricts->firstWhere('id', $selectedDistrictId)->name : 'Pilih Wilayah' }}
+                        {{ $isAllDistricts ? 'Semua Wilayah' : ($selectedDistrictId ? $assignedDistricts->firstWhere('id', $selectedDistrictId)->name : 'Pilih Wilayah') }}
                     </p>
                 </div>
             </div>
@@ -136,4 +169,43 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // District dropdown
+        document.getElementById('districtDropdownBtn').addEventListener('click', () => {
+            document.getElementById('districtDropdownMenu').classList.toggle('hidden');
+        });
+
+        // Year dropdown
+        document.getElementById('yearDropdownBtn').addEventListener('click', () => {
+            document.getElementById('yearDropdownMenu').classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('districtDropdownWrapper').contains(e.target)) {
+                document.getElementById('districtDropdownMenu').classList.add('hidden');
+            }
+            if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
+                document.getElementById('yearDropdownMenu').classList.add('hidden');
+            }
+        });
+
+        document.querySelectorAll('.district-option').forEach(function (opt) {
+            opt.addEventListener('click', function () {
+                document.getElementById('districtValue').value = this.dataset.value;
+                document.getElementById('districtDropdownLabel').textContent = this.dataset.label;
+                document.getElementById('districtDropdownMenu').classList.add('hidden');
+                document.getElementById('filterForm').submit();
+            });
+        });
+
+        document.querySelectorAll('.year-option').forEach(function (opt) {
+            opt.addEventListener('click', function () {
+                document.getElementById('yearValue').value = this.dataset.value;
+                document.getElementById('yearDropdownLabel').textContent = this.textContent.trim();
+                document.getElementById('yearDropdownMenu').classList.add('hidden');
+                document.getElementById('filterForm').submit();
+            });
+        });
+    </script>
 </x-layouts.employee>

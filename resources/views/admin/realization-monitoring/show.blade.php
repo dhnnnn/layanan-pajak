@@ -40,7 +40,6 @@
             </div>
         </form>
 
-        {{-- Export Button --}}
         <a href="{{ route('admin.realization-monitoring.export', ['upt' => $upt, 'year' => $year, 'month' => $month]) }}"
             class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
             <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,171 +57,98 @@
         </a>
     </x-slot:headerActions>
 
-    {{-- UPT Summary --}}
+    {{-- Summary --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
             <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Total Pegawai</p>
             <p class="text-2xl font-bold text-slate-900">{{ count($employeeData) }}</p>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Target APBD {{ $year }}</p>
-            <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($totalTarget, 0, ',', '.') }}</p>
+            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Target {{ $year }}</p>
+            <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($uptTarget, 0, ',', '.') }}</p>
+            @if($uptTarget == 0)
+                <p class="text-xs text-slate-400 mt-1 italic">Belum ada target per UPT</p>
+            @endif
         </div>
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
             <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Total Realisasi {{ $year }}</p>
             <p class="text-2xl font-bold text-green-600">Rp {{ number_format($uptYearlyTotal, 0, ',', '.') }}</p>
-            @if($totalTarget > 0)
-                <p class="text-xs text-slate-400 mt-1">{{ number_format(($uptYearlyTotal / $totalTarget) * 100, 1) }}% dari target</p>
+            @if($uptTarget > 0)
+                <p class="text-xs text-slate-400 mt-1">{{ number_format(($uptYearlyTotal / $uptTarget) * 100, 1) }}% dari target</p>
             @endif
         </div>
     </div>
 
-    {{-- Per-Employee Cards --}}
-    @forelse($employeeData as $data)
-        @php $employee = $data['employee']; @endphp
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
-            {{-- Employee Header --}}
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                        <span class="text-sm font-bold text-blue-600">{{ strtoupper(substr($employee->name, 0, 1)) }}</span>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-slate-900">{{ $employee->name }}</p>
-                        <p class="text-xs text-slate-400">{{ $employee->email }}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-6 text-right">
-                    <div>
-                        <p class="text-xs text-slate-500">Realisasi {{ $year }}</p>
-                        <p class="font-bold text-green-600 text-sm">Rp {{ number_format($data['yearly_total'], 0, ',', '.') }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500">Bulan ini</p>
-                        <p class="font-bold text-blue-600 text-sm">Rp {{ number_format($data['monthly_total'], 0, ',', '.') }}</p>
-                    </div>
-                    <div class="w-28">
-                        <p class="text-xs text-slate-500 mb-1">Progress</p>
-                        <div class="flex items-center gap-1.5">
-                            <div class="flex-1 bg-slate-100 rounded-full h-1.5">
-                                <div class="h-1.5 rounded-full {{ $data['progress'] >= 100 ? 'bg-green-500' : ($data['progress'] >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
-                                    style="width: {{ min($data['progress'], 100) }}%"></div>
-                            </div>
-                            <span class="text-xs font-semibold text-slate-600">{{ number_format($data['progress'], 1) }}%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Wilayah Filter Tabs --}}
-            @if($employee->districts->count() > 0)
-                <div class="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 flex-wrap"
-                    id="district-tabs-{{ $loop->index }}">
-                    <span class="text-xs text-slate-500 mr-1">Wilayah:</span>
-                    <button type="button"
-                        onclick="filterDistrict({{ $loop->index }}, null)"
-                        class="district-tab district-tab-{{ $loop->index }} active-tab px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors bg-blue-600 text-white border-blue-600"
-                        data-district="all">
-                        Semua
-                    </button>
-                    @foreach($employee->districts as $district)
-                        <button type="button"
-                            onclick="filterDistrict({{ $loop->parent->index }}, '{{ $district->id }}')"
-                            class="district-tab district-tab-{{ $loop->parent->index }} px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600"
-                            data-district="{{ $district->id }}">
-                            {{ $district->name }}
-                        </button>
-                    @endforeach
-                </div>
-            @endif
-
-            {{-- Monthly Entries --}}
-            @if($data['monthly_entries']->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="w-full text-xs text-left text-slate-600" id="entries-table-{{ $loop->index }}">
-                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
-                            <tr>
-                                <th class="px-6 py-2">Tanggal</th>
-                                <th class="px-6 py-2">Jenis Pajak</th>
-                                <th class="px-6 py-2">Kecamatan</th>
-                                <th class="px-6 py-2 text-right">Jumlah</th>
-                                <th class="px-6 py-2">Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($data['monthly_entries'] as $entry)
-                                <tr class="hover:bg-slate-50 entry-row" data-district="{{ $entry->district_id }}">
-                                    <td class="px-6 py-2 font-mono">{{ $entry->entry_date->format('d/m/Y') }}</td>
-                                    <td class="px-6 py-2">{{ $entry->taxType->name }}</td>
-                                    <td class="px-6 py-2">{{ $entry->district->name }}</td>
-                                    <td class="px-6 py-2 text-right font-semibold text-green-600">
-                                        Rp {{ number_format($entry->amount, 0, ',', '.') }}
-                                    </td>
-                                    <td class="px-6 py-2 text-slate-400">{{ $entry->note ?? '-' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div id="entries-empty-{{ $loop->index }}" class="hidden px-6 py-4 text-center text-xs text-slate-400 italic">
-                    Data di wilayah ini masih belum tersedia.
-                </div>
-            @else
-                <div class="px-6 py-4 text-center text-xs text-slate-400 italic">
-                    Belum ada input di {{ $months[$month] }} {{ $year }}.
-                </div>
-            @endif
+    {{-- Employee Table --}}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
+                <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
+                    <tr>
+                        <th class="px-5 py-3">Pegawai</th>
+                        <th class="px-5 py-3 text-right">Realisasi {{ $year }}</th>
+                        <th class="px-5 py-3">Progress</th>
+                        <th class="px-5 py-3 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($employeeData as $data)
+                        @php $barWidth = min($data['progress'], 100); @endphp
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                        <span class="text-xs font-bold text-blue-600">{{ strtoupper(substr($data['employee']->name, 0, 1)) }}</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-slate-900">{{ $data['employee']->name }}</p>
+                                        <p class="text-xs text-slate-400">{{ $data['employee']->email }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-5 py-4 text-right font-semibold text-green-600">
+                                Rp {{ number_format($data['yearly_total'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-5 py-4 min-w-[200px]">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 bg-slate-100 rounded-full h-2">
+                                        <div class="h-2 rounded-full {{ $data['progress'] >= 100 ? 'bg-green-500' : ($data['progress'] >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
+                                            style="width: {{ $barWidth }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-semibold text-slate-600 w-14 text-right">{{ number_format($data['progress'], 1) }}%</span>
+                                </div>
+                            </td>
+                            <td class="px-5 py-4 text-right">
+                                <a href="{{ route('admin.realization-monitoring.employee', [$upt, $data['employee'], 'year' => $year]) }}"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                                    Lihat Progress
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-6 py-10 text-center text-slate-500">
+                                Belum ada pegawai di UPT ini.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    @empty
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center text-slate-500">
-            Belum ada pegawai di UPT ini.
-        </div>
-    @endforelse
+    </div>
 
     <script>
-        function filterDistrict(cardIndex, districtId) {
-            // Update tab styles
-            document.querySelectorAll(`.district-tab-${cardIndex}`).forEach(btn => {
-                const isActive = districtId === null
-                    ? btn.dataset.district === 'all'
-                    : btn.dataset.district === districtId;
+        document.getElementById('monthDropdownBtn').addEventListener('click', () => {
+            document.getElementById('monthDropdownMenu').classList.toggle('hidden');
+        });
 
-                if (isActive) {
-                    btn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-                    btn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200', 'hover:border-blue-400', 'hover:text-blue-600');
-                } else {
-                    btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                    btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200', 'hover:border-blue-400', 'hover:text-blue-600');
-                }
-            });
-
-            // Filter rows
-            const table = document.getElementById(`entries-table-${cardIndex}`);
-            if (!table) return;
-
-            let visibleCount = 0;
-            table.querySelectorAll('.entry-row').forEach(row => {
-                const show = districtId === null || row.dataset.district === districtId;
-                row.style.display = show ? '' : 'none';
-                if (show) visibleCount++;
-            });
-
-            // Show/hide empty state
-            const emptyEl = document.getElementById(`entries-empty-${cardIndex}`);
-            if (emptyEl) emptyEl.style.display = visibleCount === 0 ? '' : 'none';
-        }
-
-        // Month dropdown
-        const monthBtn = document.getElementById('monthDropdownBtn');
-        const monthMenu = document.getElementById('monthDropdownMenu');
-        const monthValue = document.getElementById('monthValue');
-        const monthLabel = document.getElementById('monthDropdownLabel');
-
-        monthBtn.addEventListener('click', () => monthMenu.classList.toggle('hidden'));
+        document.getElementById('yearDropdownBtn').addEventListener('click', () => {
+            document.getElementById('yearDropdownMenu').classList.toggle('hidden');
+        });
 
         document.addEventListener('click', function (e) {
             if (!document.getElementById('monthDropdownWrapper').contains(e.target)) {
-                monthMenu.classList.add('hidden');
+                document.getElementById('monthDropdownMenu').classList.add('hidden');
             }
             if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
                 document.getElementById('yearDropdownMenu').classList.add('hidden');
@@ -231,26 +157,18 @@
 
         document.querySelectorAll('.month-option').forEach(function (opt) {
             opt.addEventListener('click', function () {
-                monthValue.value = this.dataset.value;
-                monthLabel.textContent = this.textContent.trim();
-                monthMenu.classList.add('hidden');
+                document.getElementById('monthValue').value = this.dataset.value;
+                document.getElementById('monthDropdownLabel').textContent = this.textContent.trim();
+                document.getElementById('monthDropdownMenu').classList.add('hidden');
                 document.getElementById('filterForm').submit();
             });
         });
 
-        // Year dropdown
-        const yearBtn = document.getElementById('yearDropdownBtn');
-        const yearMenu = document.getElementById('yearDropdownMenu');
-        const yearValue = document.getElementById('yearValue');
-        const yearLabel = document.getElementById('yearDropdownLabel');
-
-        yearBtn.addEventListener('click', () => yearMenu.classList.toggle('hidden'));
-
         document.querySelectorAll('.year-option').forEach(function (opt) {
             opt.addEventListener('click', function () {
-                yearValue.value = this.dataset.value;
-                yearLabel.textContent = this.textContent.trim();
-                yearMenu.classList.add('hidden');
+                document.getElementById('yearValue').value = this.dataset.value;
+                document.getElementById('yearDropdownLabel').textContent = this.textContent.trim();
+                document.getElementById('yearDropdownMenu').classList.add('hidden');
                 document.getElementById('filterForm').submit();
             });
         });
