@@ -59,7 +59,11 @@ class RealizationController extends Controller
     {
         $user = $request->user();
 
-        $taxTypes = TaxType::query()->orderBy('name')->get();
+        $taxTypes = TaxType::query()
+            ->whereNull('parent_id')
+            ->with(['children' => fn ($q) => $q->orderBy('name')])
+            ->orderBy('name')
+            ->get();
         $districts = $user->districts()->orderBy('name')->get();
         $months = Month::query()->orderBy('number')->get();
 
@@ -104,7 +108,11 @@ class RealizationController extends Controller
 
         $user = $request->user();
 
-        $taxTypes = TaxType::query()->orderBy('name')->get();
+        $taxTypes = TaxType::query()
+            ->whereNull('parent_id')
+            ->with(['children' => fn ($q) => $q->orderBy('name')])
+            ->orderBy('name')
+            ->get();
         $districts = $user->districts()->orderBy('name')->get();
         $months = Month::query()->orderBy('number')->get();
 
@@ -157,7 +165,11 @@ class RealizationController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $taxTypes = TaxType::query()->orderBy('code')->get();
+        $taxTypes = TaxType::query()
+            ->whereNull('parent_id')
+            ->with(['children' => fn ($q) => $q->orderBy('name')])
+            ->orderBy('name')
+            ->get();
 
         $realizations = TaxRealization::query()
             ->where('district_id', $districtId)

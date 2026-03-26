@@ -19,8 +19,11 @@
                         <label for="tax_type_id" class="block text-sm font-semibold text-slate-700 mb-1">Jenis Pajak <span class="text-red-500">*</span></label>
                         <select name="tax_type_id" id="tax_type_id" class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 px-4 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 @error('tax_type_id') ring-2 ring-red-500/20 @endif" required>
                             <option value="" disabled selected>Pilih Jenis Pajak</option>
-                            @foreach($taxTypes as $type)
-                                <option value="{{ $type->id }}" @selected(old('tax_type_id') == (string) $type->id)>{{ $type->name }} ({{ $type->code }})</option>
+                            @foreach($taxTypes as $parent)
+                                <option value="{{ $parent->id }}" @selected(old('tax_type_id', $realization->tax_type_id ?? '') == (string) $parent->id)>{{ $parent->name }}</option>
+                                @foreach($parent->children as $child)
+                                    <option value="{{ $child->id }}" @selected(old('tax_type_id', $realization->tax_type_id ?? '') == (string) $child->id)>&nbsp;&nbsp;&nbsp;&nbsp;— {{ $child->name }}</option>
+                                @endforeach
                             @endforeach
                         </select>
                         @error('tax_type_id')
