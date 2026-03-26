@@ -1,16 +1,17 @@
 <x-layouts.admin title="Daftar Target Pajak" header="Pengelolaan Target APBD">
     <x-slot:headerActions>
-        <a href="{{ route('admin.tax-targets.export', array_filter(['year' => request('year')])) }}"
+        <a href="{{ route('admin.tax-targets.report') }}"
             class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-lg transition-colors shadow-sm border border-slate-200">
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
-            Export Excel
+            Kembali
         </a>
     </x-slot:headerActions>
 
-    <!-- Filter Section -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+    <div class="space-y-6">
+        <!-- Filter Section -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
         <form method="GET" action="{{ route('admin.tax-targets.index') }}" class="p-6" id="filterForm">
             <div class="flex flex-col md:flex-row gap-4 items-end">
                 <!-- Search Input -->
@@ -120,10 +121,10 @@
                     <tr>
                         <th class="px-6 py-4">Jenis Pajak</th>
                         <th class="px-6 py-4 text-right">Target APBD ({{ $year }})</th>
-                        <th class="px-6 py-4 text-right">Q1</th>
-                        <th class="px-6 py-4 text-right">Q2</th>
-                        <th class="px-6 py-4 text-right">Q3</th>
-                        <th class="px-6 py-4 text-right border-r border-slate-100">Q4</th>
+                        <th class="px-6 py-4 text-right">Tribulan 1</th>
+                        <th class="px-6 py-4 text-right">Tribulan 2</th>
+                        <th class="px-6 py-4 text-right">Tribulan 3</th>
+                        <th class="px-6 py-4 text-right border-r border-slate-100">Tribulan 4</th>
                         <th class="px-6 py-4 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -303,5 +304,6 @@
                 {{ $taxTypes->links() }}
             </div>
         @endif
+    </div>
     </div>
 </x-layouts.admin>

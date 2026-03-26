@@ -24,10 +24,11 @@ class DashboardController extends Controller
             $availableYears->first() ?? date('Y'),
         );
 
-        $dashboard = $generateDashboard($selectedYear);
+        $result = $generateDashboard($selectedYear);
 
         return view('admin.dashboard', [
-            'dashboard' => $dashboard,
+            'dashboard' => $result['data'],
+            'totals' => $result['totals'],
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
         ]);

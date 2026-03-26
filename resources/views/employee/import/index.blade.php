@@ -30,7 +30,7 @@
                     </div>
                     <div>
                         <label for="year" class="block text-sm font-semibold text-slate-700 mb-1">Tahun Realisasi</label>
-                        <select name="year" id="year" class="block w-full text-sm border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 @error('year') border-red-500 @enderror" required>
+                        <select name="year" id="year" class="no-search block w-full text-sm border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 @error('year') border-red-500 @enderror" required>
                             @php $currentYear = date('Y'); @endphp
                             @for($y = $currentYear; $y >= $currentYear - 5; $y--)
                                 <option value="{{ $y }}" {{ old('year', $currentYear) == $y ? 'selected' : '' }}>{{ $y }}</option>

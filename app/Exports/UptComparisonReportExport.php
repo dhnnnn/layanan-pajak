@@ -24,6 +24,8 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
 {
     private Collection $upts;
 
+    private array $data = [];
+
     public function __construct(private readonly int $year)
     {
         $this->upts = Upt::query()->orderBy('code')->get();
@@ -224,6 +226,8 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
 
         $rows[] = $totalRow;
 
+        $this->data = $rows;
+
         return $rows;
     }
 
@@ -281,7 +285,10 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
 
     public function styles(Worksheet $sheet): void
     {
-        $rows = $this->array();
+        $rows = $this->data;
+        if (empty($rows)) {
+            $rows = $this->array();
+        }
         $lastRow = count($rows);
         $uptCount = $this->upts->count();
         $lastColIndex = count($rows[0]);

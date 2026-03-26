@@ -42,6 +42,8 @@ class UptRealizationExport implements FromArray, WithColumnWidths, WithStyles, W
      */
     private array $districtAmounts = [];
 
+    private array $data = [];
+
     public function __construct(
         private readonly string $uptId,
         private readonly int $year,
@@ -147,6 +149,8 @@ class UptRealizationExport implements FromArray, WithColumnWidths, WithStyles, W
         $totalRow[] = $grandTotal;
         $rows[] = $totalRow;
 
+        $this->data = $rows;
+
         return $rows;
     }
 
@@ -170,7 +174,10 @@ class UptRealizationExport implements FromArray, WithColumnWidths, WithStyles, W
 
     public function styles(Worksheet $sheet): void
     {
-        $data = $this->array();
+        $data = $this->data;
+        if (empty($data)) {
+            $data = $this->array();
+        }
         $totalRows = count($data);
         $lastCol = $sheet->getHighestColumn();
 

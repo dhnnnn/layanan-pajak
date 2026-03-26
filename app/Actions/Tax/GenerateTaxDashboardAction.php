@@ -16,32 +16,53 @@ class GenerateTaxDashboardAction
     ) {}
 
     /**
-     * @return Collection<int, array{
-     *     tax_type_id: string,
-     *     tax_type_name: string,
-     *     tax_type_code: string,
-     *     tax_type_parent_id: ?string,
-     *     year: int,
-     *     target_total: float,
-     *     targets: array{q1: float, q2: float, q3: float, q4: float},
-     *     realizations: array{q1: float, q2: float, q3: float, q4: float},
-     *     percentages: array{q1: float, q2: float, q3: float, q4: float},
-     *     total_realization: float,
-     *     more_less: float,
-     *     achievement_percentage: float,
-     *     is_parent: bool,
-     * }>
+     * @return array{
+     *     data: Collection<int, array{
+     *         tax_type_id: string,
+     *         tax_type_name: string,
+     *         tax_type_code: string,
+     *         tax_type_parent_id: ?string,
+     *         year: int,
+     *         target_total: float,
+     *         targets: array{q1: float, q2: float, q3: float, q4: float},
+     *         realizations: array{q1: float, q2: float, q3: float, q4: float},
+     *         percentages: array{q1: float, q2: float, q3: float, q4: float},
+     *         total_realization: float,
+     *         more_less: float,
+     *         achievement_percentage: float,
+     *         is_parent: bool,
+     *     }>,
+     *     totals: array{
+     *         target: float,
+     *         realization: float,
+     *         more_less: float,
+     *         percentage: float,
+     *         quarters: array<string, array{target: float, realization: float, percentage: float}>
+     *     }
+     * }
      */
-    public function __invoke(int $year, ?string $districtId = null, ?string $uptId = null): Collection
+    public function __invoke(int $year, ?string $districtId = null, ?string $uptId = null, ?string $search = null): array
     {
         $taxTypes = TaxType::query()
             ->with([
                 'taxTargets' => fn ($query) => $query->where('year', $year),
+                'uptComparisons' => fn ($query) => $query->where('year', $year)
+                    ->when($uptId, fn ($q) => $q->where('upt_id', $uptId)),
                 'children' => fn ($query) => $query->with([
                     'taxTargets' => fn ($q) => $q->where('year', $year),
+                    'uptComparisons' => fn ($q) => $q->where('year', $year)
+                        ->when($uptId, fn ($q2) => $q2->where('upt_id', $uptId)),
                 ]),
             ])
             ->whereNull('parent_id')
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhereHas('children', fn ($q) => $q
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                    );
+            }))
             ->get();
 
         // Determine relevant district IDs
@@ -71,28 +92,35 @@ class GenerateTaxDashboardAction
         $result = collect();
 
         foreach ($taxTypes as $parent) {
-            $parentData = $this->processTaxType($parent, $year, $monthlyRealizations, $dailyRealizations);
+            $parentData = $this->processTaxType($parent, $year, $monthlyRealizations, $dailyRealizations, $uptId);
 
             // If parent has children, aggregate their values
             if ($parent->children->isNotEmpty()) {
                 $childItems = collect();
                 foreach ($parent->children as $child) {
-                    $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations);
+                    $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $uptId);
                     $childItems->push($childData);
                 }
 
-                // Sum children values into parent
-                $parentData['target_total'] = $childItems->sum('target_total');
-                $parentData['total_realization'] = $childItems->sum('total_realization');
-                $parentData['more_less'] = $childItems->sum('more_less');
+                // Ensure parent includes its own values PLUS children values
+                // For targets, if the parent has its own target in TaxTarget, use it (it should be the official total).
+                // If it doesn't, use the sum of children.
+                if ($parentData['target_total'] <= 0) {
+                    $parentData['target_total'] = $childItems->sum('target_total');
+                }
+
+                $parentData['total_realization'] += $childItems->sum('total_realization');
+                $parentData['more_less'] = $parentData['total_realization'] - $parentData['target_total'];
                 $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)(
                     $parentData['total_realization'],
                     $parentData['target_total']
                 );
 
                 foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
-                    $parentData['targets'][$q] = $childItems->sum(fn ($c) => $c['targets'][$q]);
-                    $parentData['realizations'][$q] = $childItems->sum(fn ($c) => $c['realizations'][$q]);
+                    // Pre-fix parents targets if they are in database
+                    // For realizations, always sum
+                    $parentData['targets'][$q] = $parentData['targets'][$q] ?: $childItems->sum(fn ($c) => $c['targets'][$q]);
+                    $parentData['realizations'][$q] += $childItems->sum(fn ($c) => $c['realizations'][$q]);
                     $parentData['percentages'][$q] = ($this->calculateAchievementPercentage)(
                         $parentData['realizations'][$q],
                         $parentData['targets'][$q]
@@ -112,49 +140,98 @@ class GenerateTaxDashboardAction
             }
         }
 
-        return $result;
+        // Calculate Grand Totals
+        // Ensure we only sum items that have NO parent (Induk / Root)
+        $parentItems = $result->where('tax_type_parent_id', null);
+
+        $grandTotalTarget = $parentItems->sum('target_total');
+        $grandTotalRealization = $parentItems->sum('total_realization');
+        $grandTotalMoreLess = $grandTotalRealization - $grandTotalTarget;
+        $grandTotalPercentage = ($this->calculateAchievementPercentage)($grandTotalRealization, $grandTotalTarget);
+
+        $quarterTotals = [];
+        foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
+            $t = $parentItems->sum(fn ($i) => $i['targets'][$q]);
+            $r = $parentItems->sum(fn ($i) => $i['realizations'][$q]);
+            $quarterTotals[$q] = [
+                'target' => $t,
+                'realization' => $r,
+                'percentage' => ($this->calculateAchievementPercentage)($r, $t),
+            ];
+        }
+
+        return [
+            'data' => $result,
+            'totals' => [
+                'target' => $grandTotalTarget,
+                'realization' => $grandTotalRealization,
+                'more_less' => $grandTotalMoreLess,
+                'percentage' => $grandTotalPercentage,
+                'quarters' => $quarterTotals,
+            ],
+        ];
     }
 
-    private function processTaxType(TaxType $taxType, int $year, Collection $monthlyRealizations, Collection $dailyRealizations): array
+    private function processTaxType(TaxType $taxType, int $year, Collection $monthlyRealizations, Collection $dailyRealizations, ?string $uptId = null): array
     {
-        // Get quarterly sums from TaxRealization table
-        $monthlyRecs = $monthlyRealizations->get($taxType->id, collect());
-        $rq1 = 0.0;
-        $rq2 = 0.0;
-        $rq3 = 0.0;
-        $rq4 = 0.0;
-        foreach ($monthlyRecs as $rec) {
-            $calculated = ($this->calculateTaxRealization)($rec);
-            $rq1 += $calculated['q1'];
-            $rq2 += $calculated['q2'];
-            $rq3 += $calculated['q3'];
-            $rq4 += $calculated['q4'];
-        }
+        // Get quarterly sums from TaxRealization table (legacy/import source)
+        $quarterlyFromMonthly = $monthlyRealizations
+            ->get($taxType->id, collect())
+            ->reduce(function (array $carry, $rec): array {
+                $calculated = ($this->calculateTaxRealization)($rec);
+                foreach (['q1', 'q2', 'q3', 'q4'] as $quarter) {
+                    $carry[$quarter] += $calculated[$quarter];
+                }
 
-        // ADD monthly sums from TaxRealizationDailyEntry table
-        $dailyRecs = $dailyRealizations->get($taxType->id, collect());
-        foreach ($dailyRecs as $daily) {
-            $month = (int) $daily->month;
-            $amount = (float) $daily->total;
-            if ($month <= 3) {
-                $rq1 += $amount;
-            } elseif ($month <= 6) {
-                $rq2 += $amount;
-            } elseif ($month <= 9) {
-                $rq3 += $amount;
-            } else {
-                $rq4 += $amount;
-            }
-        }
+                return $carry;
+            }, ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0]);
+
+        // Add daily entry totals, grouped into quarters (direct officer input source)
+        $quarterlyFromDaily = $dailyRealizations
+            ->get($taxType->id, collect())
+            ->groupBy(fn ($daily) => match (true) {
+                (int) $daily->month <= 3 => 'q1',
+                (int) $daily->month <= 6 => 'q2',
+                (int) $daily->month <= 9 => 'q3',
+                default => 'q4',
+            })
+            ->map(fn ($group) => (float) $group->sum('total'));
+
+        $rq1 = $quarterlyFromMonthly['q1'] + (float) ($quarterlyFromDaily['q1'] ?? 0);
+        $rq2 = $quarterlyFromMonthly['q2'] + (float) ($quarterlyFromDaily['q2'] ?? 0);
+        $rq3 = $quarterlyFromMonthly['q3'] + (float) ($quarterlyFromDaily['q3'] ?? 0);
+        $rq4 = $quarterlyFromMonthly['q4'] + (float) ($quarterlyFromDaily['q4'] ?? 0);
 
         $target = $taxType->taxTargets->first();
-        $targetTotal = $target ? (float) $target->target_amount : 0.0;
 
-        // Use non-cumulative quarterly targets
-        $tq1 = $target ? (float) $target->q1_target : 0.0;
-        $tq2 = $target ? max(0, (float) $target->q2_target - (float) $target->q1_target) : 0.0;
-        $tq3 = $target ? max(0, (float) $target->q3_target - (float) $target->q2_target) : 0.0;
-        $tq4 = $target ? max(0, (float) $target->q4_target - (float) $target->q3_target) : 0.0;
+        // Use UPT-specific target if uptId is provided, otherwise fall back to global target
+        $uptTarget = $uptId ? $taxType->uptComparisons->where('upt_id', $uptId)->first() : null;
+        $targetTotal = $uptTarget ? (float) $uptTarget->target_amount : ($target ? (float) $target->target_amount : 0.0);
+
+        // For quarterly targets, if UPT target exists, we'll distribute it using global ratios or equally
+        // If global target exists, compute its non-cumulative quarterly targets
+        $gtTotal = $target ? (float) $target->target_amount : 0.0;
+        $tq1 = 0.0;
+        $tq2 = 0.0;
+        $tq3 = 0.0;
+        $tq4 = 0.0;
+
+        if ($uptTarget && $gtTotal > 0) {
+            // Apply global target ratios to the UPT target
+            $tq1 = ($target->q1_target / $gtTotal) * $targetTotal;
+            $tq2 = (($target->q2_target - $target->q1_target) / $gtTotal) * $targetTotal;
+            $tq3 = (($target->q3_target - $target->q2_target) / $gtTotal) * $targetTotal;
+            $tq4 = (($target->q4_target - $target->q3_target) / $gtTotal) * $targetTotal;
+        } elseif ($uptTarget) {
+            // Equal distribution
+            $tq1 = $tq2 = $tq3 = $tq4 = $targetTotal / 4;
+        } elseif ($target) {
+            // Use global targets directly
+            $tq1 = (float) $target->q1_target;
+            $tq2 = max(0, (float) $target->q2_target - (float) $target->q1_target);
+            $tq3 = max(0, (float) $target->q3_target - (float) $target->q2_target);
+            $tq4 = max(0, (float) $target->q4_target - (float) $target->q3_target);
+        }
 
         $totalRealization = $rq1 + $rq2 + $rq3 + $rq4;
 

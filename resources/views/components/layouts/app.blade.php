@@ -154,6 +154,23 @@
             });
         });
     });
+
+    // Global guard: prevent double-clicking any form submit button.
+    // Applies to all POST/PUT/PATCH/DELETE forms. Skips GET forms (search/filter).
+    document.addEventListener('submit', function (e) {
+        const form = e.target;
+
+        // Skip GET forms (used for search/filter — safe to re-submit)
+        if ((form.method || '').toLowerCase() === 'get') {
+            return;
+        }
+
+        const submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+        submitButtons.forEach(function (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-not-allowed');
+        });
+    }, true);
 </script>
 
 </body>

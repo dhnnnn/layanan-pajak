@@ -1,57 +1,130 @@
-<x-layouts.admin title="Dashboard Admin" header="Dashboard Realisasi Pajak">
+<x-layouts.admin title="Laporan Target APBD" header="Laporan Target APBD">
     <x-slot:headerActions>
-        <form action="{{ route('admin.dashboard') }}" method="GET" class="flex items-center gap-2">
-            <label for="year" class="text-sm font-medium text-slate-600">Tahun:</label>
-            <select name="year" id="year" onchange="this.form.submit()" class="no-search text-sm rounded-lg bg-slate-50 text-slate-700 py-1.5 px-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 block">
-                @forelse($availableYears as $year)
-                    <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
-                @empty
-                    <option value="{{ date('Y') }}">{{ date('Y') }}</option>
-                @endforelse
-            </select>
-        </form>
+        <a href="{{ route('admin.tax-targets.export', array_filter(['year' => request('year')])) }}"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-lg transition-colors shadow-sm border border-slate-200">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Export Excel
+        </a>
     </x-slot:headerActions>
 
     <div class="space-y-6">
-        @php
-            $totalTarget = $totals['target'];
-            $totalRealization = $totals['realization'];
-            $avgPercentage = $totals['percentage'];
-            $totalMoreLess = $totals['more_less'];
-        @endphp
+        <!-- Filter Section -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <form method="GET" action="{{ route('admin.tax-targets.report') }}" class="p-6" id="filterForm">
+            <div class="flex flex-col md:flex-row gap-4 items-end">
+                <!-- Search Input -->
+                <div class="flex-1">
+                    <label for="search" class="block text-sm font-medium text-slate-700 mb-2">Cari Jenis Pajak</label>
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="search"
+                            name="search"
+                            value="{{ request('search') }}"
+                            placeholder="Cari berdasarkan nama atau kode pajak..."
+                            class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-sm border-0">
+                        <svg class="absolute left-3 top-2.5 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
 
-        {{-- Summary Cards --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Total Target (APBD)</p>
-                <p class="text-2xl font-bold text-slate-900">Rp {{ number_format($totalTarget, 0, ',', '.') }}</p>
+                <!-- Year Dropdown -->
+                <div class="w-full md:w-52">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Filter Tahun</label>
+                    <div class="relative" id="yearDropdownWrapper">
+                        <button type="button" id="yearDropdownBtn"
+                            class="w-full flex items-center justify-between px-4 py-2 rounded-lg bg-slate-50 text-slate-700 text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                            <span id="yearDropdownLabel">{{ request('year') ?: $selectedYear }}</span>
+                            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <input type="hidden" name="year" id="yearValue" value="{{ request('year', $selectedYear) }}">
+
+                        <div id="yearDropdownMenu" class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                            <ul id="yearList" class="max-h-48 overflow-y-auto py-1">
+                                @forelse($availableYears as $availableYear)
+                                    <li>
+                                        <button type="button" data-value="{{ $availableYear }}" class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ request('year', $selectedYear) == $availableYear ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
+                                            {{ $availableYear }}
+                                        </button>
+                                    </li>
+                                @empty
+                                    <li>
+                                        <button type="button" data-value="{{ date('Y') }}" class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 font-semibold text-blue-600">
+                                            {{ date('Y') }}
+                                        </button>
+                                    </li>
+                                @endforelse
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                @if(request()->filled('search') || (request()->filled('year') && request('year') != date('Y')))
+                    <a href="{{ route('admin.tax-targets.report') }}" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold rounded-lg transition-colors shrink-0">
+                        Reset
+                    </a>
+                @endif
             </div>
+        </form>
+    </div>
 
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Total Realisasi</p>
-                <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($totalRealization, 0, ',', '.') }}</p>
-            </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('filterForm');
+            const searchInput = document.getElementById('search');
 
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Lebih/(Kurang)</p>
-                <p class="text-2xl font-bold {{ $totalMoreLess >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
-                    Rp {{ number_format($totalMoreLess, 0, ',', '.') }}
-                </p>
-            </div>
+            // Debounced search
+            let searchTimeout;
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => form.submit(), 700);
+            });
 
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Persentase Capaian</p>
-                <p class="text-2xl font-bold text-emerald-600">{{ number_format($avgPercentage, 2, ',', '.') }}%</p>
-            </div>
-        </div>
+            // Year dropdown logic
+            const btn = document.getElementById('yearDropdownBtn');
+            const menu = document.getElementById('yearDropdownMenu');
+            const yearValueInput = document.getElementById('yearValue');
+            const yearLabel = document.getElementById('yearDropdownLabel');
 
+            if (btn && menu) {
+                btn.addEventListener('click', function () {
+                    menu.classList.toggle('hidden');
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
+                        menu.classList.add('hidden');
+                    }
+                });
+
+                document.querySelectorAll('.year-option').forEach(function (opt) {
+                    opt.addEventListener('click', function () {
+                        yearValueInput.value = this.dataset.value;
+                        yearLabel.textContent = this.textContent.trim();
+                        menu.classList.add('hidden');
+                        form.submit();
+                    });
+                });
+            }
+        });
+    </script>
+
+    @php
+        $totalTarget = $totals['target'];
+        $totalRealization = $totals['realization'];
+        $totalMoreLess = $totals['more_less'];
+    @endphp
+
+    <div class="space-y-6">
         {{-- Realization Table --}}
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
                 <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
                     Realisasi Penerimaan Pajak Daerah Per-Tribulan ({{ $selectedYear }})
                 </h3>
             </div>
@@ -151,5 +224,6 @@
                 * Angka Target dan Realisasi pada kolom Tribulan bersifat kumulatif (contoh: Tribulan 2 adalah akumulasi T1 + T2).
             </div>
         </div>
+    </div>
     </div>
 </x-layouts.admin>

@@ -45,10 +45,11 @@ class DashboardController extends Controller
 
         $isAllDistricts = $request->query('district_id') === 'all' || $assignedDistricts->isEmpty();
 
-        $dashboard = $generateDashboard($selectedYear, $selectedDistrictId, $user->upt_id);
+        $result = $generateDashboard($selectedYear, $selectedDistrictId, $user->upt_id);
 
         return view('employee.dashboard', [
-            'dashboard' => $dashboard,
+            'dashboard' => $result['data'],
+            'totals' => $result['totals'],
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
             'assignedDistricts' => $assignedDistricts,

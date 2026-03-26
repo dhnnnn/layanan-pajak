@@ -24,7 +24,7 @@
             <div class="flex flex-col md:flex-row gap-4 items-start md:items-center">
                 <div class="flex items-center gap-4">
                     <label for="yearFilter" class="text-sm font-semibold text-slate-700">Filter Tahun:</label>
-                    <select id="yearFilter" class="text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
+                    <select id="yearFilter" class="no-search text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
                         @for($y = (int) date('Y'); $y <= (int) date('Y') + 2; $y++)
                             <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
                         @endfor

@@ -81,9 +81,9 @@
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             @php
-                $totalTarget = $dashboard->where('tax_type_parent_id', null)->sum('target_total');
-                $totalRealization = $dashboard->sum('total_realization');
-                $avgPercentage = $totalTarget > 0 ? ($totalRealization / $totalTarget) * 100 : 0;
+                $totalTarget = $totals['target'] ?? 0;
+                $totalRealization = $totals['realization'] ?? 0;
+                $avgPercentage = $totals['percentage'] ?? 0;
                 $remainingTarget = max(0, $totalTarget - $totalRealization);
             @endphp
 

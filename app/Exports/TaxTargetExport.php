@@ -10,10 +10,13 @@ use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTitle
 {
+    private array $data = [];
+
     private array $parentRows = [];
 
     public function __construct(private readonly ?int $year = null) {}
@@ -82,30 +85,28 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
 
         foreach ($taxTypes as $taxType) {
             $childData = [];
-            $rootAmount = 0.0;
-            $rootQ1 = 0.0;
-            $rootQ2 = 0.0;
-            $rootQ3 = 0.0;
-            $rootQ4 = 0.0;
+
+            // Get official parent values from DB
+            $officialParentTarget = $allTargets->get($taxType->id);
+            $rootAmount = $officialParentTarget ? (float) $officialParentTarget->target_amount : 0.0;
+            $rootQ1 = $officialParentTarget ? (float) $officialParentTarget->q1_target : 0.0;
+            $rootQ2 = $officialParentTarget ? (float) $officialParentTarget->q2_target : 0.0;
+            $rootQ3 = $officialParentTarget ? (float) $officialParentTarget->q3_target : 0.0;
+            $rootQ4 = $officialParentTarget ? (float) $officialParentTarget->q4_target : 0.0;
+
+            $aggregatedChildTarget = 0.0;
             $rootRealizations = collect();
 
             if ($taxType->children->isNotEmpty()) {
                 foreach ($taxType->children as $child) {
                     $target = $allTargets->get($child->id) ?? new TaxTarget([
                         'target_amount' => 0.0,
-                        'q1_target' => 0.0,
-                        'q2_target' => 0.0,
-                        'q3_target' => 0.0,
-                        'q4_target' => 0.0,
                     ]);
 
                     $amount = (float) $target->target_amount;
-                    $rootAmount += $amount;
-                    $rootQ1 += (float) ($target->q1_target ?? $amount * 0.25);
-                    $rootQ2 += (float) ($target->q2_target ?? $amount * 0.50);
-                    $rootQ3 += (float) ($target->q3_target ?? $amount * 0.75);
-                    $rootQ4 += (float) ($target->q4_target ?? $amount);
+                    $aggregatedChildTarget += $amount;
 
+                    // Realizations are ALWAYS aggregated from children
                     $monthTotals = $realizations->get($child->id, collect());
                     foreach ($monthTotals as $m => $total) {
                         $rootRealizations[$m] = ($rootRealizations[$m] ?? 0.0) + $total;
@@ -114,36 +115,39 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
                     $childData[] = $this->formatRow(" - {$child->name}", $target, $monthTotals);
                 }
 
-                // Parent row as total
+                // If parent has NO official target record, use the sum of children
+                if ($rootAmount <= 0) {
+                    $rootAmount = $aggregatedChildTarget;
+                }
+
+                // For realizations, also include parent's own realizations if any
+                $parentRealizations = $realizations->get($taxType->id, collect());
+                foreach ($parentRealizations as $m => $total) {
+                    $rootRealizations[$m] = ($rootRealizations[$m] ?? 0.0) + $total;
+                }
+
                 $pseudoTarget = new TaxTarget([
                     'target_amount' => $rootAmount,
-                    'q1_target' => $rootQ1,
-                    'q2_target' => $rootQ2,
-                    'q3_target' => $rootQ3,
-                    'q4_target' => $rootQ4,
+                    'q1_target' => $rootQ1 ?: ($rootAmount * 0.25),
+                    'q2_target' => $rootQ2 ?: ($rootAmount * 0.50),
+                    'q3_target' => $rootQ3 ?: ($rootAmount * 0.75),
+                    'q4_target' => $rootQ4 ?: ($rootAmount),
                 ]);
 
-                $this->parentRows[] = count($rows) + 1; // +1 to convert 0-indexed count to 1-indexed next row
+                $this->parentRows[] = count($rows) + 1;
                 $rows[] = $this->formatRow($taxType->name, $pseudoTarget, $rootRealizations);
 
-                // Add children
                 foreach ($childData as $cRow) {
                     $rows[] = $cRow;
                 }
             } else {
-                // Regular root row without children
-                $target = $allTargets->get($taxType->id) ?? new TaxTarget([
-                    'target_amount' => 0.0,
-                    'q1_target' => 0.0,
-                    'q2_target' => 0.0,
-                    'q3_target' => 0.0,
-                    'q4_target' => 0.0,
-                ]);
-
+                $target = $allTargets->get($taxType->id) ?? new TaxTarget(['target_amount' => 0.0]);
                 $monthTotals = $realizations->get($taxType->id, collect());
                 $rows[] = $this->formatRow($taxType->name, $target, $monthTotals);
             }
         }
+
+        $this->data = $rows;
 
         return $rows;
     }
@@ -220,7 +224,11 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
 
     public function styles(Worksheet $sheet): void
     {
-        $lastRow = count($this->array());
+        $lastRow = count($this->data);
+        if ($lastRow === 0) {
+            // Re-run if called before array() for some reason
+            $lastRow = count($this->array());
+        }
 
         $sheet->mergeCells('C1:F1');
         $sheet->mergeCells('G1:J1');
@@ -231,6 +239,7 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
         $sheet->mergeCells('S1:S2');
 
         $borderThin = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
+        $borderMedium = ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']];
 
         $sheet->getStyle('A1:S2')->applyFromArray([
             'font' => ['bold' => true],

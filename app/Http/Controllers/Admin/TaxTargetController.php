@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Tax\CreateTaxTargetAction;
 use App\Actions\Tax\DeleteTaxTargetAction;
+use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Actions\Tax\ListTaxTargetsAction;
 use App\Actions\Tax\UpdateTaxTargetAction;
 use App\Exports\TaxTargetExport;
@@ -12,6 +13,7 @@ use App\Http\Requests\Admin\StoreTaxTargetRequest;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -30,6 +32,35 @@ class TaxTargetController extends Controller
             'targets' => $result['targets'],
             'availableYears' => $result['availableYears'],
             'year' => $result['year'],
+        ]);
+    }
+
+    public function report(
+        Request $request,
+        GenerateTaxDashboardAction $generateDashboard,
+    ): View {
+        $availableYears = TaxTarget::query()
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year');
+
+        $selectedYear = (int) $request->query(
+            'year',
+            $availableYears->first() ?? date('Y'),
+        );
+
+        $search = $request->query('search');
+
+        $result = $generateDashboard(
+            year: $selectedYear,
+            search: $search
+        );
+
+        return view('admin.tax-targets.report', [
+            'dashboard' => $result['data'],
+            'totals' => $result['totals'],
+            'selectedYear' => $selectedYear,
+            'availableYears' => $availableYears,
         ]);
     }
 

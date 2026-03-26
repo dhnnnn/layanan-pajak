@@ -32,7 +32,7 @@ class GenerateComparisonReportAction
     {
         $search = $search ? trim($search) : null;
 
-        $upts = Upt::query()->orderBy('code')->get();
+        $upts = Upt::query()->with(['users' => fn ($q) => $q->role('pegawai')])->orderBy('code')->get();
 
         $taxTypes = TaxType::query()
             ->whereNull('parent_id')
@@ -93,7 +93,7 @@ class GenerateComparisonReportAction
     private function calculateUptRealizationTotals(Collection $upts, int $year): array
     {
         $userIdsByUpt = $upts->mapWithKeys(
-            fn (Upt $upt) => [$upt->id => $upt->users()->role('pegawai')->pluck('users.id')]
+            fn (Upt $upt) => [$upt->id => $upt->users->pluck('id')]
         );
 
         $allEntries = TaxRealizationDailyEntry::query()
@@ -127,34 +127,41 @@ class GenerateComparisonReportAction
      */
     private function calculateGrandTotals(Collection $upts, array $uptRealizationTotals, array $uptTargets, int $year): array
     {
-        $parentTaxTypeIds = TaxType::query()->whereNull('parent_id')->pluck('id')->toArray();
+        $rootTaxTypes = TaxType::query()
+            ->whereNull('parent_id')
+            ->with('children')
+            ->get();
 
         $grandTotalTarget = (float) TaxTarget::query()
             ->where('year', $year)
-            ->whereIn('tax_type_id', $parentTaxTypeIds)
+            ->whereIn('tax_type_id', $rootTaxTypes->pluck('id'))
             ->sum('target_amount');
 
-        $grandTotalUpt = $upts->mapWithKeys(function (Upt $upt) use ($uptRealizationTotals, $parentTaxTypeIds): array {
+        $grandTotalUpt = $upts->mapWithKeys(function (Upt $upt) use ($uptRealizationTotals, $rootTaxTypes): array {
             $totals = $uptRealizationTotals[$upt->id] ?? [];
-            $total = 0;
-            foreach ($parentTaxTypeIds as $id) {
-                $total += $totals[$id] ?? 0;
-            }
+
+            $total = (float) $rootTaxTypes->sum(
+                fn ($root) => ($totals[$root->id] ?? 0)
+                    + $root->children->sum(fn ($child) => $totals[$child->id] ?? 0)
+            );
 
             return [$upt->id => $total];
         })->toArray();
 
         $grandTotalAllUpt = array_sum($grandTotalUpt);
 
-        $grandTotalUptTarget = $upts->mapWithKeys(function (Upt $upt) use ($year, $parentTaxTypeIds): array {
-            $total = (float) UptComparison::query()
-                ->where('upt_id', $upt->id)
-                ->where('year', $year)
-                ->whereIn('tax_type_id', $parentTaxTypeIds)
-                ->sum('target_amount');
+        $parentIds = $rootTaxTypes->pluck('id');
+        $batchedUptTargets = UptComparison::query()
+            ->where('year', $year)
+            ->whereIn('upt_id', $upts->pluck('id'))
+            ->whereIn('tax_type_id', $parentIds)
+            ->selectRaw('upt_id, SUM(target_amount) as total')
+            ->groupBy('upt_id')
+            ->pluck('total', 'upt_id');
 
-            return [$upt->id => $total];
-        })->toArray();
+        $grandTotalUptTarget = $upts->mapWithKeys(
+            fn (Upt $upt) => [$upt->id => (float) ($batchedUptTargets->get($upt->id) ?? 0)]
+        )->toArray();
 
         $grandTotalAllUptTarget = array_sum($grandTotalUptTarget);
 

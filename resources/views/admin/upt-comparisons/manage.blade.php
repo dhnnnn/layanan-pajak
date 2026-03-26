@@ -1,36 +1,21 @@
-<x-layouts.admin title="Kelola Target UPT">
-    <x-slot:header>
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <nav class="flex text-sm text-slate-500 mb-1" aria-label="Breadcrumb">
-                    <ol class="flex items-center space-x-2">
-                        <li><a href="{{ route('admin.dashboard') }}" class="hover:text-blue-600">Dashboard</a></li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                            <span>Perbandingan UPT</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                            <span class="text-slate-900 font-medium">Kelola Target UPT</span>
-                        </li>
-                    </ol>
-                </nav>
-                <h1 class="text-2xl font-bold text-slate-900">Kelola Target UPT</h1>
-            </div>
-        </div>
-    </x-slot:header>
+<x-layouts.admin title="Kelola Target UPT" header="Kelola Target UPT">
+    <x-slot:headerActions>
+        <a href="{{ route('admin.upt-comparisons.report') }}"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-lg transition-colors shadow-sm border border-slate-200">
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Kembali
+        </a>
+    </x-slot:headerActions>
 
     <div class="space-y-6">
-
+        <!-- Filter Section -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div class="p-6 border-b border-slate-100">
-                <form action="{{ route('admin.upt-comparisons.manage') }}" method="GET" id="filterForm" class="flex flex-wrap items-center gap-4">
+            <div class="p-6">
+                <form action="{{ route('admin.upt-comparisons.manage') }}" method="GET" id="filterForm" class="flex flex-wrap items-end gap-4">
                     <div class="w-full sm:w-40">
-                        <label for="year" class="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">Tahun</label>
+                        <label for="year" class="block text-sm font-medium text-slate-700 mb-2">Tahun</label>
                         <select name="year" id="year" onchange="document.getElementById('filterForm').submit()"
                             class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
                             @foreach ($availableYears as $availableYear)
@@ -42,19 +27,21 @@
                     </div>
 
                     <div class="w-full sm:w-64">
-                        <label for="upt_id" class="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">UPT</label>
+                        <label for="upt_id" class="block text-sm font-medium text-slate-700 mb-2">UPT</label>
                         <select name="upt_id" id="upt_id" onchange="document.getElementById('filterForm').submit()"
                             class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
                             @foreach ($upts as $upt)
                                 <option value="{{ $upt->id }}" @selected($upt->id == $uptId)>
-                                    {{ $upt->name }} ({{ $upt->code }}) {{ $upt->has_targets ? '— (Sudah ada target)' : '' }}
+                                    {{ $upt->name }} ({{ $upt->code }})
                                 </option>
                             @endforeach
                         </select>
                     </div>
                 </form>
             </div>
+        </div>
 
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <form action="{{ route('admin.upt-comparisons.upsert') }}" method="POST" id="targetForm">
                 @csrf
                 <input type="hidden" name="year" value="{{ $year }}">

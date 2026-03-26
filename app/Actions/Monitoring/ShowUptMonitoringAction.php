@@ -34,41 +34,61 @@ class ShowUptMonitoringAction
             ->where('year', $year)
             ->sum('target_amount');
 
-        $employeeDistricts = $upt->users->mapWithKeys(
-            fn ($u) => [$u->id => $u->districts->pluck('id')]
-        );
+        $districtIds = $upt->districts->pluck('id');
 
-        $legacyTotals = TaxRealization::query()
-            ->whereIn('district_id', $employeeDistricts->flatten())
+        // 1. Calculate UPT Total (Aggregated by District to avoid double-counting)
+        $legacyByDistrict = TaxRealization::query()
+            ->whereIn('district_id', $districtIds)
             ->where('year', $year)
             ->get()
             ->groupBy('district_id')
             ->map(fn (Collection $recs): float => (float) $recs->sum(
                 fn ($r) => $r->january + $r->february + $r->march + $r->april
-                    + $r->may + $r->june + $r->july + $r->august
-                    + $r->september + $r->october + $r->november + $r->december
+                + $r->may + $r->june + $r->july + $r->august
+                + $r->september + $r->october + $r->november + $r->december
             ));
 
-        $dailyTotals = TaxRealizationDailyEntry::query()
-            ->whereIn('district_id', $employeeDistricts->flatten())
+        $dailyByDistrict = TaxRealizationDailyEntry::query()
+            ->whereIn('district_id', $districtIds)
             ->whereYear('entry_date', $year)
             ->selectRaw('district_id, SUM(amount) as total')
             ->groupBy('district_id')
             ->pluck('total', 'district_id')
             ->map(fn ($t) => (float) $t);
 
-        $employeeData = $upt->users->map(function ($employee) use ($legacyTotals, $dailyTotals, $uptTarget, $employeeDistricts): array {
-            $assignedIds = $employeeDistricts->get($employee->id, collect())->toArray();
-            $yearlyTotal = (float) ($legacyTotals->only($assignedIds)->sum() + $dailyTotals->only($assignedIds)->sum());
+        $uptYearlyTotal = $legacyByDistrict->sum() + $dailyByDistrict->sum();
+
+        // 2. Calculate Employee Contributions (Aggregated by User)
+        $employeeIds = $upt->users->pluck('id');
+
+        $legacyByUser = TaxRealization::query()
+            ->whereIn('user_id', $employeeIds)
+            ->where('year', $year)
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn (Collection $recs): float => (float) $recs->sum(
+                fn ($r) => $r->january + $r->february + $r->march + $r->april
+                + $r->may + $r->june + $r->july + $r->august
+                + $r->september + $r->october + $r->november + $r->december
+            ));
+
+        $dailyByUser = TaxRealizationDailyEntry::query()
+            ->whereIn('user_id', $employeeIds)
+            ->whereYear('entry_date', $year)
+            ->selectRaw('user_id, SUM(amount) as total')
+            ->groupBy('user_id')
+            ->pluck('total', 'user_id')
+            ->map(fn ($t) => (float) $t);
+
+        $employeeData = $upt->users->map(function ($employee) use ($legacyByUser, $dailyByUser, $uptTarget): array {
+            $contribution = (float) (($legacyByUser->get($employee->id) ?? 0) + ($dailyByUser->get($employee->id) ?? 0));
 
             return [
                 'employee' => $employee,
-                'yearly_total' => $yearlyTotal,
-                'progress' => $uptTarget > 0 ? ($yearlyTotal / $uptTarget) * 100 : 0,
+                'yearly_total' => $contribution,
+                'progress' => $uptTarget > 0 ? ($contribution / $uptTarget) * 100 : 0,
             ];
         });
-
-        $uptYearlyTotal = $employeeData->sum('yearly_total');
 
         $availableYears = TaxTarget::query()
             ->select('year')

@@ -39,7 +39,7 @@
             <label class="text-sm font-semibold text-slate-700">Tahun:</label>
             <form method="GET" action="{{ route('pegawai.daily-entries.show', $district->id) }}">
                 <select name="year" onchange="this.form.submit()"
-                    class="text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
+                    class="no-search text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
                     @for($y = (int) date('Y'); $y <= (int) date('Y') + 2; $y++)
                         <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
                     @endfor

@@ -9,6 +9,7 @@ use App\Actions\Upt\DeleteUptAction;
 use App\Actions\Upt\UpdateUptAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignUptDistrictRequest;
+use App\Http\Requests\Admin\AssignUptEmployeesRequest;
 use App\Http\Requests\Admin\StoreUptRequest;
 use App\Models\District;
 use App\Models\Upt;
@@ -103,14 +104,9 @@ class UptController extends Controller
         return view('admin.upts.assign-employee-districts', compact('upt', 'employee', 'assignedDistrictIds'));
     }
 
-    public function storeEmployees(Upt $upt, AssignEmployeesToUptAction $assignEmployees): RedirectResponse
+    public function storeEmployees(AssignUptEmployeesRequest $request, Upt $upt, AssignEmployeesToUptAction $assignEmployees): RedirectResponse
     {
-        $validated = request()->validate([
-            'user_ids' => ['nullable', 'array'],
-            'user_ids.*' => ['required', 'string', 'exists:users,id'],
-        ]);
-
-        $userIds = $validated['user_ids'] ?? [];
+        $userIds = $request->validated('user_ids') ?? [];
 
         $assignEmployees($upt, $userIds);
 

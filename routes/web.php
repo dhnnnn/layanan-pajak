@@ -89,6 +89,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('realization-monitoring/{upt}/employee/{employee}', [RealizationMonitoringController::class, 'employeeDetail'])->name('realization-monitoring.employee');
 
         // Target Pajak (APBD)
+        Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
         Route::resource(
             'tax-targets',

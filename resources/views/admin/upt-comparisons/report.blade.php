@@ -7,16 +7,11 @@
             </svg>
             Export Excel
         </a>
-        <a href="{{ route('admin.upt-comparisons.index') }}" class="inline-flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-            Kembali
-        </a>
     </x-slot:headerActions>
 
-    {{-- Filter Section --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+    <div class="space-y-6">
+        {{-- Filter Section --}}
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
         <form method="GET" action="{{ route('admin.upt-comparisons.report') }}" class="p-6" id="filterForm">
             <div class="flex flex-col md:flex-row gap-4 items-end">
                 <div class="flex-1">
@@ -71,7 +66,7 @@
     </div>
 
     @if(request()->hasAny(['search', 'year']))
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-sm font-medium text-blue-900">Filter aktif:</span>
@@ -299,6 +294,7 @@
             </div>
         @endif
     </div>
+</div>
 
     <script>
         // Debounced search

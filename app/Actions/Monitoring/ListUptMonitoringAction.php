@@ -62,17 +62,31 @@ class ListUptMonitoringAction
 
         $uptTargetIds = $upts->pluck('id');
         $uptTargetsData = UptComparison::query()
+            ->with('taxType')
             ->whereIn('upt_id', $uptTargetIds)
             ->where('year', $year)
             ->get()
             ->groupBy('upt_id')
-            ->map(fn (Collection $rows) => $rows->sum('target_amount'));
+            ->map(function (Collection $rows) {
+                $typeIds = $rows->pluck('tax_type_id')->toArray();
+
+                return (float) $rows->filter(function ($row) use ($typeIds) {
+                    // Only include if its parent is NOT in the same set of comparisons for this UPT
+                    return ! in_array($row->taxType->parent_id, $typeIds);
+                })->sum('target_amount');
+            });
 
         $uptTargets = $uptTargetIds->mapWithKeys(
             fn (string $id) => [$id => (float) ($uptTargetsData->get($id) ?? 0)]
         );
 
-        $totalTarget = (float) TaxTarget::query()->where('year', $year)->sum('target_amount');
+        $totalTarget = (float) TaxTarget::query()
+            ->where('year', $year)
+            ->whereHas('taxType', fn ($q) => $q->whereNull('parent_id'))
+            ->sum('target_amount');
+
+        $totalUptTarget = (float) $uptTargets->sum();
+        $totalRealization = (float) $uptTotals->sum();
 
         $availableYears = TaxTarget::query()
             ->select('year')
@@ -85,6 +99,8 @@ class ListUptMonitoringAction
             'uptTotals' => $uptTotals,
             'uptTargets' => $uptTargets,
             'totalTarget' => $totalTarget,
+            'totalUptTarget' => $totalUptTarget,
+            'totalRealization' => $totalRealization,
             'availableYears' => $availableYears,
             'year' => $year,
         ];
