@@ -217,21 +217,36 @@ class GenerateTaxDashboardAction
         $tq4 = 0.0;
 
         if ($uptTarget && $gtTotal > 0) {
-            // Apply global target ratios to the UPT target
+            // Apply global target ratios to the UPT target (keeping it cumulative)
             $tq1 = ($target->q1_target / $gtTotal) * $targetTotal;
-            $tq2 = (($target->q2_target - $target->q1_target) / $gtTotal) * $targetTotal;
-            $tq3 = (($target->q3_target - $target->q2_target) / $gtTotal) * $targetTotal;
-            $tq4 = (($target->q4_target - $target->q3_target) / $gtTotal) * $targetTotal;
+            $tq2 = ($target->q2_target / $gtTotal) * $targetTotal;
+            $tq3 = ($target->q3_target / $gtTotal) * $targetTotal;
+            $tq4 = ($target->q4_target / $gtTotal) * $targetTotal;
         } elseif ($uptTarget) {
-            // Equal distribution
-            $tq1 = $tq2 = $tq3 = $tq4 = $targetTotal / 4;
+            // Standard cumulative distribution
+            $tq1 = $targetTotal * 0.25;
+            $tq2 = $targetTotal * 0.50;
+            $tq3 = $targetTotal * 0.75;
+            $tq4 = $targetTotal;
         } elseif ($target) {
-            // Use global targets directly
-            $tq1 = (float) $target->q1_target;
-            $tq2 = max(0, (float) $target->q2_target - (float) $target->q1_target);
-            $tq3 = max(0, (float) $target->q3_target - (float) $target->q2_target);
-            $tq4 = max(0, (float) $target->q4_target - (float) $target->q3_target);
+            // Use cumulative targets from DB directly, fallback to distribution if 0
+            $tq1 = (float) $target->q1_target ?: $targetTotal * 0.25;
+            $tq2 = (float) $target->q2_target ?: $targetTotal * 0.50;
+            $tq3 = (float) $target->q3_target ?: $targetTotal * 0.75;
+            $tq4 = (float) $target->q4_target ?: $targetTotal;
+        } else {
+            // No target record, use default distribution
+            $tq1 = $targetTotal * 0.25;
+            $tq2 = $targetTotal * 0.50;
+            $tq3 = $targetTotal * 0.75;
+            $tq4 = $targetTotal;
         }
+
+        // Calculate cumulative realizations
+        $cq1 = $rq1;
+        $cq2 = $cq1 + $rq2;
+        $cq3 = $cq2 + $rq3;
+        $cq4 = $cq3 + $rq4;
 
         $totalRealization = $rq1 + $rq2 + $rq3 + $rq4;
 
@@ -249,16 +264,16 @@ class GenerateTaxDashboardAction
                 'q4' => $tq4,
             ],
             'realizations' => [
-                'q1' => $rq1,
-                'q2' => $rq2,
-                'q3' => $rq3,
-                'q4' => $rq4,
+                'q1' => $cq1,
+                'q2' => $cq2,
+                'q3' => $cq3,
+                'q4' => $cq4,
             ],
             'percentages' => [
-                'q1' => ($this->calculateAchievementPercentage)($rq1, $tq1),
-                'q2' => ($this->calculateAchievementPercentage)($rq2, $tq2),
-                'q3' => ($this->calculateAchievementPercentage)($rq3, $tq3),
-                'q4' => ($this->calculateAchievementPercentage)($rq4, $tq4),
+                'q1' => ($this->calculateAchievementPercentage)($cq1, $tq1),
+                'q2' => ($this->calculateAchievementPercentage)($cq2, $tq2),
+                'q3' => ($this->calculateAchievementPercentage)($cq3, $tq3),
+                'q4' => ($this->calculateAchievementPercentage)($cq4, $tq4),
             ],
             'total_realization' => $totalRealization,
             'more_less' => $totalRealization - $targetTotal,

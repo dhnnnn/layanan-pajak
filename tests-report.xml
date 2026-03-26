@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="C:\laragon\www\layanan-pajak\phpunit.xml" tests="2" assertions="2" errors="0" failures="1" skipped="0" time="0.453127">
+    <testsuite name="Unit" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.020025">
+      <testsuite name="Tests\Unit\ExampleTest" file="tests\Unit\ExampleTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.020025">
+        <testcase name="that true is true" file="tests\Unit\ExampleTest.php::that true is true" class="Tests\Unit\ExampleTest" classname="Tests.Unit.ExampleTest" assertions="1" time="0.020025"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="1" assertions="1" errors="0" failures="1" skipped="0" time="0.433102">
+      <testsuite name="Tests\Feature\ExampleTest" file="tests\Feature\ExampleTest.php" tests="1" assertions="1" errors="0" failures="1" skipped="0" time="0.433102">
+        <testcase name="the application returns a successful response" file="tests\Feature\ExampleTest.php::the application returns a successful response" class="Tests\Feature\ExampleTest" classname="Tests.Feature.ExampleTest" assertions="1" time="0.433102">
+          <failure type="PHPUnit\Framework\ExpectationFailedException">the application returns a successful responseExpected response status code [200] but received 302.
+Failed asserting that 302 is identical to 200.&#13;
+at vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+at vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:175
+at tests\Feature\ExampleTest.php:6</failure>
+        </testcase>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>
