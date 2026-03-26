@@ -99,19 +99,20 @@
                     <tr>
                         <th class="px-3 py-3 sticky left-0 bg-slate-50 z-10 border-r border-slate-200" rowspan="2">No.</th>
                         <th class="px-4 py-3 sticky left-9 bg-slate-50 z-10 border-r border-slate-200 min-w-56" rowspan="2">Jenis Pajak</th>
-                        <th class="px-4 py-3 text-right min-w-40" rowspan="2">Target APBD {{ $year }}</th>
+                        <th class="px-4 py-3 text-right border-r border-slate-200 min-w-40" rowspan="2">Target APBD {{ $year }}</th>
                         @foreach($upts as $upt)
-                            <th class="px-4 py-3 text-center border-l border-slate-200 min-w-64" colspan="2">{{ $upt->name }}</th>
+                            <th class="px-4 py-3 text-center border-r border-slate-200 min-w-64" colspan="2">{{ $upt->name }}</th>
                         @endforeach
-                        <th class="px-4 py-3 text-right bg-blue-50 min-w-36" rowspan="2">Total Realisasi</th>
-                        <th class="px-4 py-3 text-center bg-green-50" rowspan="2">% Target</th>
-                        <th class="px-4 py-3 text-center bg-orange-50" rowspan="2">% Selisih</th>
-                        <th class="px-4 py-3 text-right bg-red-50 min-w-36" rowspan="2">Selisih (Rp.)</th>
+                        <th class="px-4 py-3 text-right border-r border-slate-200 min-w-40" rowspan="2">Total Target Semua UPT</th>
+                        <th class="px-4 py-3 text-right border-r border-slate-200 min-w-40" rowspan="2">Total Realisasi Semua UPT</th>
+                        <th class="px-4 py-3 text-center border-r border-slate-200" rowspan="2">% Target</th>
+                        <th class="px-4 py-3 text-center border-r border-slate-200" rowspan="2">% Selisih</th>
+                        <th class="px-4 py-3 text-right min-w-40" rowspan="2">Selisih (Rp.)</th>
                     </tr>
                     <tr class="border-t border-slate-200">
                         @foreach($upts as $upt)
-                            <th class="px-3 py-2 text-right text-[10px] border-l border-slate-200 font-medium text-slate-500 min-w-32">Target</th>
-                            <th class="px-3 py-2 text-right text-[10px] font-medium text-slate-500 min-w-32">Realisasi</th>
+                            <th class="px-3 py-2 text-right text-[10px] border-r border-slate-200/50 font-medium text-slate-500 min-w-32">Target</th>
+                            <th class="px-3 py-2 text-right text-[10px] border-r border-slate-200/50 font-medium text-slate-500 min-w-32">Realisasi</th>
                         @endforeach
                     </tr>
                 </thead>
@@ -158,37 +159,36 @@
 
                         {{-- Parent Row --}}
                         <tr class="{{ $hasChildren ? 'bg-white font-bold border-t-2 border-slate-200' : 'hover:bg-slate-50 transition-colors' }}">
-                            <td class="px-3 py-3 text-slate-500 sticky left-0 bg-white border-r border-slate-100 z-10">
+                            <td class="px-3 py-3 text-slate-500 sticky left-0 bg-white border-r border-slate-200 z-10 text-center">
                                 {{ $taxTypes->firstItem() + $loop->index }}
                             </td>
-                            <td class="px-4 py-3 sticky left-9 bg-white border-r border-slate-100 z-10">
+                            <td class="px-4 py-3 sticky left-9 bg-white border-r border-slate-200 z-10">
                                 <div class="text-slate-800 whitespace-normal leading-snug">{{ $parentTaxType->name }}</div>
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold text-blue-600 text-xs">
+                            <td class="px-4 py-3 text-right font-semibold text-slate-900 text-xs border-r border-slate-200">
                                 Rp {{ number_format($parentTargetAmount, 0, ',', '.') }}
                             </td>
                             @foreach($upts as $upt)
-                                <td class="px-3 py-3 text-right text-xs border-l border-slate-200/50">
+                                <td class="px-3 py-3 text-right text-[11px] border-r border-slate-100">
                                     Rp {{ number_format($parentUptTargetAmounts[$upt->id], 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-3 text-right text-xs">
+                                <td class="px-3 py-3 text-right text-[11px] border-r border-slate-200">
                                     Rp {{ number_format($parentUptAmounts[$upt->id], 0, ',', '.') }}
                                 </td>
                             @endforeach
-                            <td class="px-4 py-3 text-right text-xs font-bold bg-blue-50/50">
+                            <td class="px-4 py-3 text-right text-xs font-bold border-r border-slate-200 bg-slate-50/30">
+                                Rp {{ number_format(array_sum($parentUptTargetAmounts), 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-3 text-right text-xs font-bold border-r border-slate-200 bg-slate-50/30">
                                 Rp {{ number_format($parentTotalRealization, 0, ',', '.') }}
                             </td>
-                            <td class="px-4 py-3 text-center bg-green-50/50">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $parentPercentTarget >= 100 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' }}">
-                                    {{ number_format($parentPercentTarget, 1) }}%
-                                </span>
+                            <td class="px-4 py-3 text-center border-r border-slate-200 font-bold text-slate-900">
+                                {{ number_format($parentPercentTarget, 1) }}%
                             </td>
-                            <td class="px-4 py-3 text-center bg-orange-50/50">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ abs($parentPercentSelisih) < 0.1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
-                                    {{ number_format($parentPercentSelisih, 1) }}%
-                                </span>
+                            <td class="px-4 py-3 text-center border-r border-slate-200 font-bold text-slate-900">
+                                {{ number_format($parentPercentSelisih, 1) }}%
                             </td>
-                            <td class="px-4 py-3 text-right text-xs font-bold {{ abs($parentSelisih) < 1000 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
+                            <td class="px-4 py-3 text-right text-xs font-bold text-slate-900">
                                 Rp {{ number_format($parentSelisih, 0, ',', '.') }}
                             </td>
                         </tr>
@@ -199,14 +199,17 @@
                                 @php
                                     $childTargetAmount = (float) ($targets[$child->id] ?? 0);
                                     $childTotalRealization = 0;
+                                    $childTotalUptTarget = 0;
                                     $childUptAmounts = [];
                                     $childUptTargetAmounts = [];
 
                                     foreach ($upts as $upt) {
                                         $amount = (float) ($uptRealizationTotals[$upt->id][$child->id] ?? 0);
+                                        $uptTarg = (float) ($uptTargets[$upt->id][$child->id] ?? 0);
                                         $childUptAmounts[$upt->id] = $amount;
                                         $childTotalRealization += $amount;
-                                        $childUptTargetAmounts[$upt->id] = (float) ($uptTargets[$upt->id][$child->id] ?? 0);
+                                        $childUptTargetAmounts[$upt->id] = $uptTarg;
+                                        $childTotalUptTarget += $uptTarg;
                                     }
 
                                     $childPercentTarget = $childTargetAmount > 0 ? ($childTotalRealization / $childTargetAmount) * 100 : 0;
@@ -214,31 +217,34 @@
                                     $childPercentSelisih = $childTargetAmount > 0 ? ($childSelisih / $childTargetAmount) * 100 : 0;
                                 @endphp
                                 <tr class="hover:bg-slate-50 transition-colors italic text-xs">
-                                    <td class="px-3 py-2 text-slate-400 sticky left-0 bg-white border-r border-slate-100 z-10"></td>
-                                    <td class="px-4 py-2 sticky left-9 bg-white border-r border-slate-100 z-10">
+                                    <td class="px-3 py-2 text-slate-400 sticky left-0 bg-white border-r border-slate-200 z-10"></td>
+                                    <td class="px-4 py-2 sticky left-9 bg-white border-r border-slate-200 z-10">
                                         <div class="text-slate-600 pl-4">- {{ $child->name }}</div>
                                     </td>
-                                    <td class="px-4 py-2 text-right text-slate-500">
+                                    <td class="px-4 py-2 text-right text-slate-500 border-r border-slate-200">
                                         Rp {{ number_format($childTargetAmount, 0, ',', '.') }}
                                     </td>
                                     @foreach($upts as $upt)
-                                        <td class="px-3 py-2 text-right text-slate-400 border-l border-slate-50">
+                                        <td class="px-3 py-2 text-right text-slate-400 border-r border-slate-100 italic">
                                             Rp {{ number_format($childUptTargetAmounts[$upt->id], 0, ',', '.') }}
                                         </td>
-                                        <td class="px-3 py-2 text-right text-slate-400">
+                                        <td class="px-3 py-2 text-right text-slate-400 border-r border-slate-200 italic">
                                             Rp {{ number_format($childUptAmounts[$upt->id], 0, ',', '.') }}
                                         </td>
                                     @endforeach
-                                    <td class="px-4 py-2 text-right font-medium bg-blue-50/30 text-slate-500">
+                                    <td class="px-4 py-2 text-right border-r border-slate-200 font-medium text-slate-500 italic">
+                                        Rp {{ number_format($childTotalUptTarget, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-4 py-2 text-right border-r border-slate-200 font-medium text-slate-500 italic">
                                         Rp {{ number_format($childTotalRealization, 0, ',', '.') }}
                                     </td>
-                                    <td class="px-4 py-2 text-center bg-green-50/20">
-                                        <span class="text-[10px]">{{ number_format($childPercentTarget, 1) }}%</span>
+                                    <td class="px-4 py-2 text-center border-r border-slate-200">
+                                        <span class="text-[10px] text-slate-500">{{ number_format($childPercentTarget, 1) }}%</span>
                                     </td>
-                                    <td class="px-4 py-2 text-center bg-orange-50/20">
-                                        <span class="text-[10px]">{{ number_format($childPercentSelisih, 1) }}%</span>
+                                    <td class="px-4 py-2 text-center border-r border-slate-200">
+                                        <span class="text-[10px] text-slate-500">{{ number_format($childPercentSelisih, 1) }}%</span>
                                     </td>
-                                    <td class="px-4 py-2 text-right text-slate-400 bg-red-50/20">
+                                    <td class="px-4 py-2 text-right text-slate-400">
                                         Rp {{ number_format($childSelisih, 0, ',', '.') }}
                                     </td>
                                 </tr>
@@ -262,27 +268,24 @@
                         <tr class="bg-slate-100 font-bold text-slate-800 text-xs border-t-2 border-slate-300">
                             <td class="px-3 py-3 sticky left-0 bg-slate-100 z-10 border-r border-slate-200"></td>
                             <td class="px-4 py-3 sticky left-9 bg-slate-100 z-10 border-r border-slate-200">TOTAL</td>
-                            <td class="px-4 py-3 text-right">Rp {{ number_format($grandTotalTarget, 0, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-right border-r border-slate-200">Rp {{ number_format($grandTotalTarget, 0, ',', '.') }}</td>
                             @foreach($upts as $upt)
-                                <td class="px-3 py-3 text-right border-l border-slate-200">
+                                <td class="px-3 py-3 text-right border-r border-slate-200">
                                     Rp {{ number_format($grandTotalUptTarget[$upt->id], 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-3 text-right">
+                                <td class="px-3 py-3 text-right border-r border-slate-200">
                                     Rp {{ number_format($grandTotalUpt[$upt->id], 0, ',', '.') }}
                                 </td>
                             @endforeach
-                            <td class="px-4 py-3 text-right bg-blue-100">Rp {{ number_format($grandTotalAllUpt, 0, ',', '.') }}</td>
-                            <td class="px-4 py-3 text-center bg-green-100">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $grandPercentTarget >= 100 ? 'bg-green-200 text-green-800' : 'bg-orange-200 text-orange-800' }}">
-                                    {{ number_format($grandPercentTarget, 1) }}%
-                                </span>
+                            <td class="px-4 py-3 text-right border-r border-slate-200">Rp {{ number_format($grandTotalAllUptTarget, 0, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-right border-r border-slate-200">Rp {{ number_format($grandTotalAllUpt, 0, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-center border-r border-slate-200">
+                                {{ number_format($grandPercentTarget, 1) }}%
                             </td>
-                            <td class="px-4 py-3 text-center bg-orange-100">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ abs($grandPercentSelisih) < 0.1 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800' }}">
-                                    {{ number_format($grandPercentSelisih, 1) }}%
-                                </span>
+                            <td class="px-4 py-3 text-center border-r border-slate-200">
+                                {{ number_format($grandPercentSelisih, 1) }}%
                             </td>
-                            <td class="px-4 py-3 text-right {{ $grandSelisih >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                            <td class="px-4 py-3 text-right">
                                 Rp {{ number_format($grandSelisih, 0, ',', '.') }}
                             </td>
                         </tr>

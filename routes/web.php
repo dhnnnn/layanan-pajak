@@ -78,6 +78,8 @@ Route::middleware(['auth', 'role:admin'])
                 Route::post('/import', [UptComparisonController::class, 'import'])->name('import');
                 Route::get('/report', [UptComparisonController::class, 'report'])->name('report');
                 Route::get('/report/export', [UptComparisonController::class, 'exportReport'])->name('report.export');
+                Route::get('/manage', [UptComparisonController::class, 'manage'])->name('manage');
+                Route::post('/manage', [UptComparisonController::class, 'upsert'])->name('upsert');
             });
 
         // Monitoring Realisasi

@@ -17,6 +17,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEvents, WithStyles, WithTitle
@@ -71,7 +72,8 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
             $header1[] = strtoupper($upt->name);
             $header1[] = '';
         }
-        $header1[] = 'TOTAL REALISASI';
+        $header1[] = 'TOTAL TARGET SEMUA UPT';
+        $header1[] = 'TOTAL REALISASI SEMUA UPT';
         $header1[] = '% TARGET';
         $header1[] = '% SELISIH';
         $header1[] = 'SELISIH (RP.)';
@@ -82,6 +84,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
             $header2[] = 'TARGET';
             $header2[] = 'REALISASI';
         }
+        $header2[] = '';
         $header2[] = '';
         $header2[] = '';
         $header2[] = '';
@@ -98,6 +101,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
             // Calculate parent totals
             $pTarget = 0;
             $pRealization = 0;
+            $pTotalUptTarget = 0;
             $pUptAmounts = [];
             $pUptTargets = [];
 
@@ -111,18 +115,22 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                     $pTarget += (float) ($apbdTargets[$child->id] ?? 0);
                     foreach ($this->upts as $upt) {
                         $childReal = (float) ($uptTotals[$upt->id][$child->id] ?? 0);
+                        $childTarg = (float) ($uptTargets[$upt->id][$child->id] ?? 0);
                         $pUptAmounts[$upt->id] += $childReal;
                         $pRealization += $childReal;
-                        $pUptTargets[$upt->id] += (float) ($uptTargets[$upt->id][$child->id] ?? 0);
+                        $pUptTargets[$upt->id] += $childTarg;
+                        $pTotalUptTarget += $childTarg;
                     }
                 }
             } else {
                 $pTarget = (float) ($apbdTargets[$parent->id] ?? 0);
                 foreach ($this->upts as $upt) {
                     $real = (float) ($uptTotals[$upt->id][$parent->id] ?? 0);
+                    $targ = (float) ($uptTargets[$upt->id][$parent->id] ?? 0);
                     $pUptAmounts[$upt->id] = $real;
                     $pRealization += $real;
-                    $pUptTargets[$upt->id] = (float) ($uptTargets[$upt->id][$parent->id] ?? 0);
+                    $pUptTargets[$upt->id] = $targ;
+                    $pTotalUptTarget += $targ;
                 }
             }
 
@@ -136,6 +144,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                 $row[] = $pUptTargets[$upt->id];
                 $row[] = $pUptAmounts[$upt->id];
             }
+            $row[] = $pTotalUptTarget;
             $row[] = $pRealization;
             $row[] = $pPercentTarget.'%';
             $row[] = $pPercentSelisih.'%';
@@ -148,6 +157,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                 foreach ($parent->children as $child) {
                     $cTarget = (float) ($apbdTargets[$child->id] ?? 0);
                     $cRealization = 0;
+                    $cTotalUptTarget = 0;
                     $cRow = ['', '- '.$child->name, $cTarget];
 
                     foreach ($this->upts as $upt) {
@@ -156,12 +166,14 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                         $cRow[] = $uptT;
                         $cRow[] = $uptR;
                         $cRealization += $uptR;
+                        $cTotalUptTarget += $uptT;
                     }
 
                     $cPercentTarget = $cTarget > 0 ? round(($cRealization / $cTarget) * 100, 1) : 0;
                     $cSelisih = $cTarget - $cRealization;
                     $cPercentSelisih = $cTarget > 0 ? round(($cSelisih / $cTarget) * 100, 1) : 0;
 
+                    $cRow[] = $cTotalUptTarget;
                     $cRow[] = $cRealization;
                     $cRow[] = $cPercentTarget.'%';
                     $cRow[] = $cPercentSelisih.'%';
@@ -171,6 +183,46 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                 }
             }
         }
+
+        // Grand Total Row
+        $parentTaxTypeIds = TaxType::query()->whereNull('parent_id')->pluck('id')->toArray();
+        $gtTarget = 0;
+        $gtTotalUptTarget = 0;
+        $gtUptTargets = [];
+        $gtUptRealizations = [];
+        foreach ($this->upts as $upt) {
+            $gtUptTargets[$upt->id] = 0;
+            $gtUptRealizations[$upt->id] = 0;
+        }
+
+        foreach ($parentTaxTypeIds as $parentId) {
+            $gtTarget += (float) ($apbdTargets[$parentId] ?? 0);
+            foreach ($this->upts as $upt) {
+                $targ = (float) ($uptTargets[$upt->id][$parentId] ?? 0);
+                $real = (float) ($uptTotals[$upt->id][$parentId] ?? 0);
+                $gtUptTargets[$upt->id] += $targ;
+                $gtUptRealizations[$upt->id] += $real;
+                $gtTotalUptTarget += $targ;
+            }
+        }
+
+        $gtTotalRealization = array_sum($gtUptRealizations);
+        $gtPercentTarget = $gtTarget > 0 ? round(($gtTotalRealization / $gtTarget) * 100, 1) : 0;
+        $gtSelisih = $gtTarget - $gtTotalRealization;
+        $gtPercentSelisih = $gtTarget > 0 ? round(($gtSelisih / $gtTarget) * 100, 1) : 0;
+
+        $totalRow = ['', 'TOTAL', $gtTarget];
+        foreach ($this->upts as $upt) {
+            $totalRow[] = $gtUptTargets[$upt->id];
+            $totalRow[] = $gtUptRealizations[$upt->id];
+        }
+        $totalRow[] = $gtTotalUptTarget;
+        $totalRow[] = $gtTotalRealization;
+        $totalRow[] = $gtPercentTarget.'%';
+        $totalRow[] = $gtPercentSelisih.'%';
+        $totalRow[] = $gtSelisih;
+
+        $rows[] = $totalRow;
 
         return $rows;
     }
@@ -188,10 +240,11 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
         }
 
         $offset = 4 + ($uptCount * 2);
-        $widths[Coordinate::stringFromColumnIndex($offset)] = 18;     // Total Realisasi
-        $widths[Coordinate::stringFromColumnIndex($offset + 1)] = 10; // % Target
-        $widths[Coordinate::stringFromColumnIndex($offset + 2)] = 10; // % Selisih
-        $widths[Coordinate::stringFromColumnIndex($offset + 3)] = 18; // Selisih
+        $widths[Coordinate::stringFromColumnIndex($offset)] = 18;     // Total Target
+        $widths[Coordinate::stringFromColumnIndex($offset + 1)] = 18; // Total Realisasi
+        $widths[Coordinate::stringFromColumnIndex($offset + 2)] = 10; // % Target
+        $widths[Coordinate::stringFromColumnIndex($offset + 3)] = 10; // % Selisih
+        $widths[Coordinate::stringFromColumnIndex($offset + 4)] = 18; // Selisih
 
         return $widths;
     }
@@ -218,7 +271,7 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
 
                 // Merge summary columns vertically (rows 1-2)
                 $summaryStart = 4 + ($uptCount * 2);
-                for ($i = 0; $i < 4; $i++) {
+                for ($i = 0; $i < 5; $i++) {
                     $col = Coordinate::stringFromColumnIndex($summaryStart + $i);
                     $sheet->mergeCells("{$col}1:{$col}2");
                 }
@@ -228,10 +281,11 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
 
     public function styles(Worksheet $sheet): void
     {
-        $lastRow = count($this->array());
+        $rows = $this->array();
+        $lastRow = count($rows);
         $uptCount = $this->upts->count();
-        $lastColIndex = 4 + ($uptCount * 2) + 4;
-        $lastCol = Coordinate::stringFromColumnIndex($lastColIndex - 1);
+        $lastColIndex = count($rows[0]);
+        $lastCol = Coordinate::stringFromColumnIndex($lastColIndex);
 
         $thinBlack = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
 
@@ -262,18 +316,29 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                 $sheet->getStyle("{$col}3:{$col}{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
             }
 
-            $totalCol = Coordinate::stringFromColumnIndex($summaryStart);
-            $selisihCol = Coordinate::stringFromColumnIndex($summaryStart + 3);
-            $sheet->getStyle("{$totalCol}3:{$totalCol}{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+            // Format summary columns: Total Target, Total Realisasi, Selisih RP
+            $totalTargCol = Coordinate::stringFromColumnIndex($summaryStart);
+            $totalRealCol = Coordinate::stringFromColumnIndex($summaryStart + 1);
+            $selisihCol = Coordinate::stringFromColumnIndex($summaryStart + 4);
+
+            $sheet->getStyle("{$totalTargCol}3:{$totalTargCol}{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle("{$totalRealCol}3:{$totalRealCol}{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle("{$selisihCol}3:{$selisihCol}{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
             $sheet->getStyle("B3:B{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-            // Bold parent rows (where NO column is not empty)
+            // Bold parent rows (where NO column is not empty) and the TOTAL row
             for ($row = 3; $row <= $lastRow; $row++) {
                 $noValue = $sheet->getCell("A{$row}")->getValue();
-                if (! empty($noValue)) {
+                $nameValue = $sheet->getCell("B{$row}")->getValue();
+                if (! empty($noValue) || $nameValue === 'TOTAL') {
                     $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getFont()->setBold(true);
+
+                    if ($nameValue === 'TOTAL') {
+                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()->setRGB('F8FAFC'); // slate-50
+                    }
                 }
             }
         }

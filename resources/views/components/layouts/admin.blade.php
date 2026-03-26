@@ -114,6 +114,10 @@
                         </svg>
                     </x-slot:icon>
                     
+                    <x-layouts.sidebar-submenu-item route="admin.upt-comparisons.manage" :active="request()->routeIs('admin.upt-comparisons.manage')">
+                        Kelola Target UPT
+                    </x-layouts.sidebar-submenu-item>
+                    
                     <x-layouts.sidebar-submenu-item route="admin.upt-comparisons.report" :active="request()->routeIs('admin.upt-comparisons.report')">
                         Lihat Laporan
                     </x-layouts.sidebar-submenu-item>
