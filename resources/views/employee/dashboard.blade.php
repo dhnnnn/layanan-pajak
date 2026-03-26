@@ -81,7 +81,7 @@
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             @php
-                $totalTarget = $dashboard->sum('target_amount');
+                $totalTarget = $dashboard->where('tax_type_parent_id', null)->sum('target_total');
                 $totalRealization = $dashboard->sum('total_realization');
                 $avgPercentage = $totalTarget > 0 ? ($totalRealization / $totalTarget) * 100 : 0;
                 $remainingTarget = max(0, $totalTarget - $totalRealization);
@@ -134,19 +134,19 @@
                                     {{ $item['tax_type_name'] }}
                                 </td>
                                 <td class="px-6 py-4 text-right font-medium text-slate-700">
-                                    {{ number_format($item['target_amount'], 0, ',', '.') }}
+                                    {{ number_format($item['target_total'], 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-right text-slate-500">
-                                    {{ number_format($item['q1'], 0, ',', '.') }}
+                                    {{ number_format($item['realizations']['q1'], 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-right text-slate-500">
-                                    {{ number_format($item['q2'], 0, ',', '.') }}
+                                    {{ number_format($item['realizations']['q2'], 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-right text-slate-500">
-                                    {{ number_format($item['q3'], 0, ',', '.') }}
+                                    {{ number_format($item['realizations']['q3'], 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-right text-slate-500 border-r border-slate-100">
-                                    {{ number_format($item['q4'], 0, ',', '.') }}
+                                    {{ number_format($item['realizations']['q4'], 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-right font-bold text-emerald-700 bg-emerald-50/30">
                                     {{ number_format($item['total_realization'], 0, ',', '.') }}

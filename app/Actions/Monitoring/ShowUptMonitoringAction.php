@@ -3,6 +3,7 @@
 namespace App\Actions\Monitoring;
 
 use App\Models\TaxRealization;
+use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\Upt;
 use App\Models\UptComparison;
@@ -33,21 +34,32 @@ class ShowUptMonitoringAction
             ->where('year', $year)
             ->sum('target_amount');
 
-        $employeeIds = $upt->users->pluck('id');
+        $employeeDistricts = $upt->users->mapWithKeys(
+            fn ($u) => [$u->id => $u->districts->pluck('id')]
+        );
 
-        $yearlyTotals = TaxRealization::query()
-            ->whereIn('user_id', $employeeIds)
+        $legacyTotals = TaxRealization::query()
+            ->whereIn('district_id', $employeeDistricts->flatten())
             ->where('year', $year)
             ->get()
-            ->groupBy('user_id')
-            ->map(fn (Collection $realizations): float => (float) $realizations->sum(
+            ->groupBy('district_id')
+            ->map(fn (Collection $recs): float => (float) $recs->sum(
                 fn ($r) => $r->january + $r->february + $r->march + $r->april
                     + $r->may + $r->june + $r->july + $r->august
                     + $r->september + $r->october + $r->november + $r->december
             ));
 
-        $employeeData = $upt->users->map(function ($employee) use ($yearlyTotals, $uptTarget): array {
-            $yearlyTotal = $yearlyTotals->get($employee->id, 0.0);
+        $dailyTotals = TaxRealizationDailyEntry::query()
+            ->whereIn('district_id', $employeeDistricts->flatten())
+            ->whereYear('entry_date', $year)
+            ->selectRaw('district_id, SUM(amount) as total')
+            ->groupBy('district_id')
+            ->pluck('total', 'district_id')
+            ->map(fn ($t) => (float) $t);
+
+        $employeeData = $upt->users->map(function ($employee) use ($legacyTotals, $dailyTotals, $uptTarget, $employeeDistricts): array {
+            $assignedIds = $employeeDistricts->get($employee->id, collect())->toArray();
+            $yearlyTotal = (float) ($legacyTotals->only($assignedIds)->sum() + $dailyTotals->only($assignedIds)->sum());
 
             return [
                 'employee' => $employee,

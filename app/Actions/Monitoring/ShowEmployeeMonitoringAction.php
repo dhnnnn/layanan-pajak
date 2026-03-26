@@ -36,11 +36,20 @@ class ShowEmployeeMonitoringAction
             ->where('year', $year)
             ->sum('target_amount');
 
-        $yearlyTotal = (float) TaxRealization::query()
-            ->where('user_id', $employee->id)
+        $assignedDistrictIds = $employee->districts->pluck('id');
+
+        $legacyTotal = (float) TaxRealization::query()
+            ->whereIn('district_id', $assignedDistrictIds)
             ->where('year', $year)
             ->selectRaw('SUM(january+february+march+april+may+june+july+august+september+october+november+december) as total')
             ->value('total') ?? 0;
+
+        $dailyTotal = (float) TaxRealizationDailyEntry::query()
+            ->whereIn('district_id', $assignedDistrictIds)
+            ->whereYear('entry_date', $year)
+            ->sum('amount');
+
+        $yearlyTotal = $legacyTotal + $dailyTotal;
 
         $monthlyEntries = TaxRealizationDailyEntry::query()
             ->where('user_id', $employee->id)

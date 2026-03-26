@@ -36,7 +36,7 @@
         </div>
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
             <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Total Realisasi {{ $year }}</p>
-            <p class="text-2xl font-bold text-green-600">Rp {{ number_format(array_sum($uptTotals), 0, ',', '.') }}</p>
+            <p class="text-2xl font-bold text-green-600">Rp {{ number_format($uptTotals->sum(), 0, ',', '.') }}</p>
         </div>
     </div>
 

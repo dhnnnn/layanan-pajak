@@ -3,6 +3,7 @@
 namespace App\Actions\Monitoring;
 
 use App\Models\TaxRealization;
+use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\Upt;
 use App\Models\UptComparison;
@@ -30,24 +31,34 @@ class ListUptMonitoringAction
             ->orderBy('code')
             ->get();
 
-        $userIdsByUpt = $upts->mapWithKeys(
-            fn (Upt $upt) => [$upt->id => $upt->users->pluck('id')]
+        $districtIdsByUpt = $upts->mapWithKeys(
+            fn (Upt $upt) => [$upt->id => $upt->districts->pluck('id')]
         );
 
-        $allRealizationTotals = TaxRealization::query()
-            ->whereIn('user_id', $userIdsByUpt->flatten())
+        $legacyTotals = TaxRealization::query()
+            ->whereIn('district_id', $districtIdsByUpt->flatten())
             ->where('year', $year)
             ->get()
-            ->groupBy('user_id')
-            ->map(fn (Collection $realizations) => $realizations->sum(
+            ->groupBy('district_id')
+            ->map(fn (Collection $recs) => $recs->sum(
                 fn ($r) => (float) ($r->january + $r->february + $r->march + $r->april
                     + $r->may + $r->june + $r->july + $r->august
                     + $r->september + $r->october + $r->november + $r->december)
             ));
 
-        $uptTotals = $userIdsByUpt->map(
-            fn (Collection $ids) => $allRealizationTotals->only($ids->toArray())->sum()
-        );
+        $dailyTotals = TaxRealizationDailyEntry::query()
+            ->whereIn('district_id', $districtIdsByUpt->flatten())
+            ->whereYear('entry_date', $year)
+            ->selectRaw('district_id, SUM(amount) as total')
+            ->groupBy('district_id')
+            ->pluck('total', 'district_id')
+            ->map(fn ($total) => (float) $total);
+
+        $uptTotals = $districtIdsByUpt->map(function (Collection $ids) use ($legacyTotals, $dailyTotals) {
+            $idsArray = $ids->toArray();
+
+            return (float) ($legacyTotals->only($idsArray)->sum() + $dailyTotals->only($idsArray)->sum());
+        });
 
         $uptTargetIds = $upts->pluck('id');
         $uptTargetsData = UptComparison::query()

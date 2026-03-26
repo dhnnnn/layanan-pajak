@@ -5,6 +5,7 @@ namespace App\Actions\Tax;
 use App\Models\TaxRealization;
 use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxType;
+use App\Models\Upt;
 use Illuminate\Support\Collection;
 
 class GenerateTaxDashboardAction
@@ -27,10 +28,11 @@ class GenerateTaxDashboardAction
      *     percentages: array{q1: float, q2: float, q3: float, q4: float},
      *     total_realization: float,
      *     more_less: float,
+     *     achievement_percentage: float,
      *     is_parent: bool,
      * }>
      */
-    public function __invoke(int $year): Collection
+    public function __invoke(int $year, ?string $districtId = null, ?string $uptId = null): Collection
     {
         $taxTypes = TaxType::query()
             ->with([
@@ -42,15 +44,25 @@ class GenerateTaxDashboardAction
             ->whereNull('parent_id')
             ->get();
 
+        // Determine relevant district IDs
+        $filterDistrictIds = null;
+        if ($districtId) {
+            $filterDistrictIds = [$districtId];
+        } elseif ($uptId) {
+            $filterDistrictIds = Upt::find($uptId)?->districts->pluck('id')->toArray();
+        }
+
         // 1. Fetch monthly realizations from TaxRealization (Legacy/Import source)
         $monthlyRealizations = TaxRealization::query()
             ->where('year', $year)
+            ->when($filterDistrictIds, fn ($q) => $q->whereIn('district_id', $filterDistrictIds))
             ->get()
             ->groupBy('tax_type_id');
 
         // 2. Fetch all daily entries for the year (Direct officer input source)
         $dailyRealizations = TaxRealizationDailyEntry::query()
             ->whereYear('entry_date', $year)
+            ->when($filterDistrictIds, fn ($q) => $q->whereIn('district_id', $filterDistrictIds))
             ->selectRaw('tax_type_id, MONTH(entry_date) as month, SUM(amount) as total')
             ->groupBy(['tax_type_id', 'month'])
             ->get()
@@ -73,6 +85,10 @@ class GenerateTaxDashboardAction
                 $parentData['target_total'] = $childItems->sum('target_total');
                 $parentData['total_realization'] = $childItems->sum('total_realization');
                 $parentData['more_less'] = $childItems->sum('more_less');
+                $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)(
+                    $parentData['total_realization'],
+                    $parentData['target_total']
+                );
 
                 foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
                     $parentData['targets'][$q] = $childItems->sum(fn ($c) => $c['targets'][$q]);
@@ -169,6 +185,7 @@ class GenerateTaxDashboardAction
             ],
             'total_realization' => $totalRealization,
             'more_less' => $totalRealization - $targetTotal,
+            'achievement_percentage' => ($this->calculateAchievementPercentage)($totalRealization, $targetTotal),
         ];
     }
 }
