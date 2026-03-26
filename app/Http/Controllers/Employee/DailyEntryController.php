@@ -30,7 +30,11 @@ class DailyEntryController extends Controller
             'Anda tidak memiliki akses ke kecamatan ini.',
         );
 
-        $taxTypes = TaxType::query()->orderBy('code')->get();
+        $taxTypes = TaxType::query()
+            ->whereNull('parent_id')
+            ->with(['children' => fn ($q) => $q->orderBy('code')])
+            ->orderBy('code')
+            ->get();
 
         $yearlyTotals = TaxRealizationDailyEntry::query()
             ->where('district_id', $districtId)

@@ -11,6 +11,12 @@ class CreateTaxTargetAction
      */
     public function __invoke(array $data): TaxTarget
     {
-        return TaxTarget::query()->create($data);
+        return TaxTarget::query()->updateOrCreate(
+            [
+                'tax_type_id' => $data['tax_type_id'],
+                'year' => $data['year'],
+            ],
+            $data
+        );
     }
 }

@@ -23,7 +23,7 @@
                             name="search"
                             value="{{ request('search') }}"
                             placeholder="Cari berdasarkan nama atau kode pajak..."
-                            class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-sm">
+                            class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-sm border-0">
                         <svg class="absolute left-3 top-2.5 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
@@ -36,33 +36,34 @@
                     <div class="relative" id="yearDropdownWrapper">
                         <button type="button" id="yearDropdownBtn"
                             class="w-full flex items-center justify-between px-4 py-2 rounded-lg bg-slate-50 text-slate-700 text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                            <span id="yearDropdownLabel">{{ request('year') ?: 'Semua Tahun' }}</span>
+                            <span id="yearDropdownLabel">{{ request('year') ?: $year }}</span>
                             <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-                        <input type="hidden" name="year" id="yearValue" value="{{ request('year') }}">
+                        <input type="hidden" name="year" id="yearValue" value="{{ request('year', $year) }}">
 
                         <div id="yearDropdownMenu" class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                             <ul id="yearList" class="max-h-48 overflow-y-auto py-1">
-                                <li>
-                                    <button type="button" data-value="" class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ !request('year') ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
-                                        Semua Tahun
-                                    </button>
-                                </li>
-                                @foreach($availableYears as $availableYear)
+                                @forelse($availableYears as $availableYear)
                                     <li>
-                                        <button type="button" data-value="{{ $availableYear }}" class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ request('year') == $availableYear ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
+                                        <button type="button" data-value="{{ $availableYear }}" class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ request('year', $year) == $availableYear ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
                                             {{ $availableYear }}
                                         </button>
                                     </li>
-                                @endforeach
+                                @empty
+                                    <li>
+                                        <button type="button" data-value="{{ date('Y') }}" class="year-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 font-semibold text-blue-600">
+                                            {{ date('Y') }}
+                                        </button>
+                                    </li>
+                                @endforelse
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                @if(request()->hasAny(['search', 'year']))
+                @if(request()->filled('search') || (request()->filled('year') && request('year') != date('Y')))
                     <a href="{{ route('admin.tax-targets.index') }}" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold rounded-lg transition-colors shrink-0">
                         Reset
                     </a>
@@ -72,154 +73,122 @@
     </div>
 
     <script>
-        const form = document.getElementById('filterForm');
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('filterForm');
+            const searchInput = document.getElementById('search');
 
-        // Debounced search
-        let searchTimeout;
-        document.getElementById('search').addEventListener('input', function () {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => form.submit(), 500);
-        });
+            // Debounced search
+            let searchTimeout;
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => form.submit(), 700);
+            });
 
-        // Searchable year dropdown
-        const btn = document.getElementById('yearDropdownBtn');
-        const menu = document.getElementById('yearDropdownMenu');
-        const yearValue = document.getElementById('yearValue');
-        const yearLabel = document.getElementById('yearDropdownLabel');
+            // Year dropdown logic
+            const btn = document.getElementById('yearDropdownBtn');
+            const menu = document.getElementById('yearDropdownMenu');
+            const yearValueInput = document.getElementById('yearValue');
+            const yearLabel = document.getElementById('yearDropdownLabel');
 
-        btn.addEventListener('click', function () {
-            menu.classList.toggle('hidden');
-        });
+            if (btn && menu) {
+                btn.addEventListener('click', function () {
+                    menu.classList.toggle('hidden');
+                });
 
-        document.addEventListener('click', function (e) {
-            if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
-                menu.classList.add('hidden');
+                document.addEventListener('click', function (e) {
+                    if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
+                        menu.classList.add('hidden');
+                    }
+                });
+
+                document.querySelectorAll('.year-option').forEach(function (opt) {
+                    opt.addEventListener('click', function () {
+                        yearValueInput.value = this.dataset.value;
+                        yearLabel.textContent = this.textContent.trim();
+                        menu.classList.add('hidden');
+                        form.submit();
+                    });
+                });
             }
         });
-
-        yearSearch.addEventListener('input', function () {
-            const q = this.value.toLowerCase();
-            document.querySelectorAll('#yearList li').forEach(function (li) {
-                const text = li.textContent.trim().toLowerCase();
-                li.style.display = text.includes(q) ? '' : 'none';
-            });
-        });
-
-        yearSearch.addEventListener('input', function () {
-            const q = this.value.toLowerCase();
-            document.querySelectorAll('#yearList li').forEach(function (li) {
-                const text = li.textContent.trim().toLowerCase();
-                li.style.display = text.includes(q) ? '' : 'none';
-            });
-        });
-
-        document.querySelectorAll('.year-option').forEach(function (opt) {
-            opt.addEventListener('click', function () {
-                yearValue.value = this.dataset.value;
-                yearLabel.textContent = this.textContent.trim();
-                menu.classList.add('hidden');
-                form.submit();
-            });
-        });
-
     </script>
-
-    @if(request()->hasAny(['search', 'year']))
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-medium text-blue-900">Filter aktif:</span>
-                    @if(request('search'))
-                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-white border border-blue-300 rounded-full text-sm text-blue-700">
-                            Pencarian: "{{ request('search') }}"
-                        </span>
-                    @endif
-                    @if(request('year'))
-                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-white border border-blue-300 rounded-full text-sm text-blue-700">
-                            Tahun {{ request('year') }}
-                        </span>
-                    @endif
-                    <span class="text-sm text-blue-700">({{ $taxTypes->total() }} data)</span>
-                </div>
-                <a href="{{ route('admin.tax-targets.index') }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Hapus semua filter</a>
-            </div>
-        </div>
-    @endif
 
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
                 <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
                     <tr>
-                        <th class="px-4 py-3">No.</th>
-                        <th class="px-4 py-3">Jenis Pajak</th>
-                        <th class="px-4 py-3 text-right">Target APBD</th>
-                        <th class="px-4 py-3 text-right">Q1</th>
-                        <th class="px-4 py-3 text-right">Q2</th>
-                        <th class="px-4 py-3 text-right">Q3</th>
-                        <th class="px-4 py-3 text-right">Q4</th>
-                        <th class="px-4 py-3 text-right">Aksi</th>
+                        <th class="px-6 py-4">Jenis Pajak</th>
+                        <th class="px-6 py-4 text-right">Target APBD ({{ $year }})</th>
+                        <th class="px-6 py-4 text-right">Q1</th>
+                        <th class="px-6 py-4 text-right">Q2</th>
+                        <th class="px-6 py-4 text-right">Q3</th>
+                        <th class="px-6 py-4 text-right border-r border-slate-100">Q4</th>
+                        <th class="px-6 py-4 text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200">
+                <tbody class="divide-y divide-slate-200 text-xs md:text-sm">
                     @forelse($taxTypes as $taxType)
-                        @php $target = $targets[$taxType->id] ?? null; @endphp
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-3 py-3 text-slate-500">{{ $taxTypes->firstItem() + $loop->index }}</td>
-                            <td class="px-3 py-3">
-                                <div class="font-medium text-slate-800">{{ $taxType->name }}</div>
-                                <div class="text-[10px] text-slate-400 font-mono">{{ $taxType->code }}</div>
+                        {{-- Parent row --}}
+                        @php $parentTarget = $targets[$taxType->id] ?? null; @endphp
+                        <tr class="bg-slate-50/60 hover:bg-slate-100/60 transition-colors font-semibold">
+                            <td class="px-6 py-3.5 text-slate-900 border-r border-slate-100">
+                                <div class="flex items-center gap-2">
+                                    <span>{{ $taxType->name }}</span>
+                                    @if($taxType->children->isNotEmpty())
+                                        <span class="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-[10px] rounded uppercase tracking-wider">Total</span>
+                                    @endif
+                                </div>
                             </td>
-                            <td class="px-3 py-3 text-right font-semibold text-blue-600">
-                                @if($target)
-                                    Rp {{ number_format($target->target_amount, 0, ',', '.') }}
+                            <td class="px-6 py-3.5 text-right font-bold text-blue-700 bg-blue-50/20">
+                                @if($parentTarget)
+                                    Rp {{ number_format($parentTarget->target_amount, 0, ',', '.') }}
                                 @else
-                                    <span class="text-slate-300 text-xs">—</span>
-                                @endif
-                            </td>                            <td class="px-3 py-3 text-right">
-                                @if($target)
-                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q1_target ?? ($target->target_amount * 0.25), 0, ',', '.') }}</div>
-                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ1Percentage(), 1) }}%</div>
-                                @else
-                                    <span class="text-slate-300 text-xs">—</span>
+                                    <span class="text-slate-300">—</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-3 text-right">
-                                @if($target)
-                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q2_target ?? ($target->target_amount * 0.50), 0, ',', '.') }}</div>
-                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ2Percentage(), 1) }}%</div>
+                            <td class="px-6 py-3.5 text-right text-slate-600">
+                                @if($parentTarget)
+                                    Rp {{ number_format($parentTarget->q1_target ?? ($parentTarget->target_amount * 0.25), 0, ',', '.') }}
                                 @else
-                                    <span class="text-slate-300 text-xs">—</span>
+                                    <span class="text-slate-300">—</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-3 text-right">
-                                @if($target)
-                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q3_target ?? ($target->target_amount * 0.75), 0, ',', '.') }}</div>
-                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ3Percentage(), 1) }}%</div>
+                            <td class="px-6 py-3.5 text-right text-slate-600">
+                                @if($parentTarget)
+                                    Rp {{ number_format($parentTarget->q2_target ?? ($parentTarget->target_amount * 0.50), 0, ',', '.') }}
                                 @else
-                                    <span class="text-slate-300 text-xs">—</span>
+                                    <span class="text-slate-300">—</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-3 text-right">
-                                @if($target)
-                                    <div class="text-slate-600 text-xs">Rp {{ number_format($target->q4_target ?? $target->target_amount, 0, ',', '.') }}</div>
-                                    <div class="text-[10px] text-slate-400">{{ number_format($target->getQ4Percentage(), 1) }}%</div>
+                            <td class="px-6 py-3.5 text-right text-slate-600">
+                                @if($parentTarget)
+                                    Rp {{ number_format($parentTarget->q3_target ?? ($parentTarget->target_amount * 0.75), 0, ',', '.') }}
                                 @else
-                                    <span class="text-slate-300 text-xs">—</span>
+                                    <span class="text-slate-300">—</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-3 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    @if($target)
-                                        <a href="{{ route('admin.tax-targets.edit', $target) }}" class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                            <td class="px-6 py-3.5 text-right text-slate-600 border-r border-slate-100">
+                                @if($parentTarget)
+                                    Rp {{ number_format($parentTarget->q4_target ?? $parentTarget->target_amount, 0, ',', '.') }}
+                                @else
+                                    <span class="text-slate-300">—</span>
+                                @endif
+                            </td>
+                            <td class="px-3 py-3.5 text-right">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    @if($taxType->children->isNotEmpty())
+                                        <span class="text-[10px] text-slate-400 italic px-2">Akumulasi subbab</span>
+                                    @elseif($parentTarget)
+                                        <a href="{{ route('admin.tax-targets.edit', $parentTarget) }}" class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Target">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </a>
-                                        <form action="{{ route('admin.tax-targets.destroy', $target) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?')">
+                                        <form action="{{ route('admin.tax-targets.destroy', $parentTarget) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus target ini?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors" title="Hapus">
+                                            <button type="submit" class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Target">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                                 </svg>
@@ -227,28 +196,101 @@
                                         </form>
                                     @else
                                         <a href="{{ route('admin.tax-targets.create', ['tax_type_id' => $taxType->id, 'year' => $year]) }}"
-                                            class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Tambah Target">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase rounded-lg hover:bg-blue-100 transition-colors">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                             </svg>
+                                            Buat Target
                                         </a>
                                     @endif
                                 </div>
                             </td>
                         </tr>
+
+                        {{-- Children rows --}}
+                        @foreach($taxType->children as $child)
+                            @php $childTarget = $targets[$child->id] ?? null; @endphp
+                            <tr class="hover:bg-slate-50 transition-colors border-l-2 border-purple-200">
+                                <td class="px-8 py-3 text-slate-700 border-r border-slate-100">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-slate-300 text-sm">↳</span>
+                                        <span>{{ $child->name }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-3 text-right text-blue-600 font-medium">
+                                    @if($childTarget)
+                                        Rp {{ number_format($childTarget->target_amount, 0, ',', '.') }}
+                                    @else
+                                        <span class="text-slate-300">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-3 text-right text-slate-500 text-[13px]">
+                                    @if($childTarget)
+                                        Rp {{ number_format($childTarget->q1_target ?? ($childTarget->target_amount * 0.25), 0, ',', '.') }}
+                                    @else
+                                        <span class="text-slate-300">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-3 text-right text-slate-500 text-[13px]">
+                                    @if($childTarget)
+                                        Rp {{ number_format($childTarget->q2_target ?? ($childTarget->target_amount * 0.50), 0, ',', '.') }}
+                                    @else
+                                        <span class="text-slate-300">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-3 text-right text-slate-500 text-[13px]">
+                                    @if($childTarget)
+                                        Rp {{ number_format($childTarget->q3_target ?? ($childTarget->target_amount * 0.75), 0, ',', '.') }}
+                                    @else
+                                        <span class="text-slate-300">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-3 text-right text-slate-500 text-[13px] border-r border-slate-100">
+                                    @if($childTarget)
+                                        Rp {{ number_format($childTarget->q4_target ?? $childTarget->target_amount, 0, ',', '.') }}
+                                    @else
+                                        <span class="text-slate-300">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        @if($childTarget)
+                                            <a href="{{ route('admin.tax-targets.edit', $childTarget) }}" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="Edit subbab">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                </svg>
+                                            </a>
+                                            <form action="{{ route('admin.tax-targets.destroy', $childTarget) }}" method="POST" onsubmit="return confirm('Hapus target subbab \'{{ $child->name }}\'?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Hapus subbab">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <a href="{{ route('admin.tax-targets.create', ['tax_type_id' => $child->id, 'year' => $year]) }}"
+                                                class="inline-flex items-center gap-1 px-2 py-1 bg-white border border-blue-100 text-blue-500 text-[10px] font-bold uppercase rounded-lg hover:bg-blue-50 transition-colors">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                                Target
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-10 text-center text-slate-500">
+                            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
                                 <div class="flex flex-col items-center">
-                                    <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                    <svg class="w-10 h-10 mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
-                                    @if(request()->hasAny(['search', 'year']))
-                                        <p class="font-medium text-slate-700 mb-1">Tidak ada hasil yang ditemukan</p>
-                                        <a href="{{ route('admin.tax-targets.index') }}" class="mt-2 text-blue-600 hover:underline font-medium">Reset filter</a>
-                                    @else
-                                        <p>Belum ada jenis pajak yang terdaftar.</p>
-                                    @endif
+                                    <p class="text-sm font-medium">Data jenis pajak tidak ditemukan untuk tahun {{ $year }}</p>
+                                    <p class="text-xs">Coba cari dengan kata kunci lain atau ubah filter tahun.</p>
                                 </div>
                             </td>
                         </tr>

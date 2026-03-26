@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTaxTypeRequest extends FormRequest
 {
@@ -12,7 +13,7 @@ class StoreTaxTypeRequest extends FormRequest
     }
 
     /**
-     * @return array<string, list<string>>
+     * @return array<string, list<mixed>>
      */
     public function rules(): array
     {
@@ -20,7 +21,8 @@ class StoreTaxTypeRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:100'],
-            'code' => ['nullable', 'string', 'max:20', 'unique:tax_types,code,'.$taxTypeId],
+            'code' => ['nullable', 'string', 'max:20', Rule::unique('tax_types', 'code')->ignore($taxTypeId)],
+            'parent_id' => ['nullable', 'string', Rule::exists('tax_types', 'id')->whereNull('parent_id')],
         ];
     }
 
@@ -34,6 +36,7 @@ class StoreTaxTypeRequest extends FormRequest
             'name.max' => 'Nama jenis pajak maksimal 100 karakter.',
             'code.max' => 'Kode jenis pajak maksimal 20 karakter.',
             'code.unique' => 'Kode jenis pajak sudah digunakan.',
+            'parent_id.exists' => 'Induk jenis pajak tidak valid atau tidak ditemukan.',
         ];
     }
 }

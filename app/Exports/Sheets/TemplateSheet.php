@@ -25,10 +25,16 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
         $this->districtCode = $districtCode;
     }
 
+    private array $parentRows = [];
+
     /** @return array<int, array<int, mixed>> */
     public function array(): array
     {
-        $taxTypes = TaxType::query()->orderBy('code')->get();
+        $taxTypes = TaxType::query()
+            ->with(['children' => fn ($q) => $q->orderBy('code')])
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
 
         $rows = [];
 
@@ -51,7 +57,7 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
         // Row 2: Sub Headers (this is the heading row for import)
         $header2 = array_fill(0, 50, null);
         $header2[0] = 'uraian'; // Column name for import
-        $header2[1] = 'target_apbd_2026'; // Column name for import
+        $header2[1] = 'target_apbd_'.$this->year; // Column name for import
         // Triwulan I (cols 2-5)
         $header2[2] = 'q1_target';
         $header2[3] = 'q1_target_pct';
@@ -80,19 +86,30 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
 
         $rows[] = $header2;
 
-        // Data Rows - Pre-fill with existing tax types
         foreach ($taxTypes as $taxType) {
-            $dataRow = array_fill(0, 50, null);
-            $dataRow[0] = $taxType->name;
+            // Parent Row
+            $this->parentRows[] = count($rows) + 1; // 1-indexed for spreadsheet
+            $rows[] = $this->formatRowData($taxType->name, $taxType->code);
 
-            // Pre-fill hidden metadata
-            $dataRow[19] = $taxType->code;
-            $dataRow[20] = $this->year;
-
-            $rows[] = $dataRow;
+            // Children Rows
+            if ($taxType->children->isNotEmpty()) {
+                foreach ($taxType->children as $child) {
+                    $rows[] = $this->formatRowData(" - {$child->name}", $child->code);
+                }
+            }
         }
 
         return $rows;
+    }
+
+    private function formatRowData(string $name, string $code): array
+    {
+        $dataRow = array_fill(0, 50, null);
+        $dataRow[0] = $name;
+        $dataRow[19] = $code;
+        $dataRow[20] = $this->year;
+
+        return $dataRow;
     }
 
     /** @return array<string, int|float> */
@@ -187,7 +204,7 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
         ]);
 
         // Add dropdown validation for URAIAN column
-        $taxTypeNames = $taxTypes->pluck('name')->toArray();
+        $taxTypeNames = TaxType::query()->orderBy('name')->pluck('name')->toArray();
         $taxTypeList = '"'.implode(',', $taxTypeNames).'"';
 
         for ($row = 3; $row <= $lastRow; $row++) {
@@ -204,6 +221,9 @@ class TemplateSheet implements FromArray, WithColumnWidths, WithStyles, WithTitl
             $validation->setPrompt('Pilih jenis pajak dari dropdown atau ketik nama yang sesuai dengan daftar.');
             $validation->setFormula1($taxTypeList);
         }
+
+        // Format entire Column A as Text explicitly using the '@' format code
+        $sheet->getStyle('A')->getNumberFormat()->setFormatCode('@');
 
         // Hide metadata columns (19-20)
         for ($i = 19; $i <= 20; $i++) {

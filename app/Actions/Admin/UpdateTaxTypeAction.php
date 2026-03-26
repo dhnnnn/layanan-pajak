@@ -7,7 +7,7 @@ use App\Models\TaxType;
 class UpdateTaxTypeAction
 {
     /**
-     * @param  array{name: string, code: string}  $data
+     * @param  array{name: string, parent_id?: string|null}  $data
      */
     public function __invoke(array $data, TaxType $taxType): TaxType
     {

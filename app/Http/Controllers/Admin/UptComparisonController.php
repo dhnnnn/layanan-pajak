@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Upt\GenerateComparisonReportAction;
 use App\Actions\Upt\ImportUptComparisonAction;
 use App\Actions\Upt\PreviewUptComparisonAction;
 use App\Exports\TaxRealizationTemplateExport;
@@ -9,11 +10,7 @@ use App\Exports\UptComparisonReportExport;
 use App\Exports\UptComparisonTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ImportUptComparisonRequest;
-use App\Models\TaxRealizationDailyEntry;
-use App\Models\TaxTarget;
-use App\Models\TaxType;
 use App\Models\Upt;
-use App\Models\UptComparison;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -30,7 +27,7 @@ class UptComparisonController extends Controller
 
     public function downloadTemplate(Request $request): BinaryFileResponse
     {
-        $type = $request->query('type', 'apbd'); // 'apbd' or 'upt'
+        $type = $request->query('type', 'apbd');
         $year = $request->integer('year', (int) date('Y'));
 
         if ($type === 'upt') {
@@ -42,7 +39,6 @@ class UptComparisonController extends Controller
             );
         }
 
-        // Default: APBD template
         $filename = 'template-target-apbd-'.$year.'.xlsx';
 
         return Excel::download(
@@ -87,11 +83,10 @@ class UptComparisonController extends Controller
         $importLog = $importAction(
             storedPath: $storedPath,
             originalFileName: $request->string('file_name')->toString(),
-            user: auth()->user(),
+            user: $request->user(),
             year: $request->integer('year'),
         );
 
-        // Clean up stored file
         Storage::disk('local')->delete($storedPath);
 
         return redirect()
@@ -99,78 +94,14 @@ class UptComparisonController extends Controller
             ->with('success', "Import selesai. Berhasil: {$importLog->success_rows}, Gagal: {$importLog->failed_rows}");
     }
 
-    public function report(Request $request): View
+    public function report(Request $request, GenerateComparisonReportAction $generateReport): View
     {
         $year = $request->integer('year', (int) date('Y'));
         $search = $request->string('search')->trim();
 
-        $upts = Upt::query()->orderBy('code')->get();
+        $result = $generateReport($year, $search);
 
-        $taxTypes = TaxType::query()
-            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            }))
-            ->orderBy('name')
-            ->paginate(8)
-            ->withQueryString();
-
-        // Pre-load targets for the current year
-        $targets = TaxTarget::query()
-            ->where('year', $year)
-            ->pluck('target_amount', 'tax_type_id');
-
-        // Pre-load UPT targets: upt_id -> tax_type_id -> target_amount
-        $uptTargets = UptComparison::query()
-            ->where('year', $year)
-            ->get()
-            ->groupBy('upt_id')
-            ->map(fn ($rows) => $rows->pluck('target_amount', 'tax_type_id')->map(fn ($v) => (float) $v)->toArray())
-            ->toArray();
-
-        // Load realization totals from daily entries, grouped by UPT + tax type
-        // upt_id -> tax_type_id -> total
-        $uptRealizationTotals = [];
-        foreach ($upts as $upt) {
-            $userIds = $upt->users()->role('pegawai')->pluck('users.id');
-
-            $totals = TaxRealizationDailyEntry::query()
-                ->whereIn('user_id', $userIds)
-                ->whereYear('entry_date', $year)
-                ->selectRaw('tax_type_id, SUM(amount) as total')
-                ->groupBy('tax_type_id')
-                ->pluck('total', 'tax_type_id');
-
-            $uptRealizationTotals[$upt->id] = $totals->map(fn ($v) => (float) $v)->toArray();
-        }
-
-        // Grand totals across all tax types (not paginated)
-        $grandTotalTarget = 0.0;
-        $grandTotalUpt = [];
-        $grandTotalUptTarget = [];
-        $grandTotalAllUpt = 0.0;
-
-        foreach ($upts as $upt) {
-            $grandTotalUpt[$upt->id] = array_sum($uptRealizationTotals[$upt->id] ?? []);
-            $grandTotalAllUpt += $grandTotalUpt[$upt->id];
-            $grandTotalUptTarget[$upt->id] = (float) UptComparison::query()
-                ->where('upt_id', $upt->id)
-                ->where('year', $year)
-                ->sum('target_amount');
-        }
-        $grandTotalTarget = (float) TaxTarget::query()->where('year', $year)->sum('target_amount');
-
-        $availableYears = TaxTarget::query()
-            ->select('year')
-            ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year');
-
-        return view('admin.upt-comparisons.report', compact(
-            'upts', 'year', 'taxTypes', 'targets', 'availableYears',
-            'uptRealizationTotals', 'uptTargets', 'grandTotalTarget', 'grandTotalUpt',
-            'grandTotalUptTarget', 'grandTotalAllUpt'
-        ));
+        return view('admin.upt-comparisons.report', $result);
     }
 
     public function exportReport(Request $request): BinaryFileResponse

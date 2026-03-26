@@ -59,8 +59,13 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
             ->map(fn ($rows) => $rows->pluck('target_amount', 'tax_type_id')->map(fn ($v) => (float) $v)->toArray())
             ->toArray();
 
-        // Row 1: main header (UPT names will be merged via events)
-        // Col layout: NO | JENIS PAJAK | TARGET APBD | [UPT1 TARGET | UPT1 REALISASI] x N | TOTAL REALISASI | % TARGET | % SELISIH | SELISIH
+        // Build APBD targets: tax_type_id -> target_amount
+        $apbdTargets = TaxTarget::query()
+            ->where('year', $this->year)
+            ->pluck('target_amount', 'tax_type_id')
+            ->toArray();
+
+        // Headers
         $header1 = ['NO.', 'JENIS PAJAK', "TARGET APBD {$this->year}"];
         foreach ($this->upts as $upt) {
             $header1[] = strtoupper($upt->name);
@@ -72,7 +77,6 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
         $header1[] = 'SELISIH (RP.)';
         $rows[] = $header1;
 
-        // Row 2: sub-header
         $header2 = ['', '', ''];
         foreach ($this->upts as $upt) {
             $header2[] = 'TARGET';
@@ -84,37 +88,88 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
         $header2[] = '';
         $rows[] = $header2;
 
-        // Data rows
-        $taxTypes = TaxType::query()->orderBy('name')->get();
+        // Hierarchical Data Rows
+        $parents = TaxType::query()->whereNull('parent_id')->with(['children' => fn ($q) => $q->orderBy('code')])->orderBy('code')->get();
         $no = 1;
 
-        foreach ($taxTypes as $taxType) {
-            $apbdTarget = (float) (TaxTarget::query()
-                ->where('tax_type_id', $taxType->id)
-                ->where('year', $this->year)
-                ->value('target_amount') ?? 0);
+        foreach ($parents as $parent) {
+            $hasChildren = $parent->children->isNotEmpty();
 
-            $totalRealisasi = 0;
-            $row = [$no++, $taxType->name, $apbdTarget];
+            // Calculate parent totals
+            $pTarget = 0;
+            $pRealization = 0;
+            $pUptAmounts = [];
+            $pUptTargets = [];
 
             foreach ($this->upts as $upt) {
-                $uptTarget = (float) ($uptTargets[$upt->id][$taxType->id] ?? 0);
-                $realisasi = (float) ($uptTotals[$upt->id][$taxType->id] ?? 0);
-                $row[] = $uptTarget;
-                $row[] = $realisasi;
-                $totalRealisasi += $realisasi;
+                $pUptAmounts[$upt->id] = 0;
+                $pUptTargets[$upt->id] = 0;
             }
 
-            $percentTarget = $apbdTarget > 0 ? round(($totalRealisasi / $apbdTarget) * 100, 1) : 0;
-            $selisih = $apbdTarget - $totalRealisasi;
-            $percentSelisih = $apbdTarget > 0 ? round(($selisih / $apbdTarget) * 100, 1) : 0;
+            if ($hasChildren) {
+                foreach ($parent->children as $child) {
+                    $pTarget += (float) ($apbdTargets[$child->id] ?? 0);
+                    foreach ($this->upts as $upt) {
+                        $childReal = (float) ($uptTotals[$upt->id][$child->id] ?? 0);
+                        $pUptAmounts[$upt->id] += $childReal;
+                        $pRealization += $childReal;
+                        $pUptTargets[$upt->id] += (float) ($uptTargets[$upt->id][$child->id] ?? 0);
+                    }
+                }
+            } else {
+                $pTarget = (float) ($apbdTargets[$parent->id] ?? 0);
+                foreach ($this->upts as $upt) {
+                    $real = (float) ($uptTotals[$upt->id][$parent->id] ?? 0);
+                    $pUptAmounts[$upt->id] = $real;
+                    $pRealization += $real;
+                    $pUptTargets[$upt->id] = (float) ($uptTargets[$upt->id][$parent->id] ?? 0);
+                }
+            }
 
-            $row[] = $totalRealisasi;
-            $row[] = $percentTarget.'%';
-            $row[] = $percentSelisih.'%';
-            $row[] = $selisih;
+            // Parent Row Row Data
+            $pPercentTarget = $pTarget > 0 ? round(($pRealization / $pTarget) * 100, 1) : 0;
+            $pSelisih = $pTarget - $pRealization;
+            $pPercentSelisih = $pTarget > 0 ? round(($pSelisih / $pTarget) * 100, 1) : 0;
+
+            $row = [$no++, $parent->name, $pTarget];
+            foreach ($this->upts as $upt) {
+                $row[] = $pUptTargets[$upt->id];
+                $row[] = $pUptAmounts[$upt->id];
+            }
+            $row[] = $pRealization;
+            $row[] = $pPercentTarget.'%';
+            $row[] = $pPercentSelisih.'%';
+            $row[] = $pSelisih;
 
             $rows[] = $row;
+
+            // Children Rows
+            if ($hasChildren) {
+                foreach ($parent->children as $child) {
+                    $cTarget = (float) ($apbdTargets[$child->id] ?? 0);
+                    $cRealization = 0;
+                    $cRow = ['', '- '.$child->name, $cTarget];
+
+                    foreach ($this->upts as $upt) {
+                        $uptT = (float) ($uptTargets[$upt->id][$child->id] ?? 0);
+                        $uptR = (float) ($uptTotals[$upt->id][$child->id] ?? 0);
+                        $cRow[] = $uptT;
+                        $cRow[] = $uptR;
+                        $cRealization += $uptR;
+                    }
+
+                    $cPercentTarget = $cTarget > 0 ? round(($cRealization / $cTarget) * 100, 1) : 0;
+                    $cSelisih = $cTarget - $cRealization;
+                    $cPercentSelisih = $cTarget > 0 ? round(($cSelisih / $cTarget) * 100, 1) : 0;
+
+                    $cRow[] = $cRealization;
+                    $cRow[] = $cPercentTarget.'%';
+                    $cRow[] = $cPercentSelisih.'%';
+                    $cRow[] = $cSelisih;
+
+                    $rows[] = $cRow;
+                }
+            }
         }
 
         return $rows;
@@ -197,10 +252,8 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
                 'borders' => ['allBorders' => $thinBlack],
             ]);
 
-            // Number format for currency columns (C onwards except % cols)
+            // Number format for currency columns
             $summaryStart = 4 + ($uptCount * 2);
-            $percentTargetCol = Coordinate::stringFromColumnIndex($summaryStart + 1);
-            $percentSelisihCol = Coordinate::stringFromColumnIndex($summaryStart + 2);
 
             $sheet->getStyle("C3:C{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
@@ -215,6 +268,14 @@ class UptComparisonReportExport implements FromArray, WithColumnWidths, WithEven
             $sheet->getStyle("{$selisihCol}3:{$selisihCol}{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
 
             $sheet->getStyle("B3:B{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+            // Bold parent rows (where NO column is not empty)
+            for ($row = 3; $row <= $lastRow; $row++) {
+                $noValue = $sheet->getCell("A{$row}")->getValue();
+                if (! empty($noValue)) {
+                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getFont()->setBold(true);
+                }
+            }
         }
 
         $sheet->getRowDimension(1)->setRowHeight(25);

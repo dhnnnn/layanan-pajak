@@ -36,6 +36,8 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
     /** @var list<array<string, mixed>> */
     private array $previewData = [];
 
+    private ?TaxType $lastParent = null;
+
     public function __construct(
         private readonly ?ImportLog $importLog = null,
         private readonly ?User $user = null,
@@ -60,6 +62,8 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
 
         /** @var Collection<string, TaxType> $taxTypes */
         $taxTypes = TaxType::query()->get()->keyBy('code');
+
+        $this->lastParent = null;
 
         /** @var Collection<int, District> $districts */
         $districts = District::query()->get();
@@ -101,11 +105,14 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
 
                 // 1. Resolve Tax Type - auto-create if not exists
                 $taxTypeCode = trim((string) ($rowArray['kode_jenis_pajak'] ?? ''));
+                $isSubCategory = str_starts_with(trim($uraian), '-');
+                $parentId = $isSubCategory ? $this->lastParent?->id : null;
+                $cleanUraian = $this->cleanUraian($uraian);
+
                 $taxType = $taxTypes->get($taxTypeCode);
 
                 // If no code match, try matching by name
                 if ($taxType === null) {
-                    $cleanUraian = $this->cleanUraian($uraian);
                     foreach ($taxTypes as $type) {
                         if ($type && $type->name && $this->cleanUraian($type->name) === $cleanUraian) {
                             $taxType = $type;
@@ -122,17 +129,21 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
                         continue;
                     }
 
-                    // Auto-create tax type - use unique code with microtime
-                    $newCode = 'TAX-'.strtoupper(substr($uraian, 0, 3)).'-'.str_replace('.', '', microtime(true));
+                    // Auto-create tax type - use unique code generation in model boot
                     $taxType = TaxType::create([
-                        'code' => $newCode,
-                        'name' => $uraian,
+                        'name' => $isSubCategory ? ltrim($uraian, '- ') : $uraian,
+                        'parent_id' => $parentId,
                         'description' => 'Dibuat otomatis dari import',
                     ]);
                     $taxTypeCode = $taxType->code;
 
                     // Refresh taxTypes collection
                     $taxTypes = TaxType::query()->get()->keyBy('code');
+                }
+
+                // Update last parent if this is NOT a sub-category
+                if (! $isSubCategory) {
+                    $this->lastParent = $taxType;
                 }
 
                 // 2. Resolve Year
@@ -246,6 +257,8 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
             Log::info('First row keys: '.json_encode(array_keys($firstArray ?? [])));
             Log::info('First row values sample: '.json_encode(array_slice($firstArray ?? [], 0, 8, true)));
         }
+
+        $this->lastParent = null;
 
         foreach ($rows as $index => $row) {
             $rowArray = $row->toArray();
@@ -363,11 +376,12 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
 
             // 1. Resolve Tax Type - check kode_jenis_pajak first
             $taxTypeCode = trim((string) ($rowArray['kode_jenis_pajak'] ?? ''));
+            $isSubCategory = str_starts_with(trim($uraian), '-');
+            $cleanUraian = $this->cleanUraian($uraian);
             $taxType = $taxTypes->get($taxTypeCode);
 
             // If not found by code, try matching by name (uraian)
             if ($taxType === null && $uraian !== '') {
-                $cleanUraian = $this->cleanUraian($uraian);
                 foreach ($taxTypes as $type) {
                     if ($type && $type->name && $this->cleanUraian($type->name) === $cleanUraian) {
                         $taxType = $type;
@@ -376,6 +390,13 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
                     }
                 }
             }
+
+            // Update last parent in preview too, to show correct "parent" info if needed
+            if (! $isSubCategory && $taxType) {
+                $this->lastParent = $taxType;
+            }
+
+            $currentParentName = $isSubCategory ? ($this->lastParent?->name ?? 'Induk tidak ditemukan') : null;
 
             // 2. Resolve Year
             $year = (int) ($rowArray['tahun'] ?? 0);
@@ -400,9 +421,11 @@ class TaxRealizationImport implements SkipsEmptyRows, ToCollection, WithCalculat
                 'row' => $rowNumber,
                 'uraian' => $uraian,
                 'kode_jenis_pajak' => $taxTypeCode,
-                'jenis_pajak' => $taxType?->name ?? $uraian,
+                'jenis_pajak' => $taxType?->name ?? ($isSubCategory ? ltrim($uraian, '- ') : $uraian),
                 'jumlah_kecamatan' => $districtCount,
-                'keterangan' => $taxType ? "Data akan dibuat untuk {$districtCount} kecamatan" : 'Jenis pajak akan dibuat otomatis',
+                'keterangan' => $isSubCategory
+                    ? "Sub-bab dari \"{$currentParentName}\". Data akan dibuat untuk {$districtCount} kecamatan"
+                    : "Data akan dibuat untuk {$districtCount} kecamatan",
                 'tahun' => $year ?: null,
                 'target' => $targetValue,
                 'q1_target' => $q1_target,

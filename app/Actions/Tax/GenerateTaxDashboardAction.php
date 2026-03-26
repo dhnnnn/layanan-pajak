@@ -93,6 +93,7 @@ class GenerateTaxDashboardAction
                 'tax_type_id' => $taxType->id,
                 'tax_type_name' => $taxType->name,
                 'tax_type_code' => $taxType->code,
+                'tax_type_parent_id' => $taxType->parent_id,
                 'year' => $year,
                 'target_amount' => $targetAmount,
                 'q1' => $q1,
@@ -109,6 +110,8 @@ class GenerateTaxDashboardAction
                     $targetAmount,
                 ),
             ];
-        });
+        })
+            ->sortBy(fn (array $item) => $item['tax_type_parent_id'] ?? $item['tax_type_id'])
+            ->values();
     }
 }

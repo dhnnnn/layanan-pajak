@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Tax\CreateTaxTargetAction;
 use App\Actions\Tax\DeleteTaxTargetAction;
+use App\Actions\Tax\ListTaxTargetsAction;
 use App\Actions\Tax\UpdateTaxTargetAction;
 use App\Exports\TaxTargetExport;
 use App\Http\Controllers\Controller;
@@ -17,34 +18,19 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TaxTargetController extends Controller
 {
-    public function index(): View
+    public function index(ListTaxTargetsAction $listTaxTargets): View
     {
         $search = request('search');
         $year = request()->filled('year') ? (int) request('year') : (int) date('Y');
 
-        $taxTypes = TaxType::query()
-            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            }))
-            ->orderBy('name')
-            ->paginate(8)
-            ->withQueryString();
+        $result = $listTaxTargets($search, $year);
 
-        // Pre-load targets for the selected year, keyed by tax_type_id
-        $targets = TaxTarget::query()
-            ->where('year', $year)
-            ->get()
-            ->keyBy('tax_type_id');
-
-        // Get available years for filter dropdown
-        $availableYears = TaxTarget::query()
-            ->select('year')
-            ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year');
-
-        return view('admin.tax-targets.index', compact('taxTypes', 'targets', 'availableYears', 'year'));
+        return view('admin.tax-targets.index', [
+            'taxTypes' => $result['taxTypes'],
+            'targets' => $result['targets'],
+            'availableYears' => $result['availableYears'],
+            'year' => $result['year'],
+        ]);
     }
 
     public function export(): BinaryFileResponse

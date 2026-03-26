@@ -30,7 +30,7 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
     /** @return array<int, array<int, mixed>> */
     public function array(): array
     {
-        $taxTypes = TaxType::query()->orderBy('code')->get();
+        $taxTypes = TaxType::query()->whereNull('parent_id')->with(['children' => fn ($q) => $q->orderBy('code')])->orderBy('code')->get();
         $upts = Upt::query()->orderBy('code')->get();
 
         // Pre-load APBD targets keyed by tax_type_id
@@ -61,27 +61,40 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
         // Data Rows
         $no = 1;
         foreach ($taxTypes as $taxType) {
-            $dataRow = [$no++, $taxType->name, (float) ($apbdTargets[$taxType->id] ?? 0)];
+            // Parent Row
+            $rows[] = $this->formatRow($no++, $taxType->name, (float) ($apbdTargets[$taxType->id] ?? 0), $upts, $taxType->code);
 
-            // UPT columns (empty for user input)
-            foreach ($upts as $upt) {
-                $dataRow[] = null;
+            // Children Rows
+            if ($taxType->children->isNotEmpty()) {
+                foreach ($taxType->children as $child) {
+                    $rows[] = $this->formatRow(null, " - {$child->name}", (float) ($apbdTargets[$child->id] ?? 0), $upts, $child->code);
+                }
             }
-
-            // Formula columns (will be calculated)
-            $dataRow[] = null; // TOTAL UPT
-            $dataRow[] = null; // % TARGET
-            $dataRow[] = null; // % SELISIH
-            $dataRow[] = null; // SELISIH
-
-            // Hidden metadata
-            $dataRow[] = $taxType->code;
-            $dataRow[] = $this->year;
-
-            $rows[] = $dataRow;
         }
 
         return $rows;
+    }
+
+    private function formatRow(?int $no, string $name, float $target, $upts, string $code): array
+    {
+        $dataRow = [$no, $name, $target];
+
+        // UPT columns (empty for user input)
+        foreach ($upts as $upt) {
+            $dataRow[] = null;
+        }
+
+        // Formula columns
+        $dataRow[] = null; // TOTAL UPT
+        $dataRow[] = null; // % TARGET
+        $dataRow[] = null; // % SELISIH
+        $dataRow[] = null; // SELISIH
+
+        // Hidden metadata
+        $dataRow[] = $code;
+        $dataRow[] = $this->year;
+
+        return $dataRow;
     }
 
     /** @return array<string, int|float> */
@@ -153,6 +166,17 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
             $sheet->getStyle("A2:{$lastHeaderCol}{$lastRow}")->applyFromArray([
                 'borders' => ['allBorders' => $thinBlack],
             ]);
+
+            // Format JENIS PAJAK Column as Text (@) to prevent leading hyphens being interpreted as formulas
+            $sheet->getStyle('B')->getNumberFormat()->setFormatCode('@');
+
+            // Bold parent rows (where NO column is not empty)
+            for ($row = 2; $row <= $lastRow; $row++) {
+                $noValue = $sheet->getCell("A{$row}")->getValue();
+                if (! empty($noValue)) {
+                    $sheet->getStyle("A{$row}:{$lastHeaderCol}{$row}")->getFont()->setBold(true);
+                }
+            }
         }
 
         // Number formats
@@ -180,9 +204,9 @@ class UptComparisonSheet implements FromArray, WithColumnWidths, WithStyles, Wit
             $lastUptCol = Coordinate::stringFromColumnIndex($totalUptCol - 1);
 
             $sheet->setCellValue("{$totalColLetter}{$row}", "=SUM({$firstUptCol}{$row}:{$lastUptCol}{$row})");
-            $sheet->setCellValue("{$percentTargetColLetter}{$row}", "=IF(C{$row}=0,0,{$totalColLetter}{$row}/C{$row})");
+            $sheet->setCellValue("{$percentTargetColLetter}{$row}", "=IF(OR(C{$row}=0, C{$row}=\"\"),0,{$totalColLetter}{$row}/C{$row})");
             $sheet->setCellValue("{$selisihColLetter}{$row}", "=C{$row}-{$totalColLetter}{$row}");
-            $sheet->setCellValue("{$percentSelisihColLetter}{$row}", "=IF(C{$row}=0,0,{$selisihColLetter}{$row}/C{$row})");
+            $sheet->setCellValue("{$percentSelisihColLetter}{$row}", "=IF(OR(C{$row}=0, C{$row}=\"\"),0,{$selisihColLetter}{$row}/C{$row})");
         }
 
         // Hide metadata columns

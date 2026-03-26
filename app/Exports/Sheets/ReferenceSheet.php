@@ -33,7 +33,17 @@ class ReferenceSheet implements FromArray, ShouldAutoSize, WithStyles, WithTitle
         ];
         $rows[] = ['Kode', 'Nama Jenis Pajak', '', 'Kode', 'Nama Kecamatan'];
 
-        $taxTypes = TaxType::query()->orderBy('code')->get();
+        $taxTypes = TaxType::query()
+            ->with('parent')
+            ->orderBy('parent_id')
+            ->orderBy('code')
+            ->get()
+            ->map(fn (TaxType $taxType): TaxType => tap($taxType, function (TaxType $taxType): void {
+                if ($taxType->parent !== null) {
+                    $taxType->name = $taxType->parent->name.' - '.$taxType->name;
+                }
+            }));
+
         $districts = District::query()->orderBy('code')->get();
 
         $maxCount = max($taxTypes->count(), $districts->count());

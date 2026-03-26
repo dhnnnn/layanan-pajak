@@ -6,6 +6,7 @@ use Database\Factories\TaxTypeFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TaxType extends Model
@@ -14,7 +15,7 @@ class TaxType extends Model
     use HasFactory, HasUuids;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'code'];
+    protected $fillable = ['name', 'code', 'parent_id'];
 
     protected $keyType = 'string';
 
@@ -26,13 +27,37 @@ class TaxType extends Model
 
         static::creating(function (TaxType $taxType): void {
             if (empty($taxType->code)) {
-                $taxType->code = self::generateCode($taxType->name);
+                $taxType->code = self::generateCode($taxType->name, $taxType->parent_id);
             }
         });
     }
 
-    private static function generateCode(string $name): string
+    private static function generateCode(string $name, ?string $parentId = null): string
     {
+        if ($parentId !== null) {
+            $parent = self::query()->find($parentId);
+
+            if ($parent !== null) {
+                $baseCode = $parent->code.'-'.strtoupper(implode('', array_map(
+                    fn (string $word) => strtoupper(substr($word, 0, 1)),
+                    array_filter(
+                        preg_split('/\s+/', trim($name)) ?: [],
+                        fn (string $word) => ! in_array(strtolower($word), ['dan', 'atau', 'di', 'ke', 'dari', 'untuk'])
+                    )
+                )));
+
+                $code = $baseCode;
+                $counter = 1;
+
+                while (self::query()->where('code', $code)->exists()) {
+                    $code = $baseCode.'-'.$counter;
+                    $counter++;
+                }
+
+                return $code;
+            }
+        }
+
         // Generate code from name using acronym
         // "Pajak Bumi dan Bangunan" -> "PBB"
         $words = preg_split('/\s+/', trim($name));
@@ -62,6 +87,16 @@ class TaxType extends Model
         }
 
         return $code;
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(TaxType::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(TaxType::class, 'parent_id');
     }
 
     public function taxTargets(): HasMany

@@ -28,10 +28,6 @@ class StoreTaxTargetRequest extends FormRequest
                 'integer',
                 'min:2000',
                 'max:2100',
-                Rule::unique('tax_targets', 'year')->where(
-                    'tax_type_id',
-                    $this->input('tax_type_id'),
-                ),
             ],
             'target_amount' => ['required', 'numeric', 'min:0'],
         ];

@@ -67,33 +67,42 @@
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                         @forelse($dashboard as $item)
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-6 py-4 font-medium text-slate-900 border-r border-slate-100">
-                                    <div>{{ $item['tax_type_name'] }}</div>
-                                    <div class="text-[10px] text-slate-400 font-mono">{{ $item['tax_type_code'] }}</div>
+                            @php
+                                $isSubtype = $item['tax_type_parent_id'] !== null;
+                            @endphp
+                            <tr class="{{ $isSubtype ? 'hover:bg-slate-50 border-l-2 border-purple-200' : 'bg-slate-50/60 hover:bg-slate-100/60 font-semibold' }} transition-colors">
+                                <td class="{{ $isSubtype ? 'pl-10 pr-6 py-3 font-normal text-slate-700' : 'px-6 py-3.5 font-bold text-slate-900' }} border-r border-slate-100">
+                                    @if($isSubtype)
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-slate-300 text-xs">↳</span>
+                                            <span class="text-sm">{{ $item['tax_type_name'] }}</span>
+                                        </div>
+                                    @else
+                                        <div>{{ $item['tax_type_name'] }}</div>
+                                    @endif
                                 </td>
-                                <td class="px-6 py-4 text-right font-medium">
+                                <td class="px-6 py-3.5 text-right {{ $isSubtype ? 'font-normal text-slate-600 text-sm' : 'font-semibold' }}">
                                     {{ number_format($item['target_amount'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-right text-slate-600">
+                                <td class="px-6 py-3 text-right text-slate-600 {{ $isSubtype ? 'text-sm' : '' }}">
                                     {{ number_format($item['q1'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-right text-slate-600">
+                                <td class="px-6 py-3 text-right text-slate-600 {{ $isSubtype ? 'text-sm' : '' }}">
                                     {{ number_format($item['q2'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-right text-slate-600">
+                                <td class="px-6 py-3 text-right text-slate-600 {{ $isSubtype ? 'text-sm' : '' }}">
                                     {{ number_format($item['q3'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-right text-slate-600 border-r border-slate-100">
+                                <td class="px-6 py-3 text-right text-slate-600 border-r border-slate-100 {{ $isSubtype ? 'text-sm' : '' }}">
                                     {{ number_format($item['q4'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-right font-bold text-blue-700 bg-blue-50/30">
+                                <td class="px-6 py-3 text-right {{ $isSubtype ? 'text-sm text-blue-600' : 'font-bold text-blue-700' }} bg-blue-50/30">
                                     {{ number_format($item['total_realization'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-right text-orange-700">
+                                <td class="px-6 py-3 text-right {{ $isSubtype ? 'text-sm text-orange-600' : 'text-orange-700' }}">
                                     {{ number_format($item['remaining_target'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-6 py-4 text-center">
+                                <td class="px-6 py-3 text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {{ $item['achievement_percentage'] >= 100 ? 'bg-emerald-100 text-emerald-800' : ($item['achievement_percentage'] >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800') }}">
                                         {{ number_format($item['achievement_percentage'], 2, ',', '.') }}%
                                     </span>

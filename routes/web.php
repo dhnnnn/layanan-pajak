@@ -49,6 +49,8 @@ Route::middleware(['auth', 'role:admin'])
 
         // Jenis Pajak
         Route::resource('tax-types', TaxTypeController::class);
+        Route::post('tax-types/{tax_type}/subtypes', [TaxTypeController::class, 'storeSubtype'])->name('tax-types.subtypes.store');
+        Route::patch('tax-types/{tax_type}/subtypes/{subtype}', [TaxTypeController::class, 'updateSubtype'])->name('tax-types.subtypes.update');
 
         // Kecamatan
         Route::resource('districts', DistrictController::class)->except([

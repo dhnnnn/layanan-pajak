@@ -49,112 +49,238 @@
     </div>
 
     <!-- Daftar Jenis Pajak -->
-    <div class="space-y-4" id="tax-cards">
-        @foreach($taxTypes as $index => $taxType)
+    <div class="space-y-8" id="tax-cards">
+        @foreach($taxTypes as $parentIndex => $parentType)
             @php
-                $total = $yearlyTotals[$taxType->id] ?? 0;
-                $hasData = (float) $total > 0;
-                $entries = $monthlyEntries->where('tax_type_id', $taxType->id)->values();
-                $monthTotal = $entries->sum('amount');
+                $hasChildren = $parentType->children->isNotEmpty();
+                $parentYearlyTotal = 0;
+                
+                if ($hasChildren) {
+                    foreach ($parentType->children as $child) {
+                        $parentYearlyTotal += (float) ($yearlyTotals[$child->id] ?? 0);
+                    }
+                } else {
+                    $parentYearlyTotal = (float) ($yearlyTotals[$parentType->id] ?? 0);
+                }
             @endphp
 
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="card-{{ $taxType->id }}">
-                <!-- Header jenis pajak -->
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <p class="font-bold text-slate-900">{{ $index + 1 }}. {{ $taxType->name }}</p>
-                        <p class="text-xs text-slate-400 font-mono mt-0.5">{{ $taxType->code }}</p>
-                    </div>
-                    <div class="text-right">
-                        @if($hasData)
-                            <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                Ada Data
-                            </span>
-                        @else
-                            <span class="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-semibold">Belum Input</span>
-                        @endif
-                        <p class="text-xs text-slate-500 mt-1.5">
-                            Total {{ $year }}: <span class="font-bold text-emerald-700" id="total-{{ $taxType->id }}" data-raw="{{ $total }}">
-                                Rp {{ number_format($total, 0, ',', '.') }}
-                            </span>
-                        </p>
+            @if($hasChildren)
+                {{-- Parent Header --}}
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-4 border border-slate-200 border-l-4 border-l-emerald-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-slate-900 font-bold text-lg flex items-center gap-2">
+                                <span class="bg-emerald-500 text-white w-7 h-7 rounded-lg flex items-center justify-center text-sm">{{ $parentIndex + 1 }}</span>
+                                {{ $parentType->name }}
+                            </h2>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Total Akumulasi {{ $year }}</p>
+                            <p class="text-xl font-bold text-emerald-600">Rp {{ number_format($parentYearlyTotal, 0, ',', '.') }}</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Form input harian -->
-                    <div>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Input Harian</p>
-                        <div class="space-y-3">
-                            <div class="grid grid-cols-2 gap-3">
+                {{-- Children Cards --}}
+                <div class="grid grid-cols-1 gap-4 ml-6 lg:ml-10">
+                    @foreach($parentType->children as $childIndex => $taxType)
+                        @php
+                            $total = $yearlyTotals[$taxType->id] ?? 0;
+                            $hasData = (float) $total > 0;
+                            $entries = $monthlyEntries->where('tax_type_id', $taxType->id)->values();
+                            $monthTotal = $entries->sum('amount');
+                        @endphp
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="card-{{ $taxType->id }}">
+                            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Tanggal</label>
-                                    <input type="date" id="date-{{ $taxType->id }}"
-                                        value="{{ $today }}" max="{{ $today }}"
-                                        class="w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
+                                    <p class="font-bold text-slate-900">{{ $parentIndex + 1 }}.{{ $childIndex + 1 }} - {{ $taxType->name }}</p>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Jumlah (Rp)</label>
-                                    <input type="number" id="amount-{{ $taxType->id }}"
-                                        min="0" placeholder="0"
-                                        class="entry-amount w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
-                                        data-tax-type-id="{{ $taxType->id }}">
+                                <div class="text-right">
+                                    @if($hasData)
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-semibold">
+                                            ADA DATA
+                                        </span>
+                                    @endif
+                                    <p class="text-xs text-slate-600 mt-1">
+                                        Total: <span class="font-bold text-emerald-700" id="total-{{ $taxType->id }}" data-raw="{{ $total }}">
+                                            Rp {{ number_format($total, 0, ',', '.') }}
+                                        </span>
+                                    </p>
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Catatan (opsional)</label>
-                                <input type="text" id="note-{{ $taxType->id }}"
-                                    placeholder="Keterangan tambahan..."
-                                    class="w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
+
+                            <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {{-- Form Input --}}
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Input Realisasi Harian</p>
+                                    <div class="space-y-3">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-[10px] font-medium text-slate-500 mb-1">Tanggal</label>
+                                                <input type="date" id="date-{{ $taxType->id }}" value="{{ $today }}" max="{{ $today }}" class="w-full text-xs rounded-lg bg-slate-50 text-slate-700 px-3 py-2 border-0 focus:ring-2 focus:ring-emerald-500/20">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-medium text-slate-500 mb-1">Jumlah (Rp)</label>
+                                                <input type="number" id="amount-{{ $taxType->id }}" min="0" placeholder="0" class="entry-amount w-full text-xs rounded-lg bg-slate-50 text-slate-700 px-3 py-2 border-0 focus:ring-2 focus:ring-emerald-500/20" data-tax-type-id="{{ $taxType->id }}">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-slate-500 mb-1">Catatan</label>
+                                            <input type="text" id="note-{{ $taxType->id }}" placeholder="Opsional..." class="w-full text-xs rounded-lg bg-slate-50 text-slate-700 px-3 py-2 border-0 focus:ring-2 focus:ring-emerald-500/20">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- History --}}
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                                        Riwayat {{ $monthNames[$currentMonth] }} 
+                                        <span class="text-emerald-600" id="month-total-{{ $taxType->id }}">
+                                            (Rp {{ number_format($monthTotal, 0, ',', '.') }})
+                                        </span>
+                                    </p>
+                                    <div id="history-{{ $taxType->id }}">
+                                        @if($entries->isEmpty())
+                                            <div class="text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                                <p class="text-xs text-slate-400 italic">Belum ada entri bulan ini.</p>
+                                            </div>
+                                        @else
+                                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-100">
+                                                <table class="w-full text-[10px]">
+                                                    <thead class="bg-slate-50 text-slate-500 sticky top-0">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left">Tgl</th>
+                                                            <th class="px-3 py-2 text-right">Rp</th>
+                                                            <th class="px-3 py-2 w-8"></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-slate-50 bg-white">
+                                                        @foreach($entries as $entry)
+                                                            <tr id="entry-row-{{ $entry->id }}">
+                                                                <td class="px-3 py-2 text-slate-600">{{ $entry->entry_date->format('d/m') }}</td>
+                                                                <td class="px-3 py-2 text-right font-semibold text-emerald-700">Rp{{ number_format($entry->amount, 0, ',', '.') }}</td>
+                                                                <td class="px-3 py-2 text-right">
+                                                                    <button onclick="deleteEntry('{{ $entry->id }}', '{{ $taxType->id }}', '{{ $district->id }}')" class="text-red-400 hover:text-red-600">
+                                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Riwayat bulan ini -->
-                    <div>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                            Riwayat {{ $monthNames[$currentMonth] }} {{ $year }}
-                            <span class="ml-2 font-semibold text-emerald-700" id="month-total-{{ $taxType->id }}">
-                                ({{ 'Rp ' . number_format($monthTotal, 0, ',', '.') }})
-                            </span>
-                        </p>
-                        <div id="history-{{ $taxType->id }}">
-                            @if($entries->isEmpty())
-                                <p class="text-xs text-slate-400 italic py-2">Belum ada entri bulan ini.</p>
-                            @else
-                                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                                    <table class="w-full text-xs">
-                                        <thead class="bg-slate-50 text-slate-600 font-semibold">
-                                            <tr>
-                                                <th class="px-3 py-2 text-left">Tanggal</th>
-                                                <th class="px-3 py-2 text-right">Jumlah</th>
-                                                <th class="px-3 py-2 text-left">Catatan</th>
-                                                <th class="px-3 py-2 w-12"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-100">
-                                            @foreach($entries as $entry)
-                                                <tr id="entry-row-{{ $entry->id }}">
-                                                    <td class="px-3 py-2 text-slate-700">{{ $entry->entry_date->format('d/m/Y') }}</td>
-                                                    <td class="px-3 py-2 text-right font-semibold text-emerald-700">Rp {{ number_format($entry->amount, 0, ',', '.') }}</td>
-                                                    <td class="px-3 py-2 text-slate-500">{{ $entry->note ?: '-' }}</td>
-                                                    <td class="px-3 py-2 text-right">
-                                                        <button onclick="deleteEntry('{{ $entry->id }}', '{{ $taxType->id }}', '{{ $district->id }}')"
-                                                            class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
+                    @endforeach
+                </div>
+            @else
+                {{-- Root Type (No Children) --}}
+                @php
+                    $taxType = $parentType;
+                    $total = $yearlyTotals[$taxType->id] ?? 0;
+                    $hasData = (float) $total > 0;
+                    $entries = $monthlyEntries->where('tax_type_id', $taxType->id)->values();
+                    $monthTotal = $entries->sum('amount');
+                @endphp
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="card-{{ $taxType->id }}">
+                    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-slate-900">{{ $parentIndex + 1 }}. {{ $taxType->name }}</p>
+                        </div>
+                        <div class="text-right">
+                            @if($hasData)
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    ADA DATA
+                                </span>
                             @endif
+                            <p class="text-xs text-slate-500 mt-1.5">
+                                Total {{ $year }}: <span class="font-bold text-emerald-700" id="total-{{ $taxType->id }}" data-raw="{{ $total }}">
+                                    Rp {{ number_format($total, 0, ',', '.') }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Form input harian -->
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Input Harian</p>
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">Tanggal</label>
+                                        <input type="date" id="date-{{ $taxType->id }}"
+                                            value="{{ $today }}" max="{{ $today }}"
+                                            class="w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 border-0 focus:ring-2 focus:ring-emerald-500/20">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">Jumlah (Rp)</label>
+                                        <input type="number" id="amount-{{ $taxType->id }}"
+                                            min="0" placeholder="0"
+                                            class="entry-amount w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 border-0 focus:ring-2 focus:ring-emerald-500/20"
+                                            data-tax-type-id="{{ $taxType->id }}">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Catatan (opsional)</label>
+                                    <input type="text" id="note-{{ $taxType->id }}"
+                                        placeholder="Keterangan tambahan..."
+                                        class="w-full text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-2 border-0 focus:ring-2 focus:ring-emerald-500/20">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Riwayat bulan ini -->
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                Riwayat {{ $monthNames[$currentMonth] }} {{ $year }}
+                                <span class="ml-2 font-semibold text-emerald-700" id="month-total-{{ $taxType->id }}">
+                                    ({{ 'Rp ' . number_format($monthTotal, 0, ',', '.') }})
+                                </span>
+                            </p>
+                            <div id="history-{{ $taxType->id }}">
+                                @if($entries->isEmpty())
+                                    <p class="text-xs text-slate-400 italic py-2">Belum ada entri bulan ini.</p>
+                                @else
+                                    <div class="border border-slate-200 rounded-lg overflow-hidden">
+                                        <table class="w-full text-xs">
+                                            <thead class="bg-slate-50 text-slate-600 font-semibold">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left">Tanggal</th>
+                                                    <th class="px-3 py-2 text-right">Jumlah</th>
+                                                    <th class="px-3 py-2 text-left text-slate-400">Note</th>
+                                                    <th class="px-3 py-2 w-10"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                @foreach($entries as $entry)
+                                                    <tr id="entry-row-{{ $entry->id }}">
+                                                        <td class="px-3 py-2 text-slate-700">{{ $entry->entry_date->format('d/m') }}</td>
+                                                        <td class="px-3 py-2 text-right font-semibold text-emerald-700">Rp{{ number_format($entry->amount, 0, ',', '.') }}</td>
+                                                        <td class="px-3 py-2 text-slate-500 truncate max-w-[80px]">{{ $entry->note ?: '-' }}</td>
+                                                        <td class="px-3 py-2 text-right">
+                                                            <button onclick="deleteEntry('{{ $entry->id }}', '{{ $taxType->id }}', '{{ $district->id }}')"
+                                                                class="text-red-500 hover:text-red-700 font-medium">
+                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            @endif
         @endforeach
     </div>
 
