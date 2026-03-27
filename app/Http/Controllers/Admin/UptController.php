@@ -23,6 +23,9 @@ class UptController extends Controller
     {
         $upts = Upt::query()
             ->withCount(['users', 'districts'])
+            ->when(auth()->user()->hasRole('kepala_upt'), function ($q) {
+                $q->where('id', auth()->user()->upt_id);
+            })
             ->orderBy('code')
             ->paginate(20);
 
@@ -36,6 +39,8 @@ class UptController extends Controller
 
     public function show(Upt $upt): View
     {
+        $this->authorize('view', $upt);
+
         $upt->load(['districts', 'users.districts']);
 
         return view('admin.upts.show', compact('upt'));
@@ -75,6 +80,8 @@ class UptController extends Controller
 
     public function manageEmployees(Upt $upt): View
     {
+        $this->authorize('manageEmployees', $upt);
+
         $search = request()->string('search')->trim();
 
         $allEmployees = User::query()
@@ -98,6 +105,8 @@ class UptController extends Controller
 
     public function assignEmployeeDistricts(Upt $upt, User $employee): View
     {
+        $this->authorize('manageEmployees', $upt);
+
         $upt->load('districts');
         $assignedDistrictIds = $employee->districts()->pluck('districts.id');
 
@@ -106,6 +115,8 @@ class UptController extends Controller
 
     public function storeEmployees(AssignUptEmployeesRequest $request, Upt $upt, AssignEmployeesToUptAction $assignEmployees): RedirectResponse
     {
+        $this->authorize('manageEmployees', $upt);
+
         $userIds = $request->validated('user_ids') ?? [];
 
         $assignEmployees($upt, $userIds);
@@ -117,6 +128,8 @@ class UptController extends Controller
 
     public function assignDistricts(Upt $upt): View
     {
+        $this->authorize('manageDistricts', $upt);
+
         $districts = District::query()->orderBy('name')->get();
         $assignedDistrictIds = $upt->districts()->pluck('districts.id')->toArray();
 
@@ -128,6 +141,8 @@ class UptController extends Controller
         Upt $upt,
         AssignDistrictsToUptAction $assignDistricts,
     ): RedirectResponse {
+        $this->authorize('manageDistricts', $upt);
+
         $assignDistricts($upt, $request->validated('district_ids'));
 
         return redirect()

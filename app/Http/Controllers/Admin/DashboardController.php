@@ -24,7 +24,12 @@ class DashboardController extends Controller
             $availableYears->first() ?? date('Y'),
         );
 
-        $result = $generateDashboard($selectedYear);
+        $uptId = null;
+        if (auth()->user()->hasRole('kepala_upt')) {
+            $uptId = auth()->user()->upt_id;
+        }
+
+        $result = $generateDashboard($selectedYear, uptId: $uptId);
 
         return view('admin.dashboard', [
             'dashboard' => $result['data'],

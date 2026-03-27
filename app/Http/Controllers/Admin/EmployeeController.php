@@ -25,6 +25,9 @@ class EmployeeController extends Controller
         $employees = User::query()
             ->role('pegawai')
             ->with(['districts', 'upt'])
+            ->when(auth()->user()->hasRole('kepala_upt'), function ($q) {
+                $q->where('upt_id', auth()->user()->upt_id);
+            })
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");

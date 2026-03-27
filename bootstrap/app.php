@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(function () {
             $user = auth()->user();
-            if ($user?->hasRole('admin')) {
+            if ($user?->hasRole('admin') || $user?->hasRole('kepala_upt')) {
                 return route('admin.dashboard');
             }
 

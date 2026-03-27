@@ -27,7 +27,7 @@ class LoginController extends Controller
 
         $user = Auth::user();
 
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin') || $user->hasRole('kepala_upt')) {
             return redirect()->intended(route('admin.dashboard'));
         }
 

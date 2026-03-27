@@ -81,10 +81,14 @@ class GenerateTaxDashboardAction
             ->groupBy('tax_type_id');
 
         // 2. Fetch all daily entries for the year (Direct officer input source)
+        $monthSql = config('database.default') === 'sqlite'
+            ? "strftime('%m', entry_date)"
+            : 'MONTH(entry_date)';
+
         $dailyRealizations = TaxRealizationDailyEntry::query()
             ->whereYear('entry_date', $year)
             ->when($filterDistrictIds, fn ($q) => $q->whereIn('district_id', $filterDistrictIds))
-            ->selectRaw('tax_type_id, MONTH(entry_date) as month, SUM(amount) as total')
+            ->selectRaw("tax_type_id, {$monthSql} as month, SUM(amount) as total")
             ->groupBy(['tax_type_id', 'month'])
             ->get()
             ->groupBy('tax_type_id');
