@@ -96,7 +96,7 @@
                         </svg>
                     </x-slot:icon>
                     
-                    <x-layouts.sidebar-submenu-item route="admin.tax-targets.index" :active="request()->routeIs('admin.tax-targets.index')">
+                    <x-layouts.sidebar-submenu-item route="admin.tax-targets.manage" :active="request()->routeIs('admin.tax-targets.manage')">
                         Kelola Target APBD
                     </x-layouts.sidebar-submenu-item>
 
@@ -104,7 +104,7 @@
                         Lihat Laporan
                     </x-layouts.sidebar-submenu-item>
                     
-                    <x-layouts.sidebar-submenu-item route="admin.import.index" :active="request()->routeIs('admin.import.*')">
+                    <x-layouts.sidebar-submenu-item route="admin.tax-targets.index" :active="request()->routeIs('admin.tax-targets.index')">
                         Import Data
                     </x-layouts.sidebar-submenu-item>
                 </x-layouts.sidebar-dropdown>

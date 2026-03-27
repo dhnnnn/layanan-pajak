@@ -1,14 +1,4 @@
 <x-layouts.admin title="Kelola Target UPT" header="Kelola Target UPT">
-    <x-slot:headerActions>
-        <a href="{{ route('admin.upt-comparisons.report') }}"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-lg transition-colors shadow-sm border border-slate-200">
-            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-            Kembali
-        </a>
-    </x-slot:headerActions>
-
     <div class="space-y-6">
         <!-- Filter Section -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200">

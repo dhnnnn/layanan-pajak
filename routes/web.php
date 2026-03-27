@@ -3,7 +3,6 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\EmployeeController;
-use App\Http\Controllers\Admin\ImportController as AdminImportController;
 use App\Http\Controllers\Admin\RealizationMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
@@ -91,19 +90,14 @@ Route::middleware(['auth', 'role:admin'])
         // Target Pajak (APBD)
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
+        Route::get('target-tax/import', [TaxTargetController::class, 'index'])->name('tax-targets.index');
+        Route::get('tax-targets/manage', [TaxTargetController::class, 'manage'])->name('tax-targets.manage');
+        Route::post('tax-targets/preview', [TaxTargetController::class, 'preview'])->name('tax-targets.preview');
+        Route::post('tax-targets/import', [TaxTargetController::class, 'storeImport'])->name('tax-targets.import');
         Route::resource(
             'tax-targets',
             TaxTargetController::class,
-        )->except(['show']);
-
-        // Import Realisasi Pajak
-        Route::prefix('import')
-            ->name('import.')
-            ->group(function (): void {
-                Route::get('/', [AdminImportController::class, 'index'])->name('index');
-                Route::post('/preview', [AdminImportController::class, 'preview'])->name('preview');
-                Route::post('/confirm', [AdminImportController::class, 'confirm'])->name('confirm');
-            });
+        )->except(['show', 'index']);
 
         // Download Template
         Route::get('/template', [TemplateController::class, 'index'])->name('template.index');
