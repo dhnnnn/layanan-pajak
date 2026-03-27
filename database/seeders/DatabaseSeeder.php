@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             DistrictSeeder::class,
             UptSeeder::class,
+            KepalaUptSeeder::class,
             MonthSeeder::class,
         ]);
     }

@@ -12,7 +12,7 @@ class UptPolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin') && ! $user->hasRole('kepala_upt')) {
             return true;
         }
 

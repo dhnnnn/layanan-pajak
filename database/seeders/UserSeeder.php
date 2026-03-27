@@ -14,25 +14,27 @@ class UserSeeder extends Seeder
 
     public function run(): void
     {
-        $admin = User::factory()->create([
-            'name' => 'Administrator',
-            'email' => 'admin@upp.pendapatan',
-            'password' => Hash::make('password'),
-        ]);
+        $admin = User::query()->updateOrCreate(
+            ['email' => 'admin@upp.pendapatan'],
+            [
+                'name' => 'Administrator',
+                'password' => Hash::make('password'),
+            ]
+        );
+        $admin->syncRoles(['admin']);
 
-        $admin->assignRole('admin');
-
-        $pegawai = User::factory()->create([
-            'name' => 'Pegawai Test',
-            'email' => 'pegawai@upp.pendapatan',
-            'password' => Hash::make('password'),
-        ]);
-
-        $pegawai->assignRole('pegawai');
+        $pegawai = User::query()->updateOrCreate(
+            ['email' => 'pegawai@upp.pendapatan'],
+            [
+                'name' => 'Pegawai Test',
+                'password' => Hash::make('password'),
+            ]
+        );
+        $pegawai->syncRoles(['pegawai']);
 
         // Assign districts to test employee
         $districts = District::query()->limit(2)->get();
-        $pegawai->districts()->attach($districts->pluck('id'));
+        $pegawai->districts()->sync($districts->pluck('id'));
 
         $otherUsers = User::factory(4)->create();
 

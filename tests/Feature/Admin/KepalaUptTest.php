@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\District;
+use App\Models\TaxTarget;
 use App\Models\Upt;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -19,6 +21,8 @@ beforeEach(function () {
         'upt_id' => $this->upt1->id,
     ]);
     $this->kepalaUpt1->assignRole('kepala_upt');
+
+    TaxTarget::factory()->create(['year' => (int) date('Y')]);
 });
 
 test('kepala upt can access admin dashboard', function () {
@@ -68,4 +72,43 @@ test('kepala upt cannot manage other upt employees', function () {
     $this->actingAs($this->kepalaUpt1)
         ->get(route('admin.upts.employees.manage', $this->upt2))
         ->assertForbidden();
+});
+
+test('kepala upt can access daily entries for their upt districts', function () {
+    $district = District::factory()->create();
+    $this->upt1->districts()->attach($district->id);
+
+    $this->actingAs($this->kepalaUpt1)
+        ->get(route('pegawai.daily-entries.show', $district))
+        ->assertOk();
+});
+
+test('kepala upt cannot access daily entries for districts outside their upt', function () {
+    $district = District::factory()->create();
+    $this->upt2->districts()->attach($district->id);
+
+    $this->actingAs($this->kepalaUpt1)
+        ->get(route('pegawai.daily-entries.show', $district))
+        ->assertForbidden();
+});
+
+test('kepala upt sees specialized dashboard view', function () {
+    $this->actingAs($this->kepalaUpt1)
+        ->get(route('admin.dashboard'))
+        ->assertViewIs('admin.dashboard_kepala_upt');
+});
+
+test('kepala upt can view realization list', function () {
+    $this->actingAs($this->kepalaUpt1)
+        ->get(route('pegawai.realizations.index'))
+        ->assertOk();
+});
+
+test('kepala upt can access realization create page', function () {
+    $district = District::factory()->create(['name' => 'Kecamatan Test']);
+    $this->upt1->districts()->attach($district->id);
+
+    $this->actingAs($this->kepalaUpt1)
+        ->get(route('pegawai.realizations.create'))
+        ->assertOk();
 });

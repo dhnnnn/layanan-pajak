@@ -25,17 +25,35 @@ class DashboardController extends Controller
         );
 
         $uptId = null;
-        if (auth()->user()->hasRole('kepala_upt')) {
+        $assignedDistricts = collect();
+        $selectedDistrictId = $request->query('district_id');
+        $isAllDistricts = $selectedDistrictId === 'all';
+
+        if (auth()->user()->isKepalaUpt()) {
             $uptId = auth()->user()->upt_id;
+            $assignedDistricts = auth()->user()->accessibleDistricts()->orderBy('name')->get();
+
+            // Handle district selection for kepala_upt
+            if ($isAllDistricts) {
+                $selectedDistrictId = null;
+            } elseif ($selectedDistrictId === null || ! $assignedDistricts->contains('id', $selectedDistrictId)) {
+                $selectedDistrictId = null; // Default to all if null or invalid for kepala_upt
+                $isAllDistricts = true;
+            }
         }
 
-        $result = $generateDashboard($selectedYear, uptId: $uptId);
+        $result = $generateDashboard($selectedYear, districtId: $selectedDistrictId, uptId: $uptId);
 
-        return view('admin.dashboard', [
+        $view = auth()->user()->isKepalaUpt() ? 'admin.dashboard_kepala_upt' : 'admin.dashboard';
+
+        return view($view, [
             'dashboard' => $result['data'],
             'totals' => $result['totals'],
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
+            'assignedDistricts' => $assignedDistricts,
+            'selectedDistrictId' => $selectedDistrictId,
+            'isAllDistricts' => $isAllDistricts,
         ]);
     }
 }

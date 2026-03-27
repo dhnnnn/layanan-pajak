@@ -25,7 +25,7 @@ class DailyEntryController extends Controller
         $district = District::query()->findOrFail($districtId);
 
         abort_unless(
-            $user->districts()->where('districts.id', $districtId)->exists(),
+            $user->accessibleDistricts()->where('districts.id', $districtId)->exists(),
             403,
             'Anda tidak memiliki akses ke kecamatan ini.',
         );
@@ -140,7 +140,7 @@ class DailyEntryController extends Controller
 
         $user = $request->user();
 
-        if (! $user->districts()->where('districts.id', $validated['district_id'])->exists()) {
+        if (! $user->accessibleDistricts()->where('districts.id', $validated['district_id'])->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

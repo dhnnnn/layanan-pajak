@@ -110,7 +110,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:pegawai'])
+Route::middleware(['auth', 'role:pegawai|kepala_upt'])
     ->prefix('pegawai')
     ->name('pegawai.')
     ->group(function (): void {

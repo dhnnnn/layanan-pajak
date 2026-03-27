@@ -12,8 +12,7 @@ class KepalaUptSeeder extends Seeder
 {
     public function run(): void
     {
-        // Pastikan role sudah ada
-        Artisan::call('db:seed', ['--class' => RoleSeeder::class]);
+        // Roles are already seeded in DatabaseSeeder
 
         // UPT 1
         $upt1 = Upt::firstOrCreate(
@@ -32,7 +31,7 @@ class KepalaUptSeeder extends Seeder
                 'upt_id' => $upt1->id,
             ]
         );
-        $user1->assignRole('kepala_upt');
+        $user1->syncRoles(['kepala_upt']);
 
         // UPT 2
         $upt2 = Upt::firstOrCreate(
@@ -51,6 +50,6 @@ class KepalaUptSeeder extends Seeder
                 'upt_id' => $upt2->id,
             ]
         );
-        $user2->assignRole('kepala_upt');
+        $user2->syncRoles(['kepala_upt']);
     }
 }

@@ -55,6 +55,7 @@
                     Dashboard
                 </x-layouts.sidebar-item>
 
+                @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Master Data</p>
                 <x-layouts.sidebar-item route="admin.tax-types.index" :active="request()->routeIs('admin.tax-types.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +85,27 @@
                     </svg>
                     UPT
                 </x-layouts.sidebar-item>
+                @endif
 
+                @if(auth()->user()->isKepalaUpt())
+                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">UPT Anda</p>
+                <x-layouts.sidebar-item route="admin.upts.show" :params="['upt' => auth()->user()->upt_id]" :active="request()->routeIs('admin.upts.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                    Data UPT
+                </x-layouts.sidebar-item>
+
+                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Input Data</p>
+                <x-layouts.sidebar-item route="pegawai.daily-entries.index" :active="request()->routeIs('pegawai.daily-entries.*')">
+                    <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Input Realisasi
+                </x-layouts.sidebar-item>
+                @endif
+
+                @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pengelolaan</p>
                 
                 <x-layouts.sidebar-dropdown 
@@ -144,12 +165,21 @@
                     </svg>
                     Unduh Template
                 </x-layouts.sidebar-item>
+                @endif
             </nav>
 
             {{-- User + Logout --}}
             <div class="px-4 py-4 border-t border-slate-700">
                 <p class="text-sm text-white font-medium truncate">{{ auth()->user()->name }}</p>
-                <p class="text-xs text-slate-400 mb-2">Administrator</p>
+                <p class="text-xs text-slate-400 mb-2">
+                    @if(auth()->user()->isKepalaUpt())
+                        Kepala {{ auth()->user()->upt?->name ?? 'UPT' }}
+                    @elseif(auth()->user()->isAdmin())
+                        Administrator
+                    @else
+                        Pegawai
+                    @endif
+                </p>
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf
                     <button type="submit" class="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">

@@ -19,8 +19,12 @@ use Illuminate\View\View;
 
 class UptController extends Controller
 {
-    public function index(): View
+    public function index(): View|RedirectResponse
     {
+        if (auth()->user()->isKepalaUpt()) {
+            return redirect()->route('admin.upts.show', auth()->user()->upt_id);
+        }
+
         $upts = Upt::query()
             ->withCount(['users', 'districts'])
             ->when(auth()->user()->hasRole('kepala_upt'), function ($q) {

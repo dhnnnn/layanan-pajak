@@ -16,7 +16,7 @@ class DashboardController extends Controller
     ): View {
         $user = $request->user();
 
-        $assignedDistricts = $user->districts()->orderBy('name')->get();
+        $assignedDistricts = $user->accessibleDistricts()->orderBy('name')->get();
 
         $availableYears = TaxTarget::query()
             ->distinct()

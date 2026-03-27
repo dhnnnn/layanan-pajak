@@ -1,11 +1,13 @@
 <x-layouts.admin title="Detail UPT" :header="'Detail UPT: ' . $upt->name">
     <x-slot:headerActions>
+        @if(!auth()->user()->isKepalaUpt())
         <a href="{{ route('admin.upts.index') }}" class="inline-flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
             Kembali ke Daftar
         </a>
+        @endif
     </x-slot:headerActions>
 
     <div class="space-y-6">

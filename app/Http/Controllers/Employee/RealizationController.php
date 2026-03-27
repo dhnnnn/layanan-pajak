@@ -24,14 +24,20 @@ class RealizationController extends Controller
         $year = $request->integer('year', (int) date('Y'));
         $search = $request->string('search')->trim();
 
-        $districts = $user->districts()
+        $districts = $user->accessibleDistricts()
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->orderBy('name')
             ->get();
 
         $realizations = TaxRealization::query()
             ->with(['taxType', 'district'])
-            ->where('user_id', $user->id)
+            ->when(! $user->hasRole('admin'), function ($query) use ($user) {
+                if ($user->hasRole('kepala_upt')) {
+                    $query->whereHas('district.upts', fn ($q) => $q->where('upts.id', $user->upt_id));
+                } else {
+                    $query->where('user_id', $user->id);
+                }
+            })
             ->orderByDesc('year')
             ->orderBy('tax_type_id')
             ->paginate(15);
@@ -149,8 +155,24 @@ class RealizationController extends Controller
 
     private function authorizeRealization(TaxRealization $realization): void
     {
+        $user = auth()->user();
+
+        if ($user->hasRole('admin')) {
+            return;
+        }
+
+        if ($user->hasRole('kepala_upt')) {
+            abort_if(
+                $realization->district->upts()->where('upts.id', $user->upt_id)->doesntExist(),
+                403,
+                'Anda tidak memiliki akses ke data realisasi di luar UPT Anda.'
+            );
+
+            return;
+        }
+
         abort_if(
-            $realization->user_id !== auth()->id(),
+            $realization->user_id !== $user->id,
             403,
             'Anda tidak memiliki akses ke data realisasi ini.',
         );
@@ -161,7 +183,7 @@ class RealizationController extends Controller
         $user = $request->user();
         $year = $request->integer('year', date('Y'));
 
-        if (! $user->districts()->where('districts.id', $districtId)->exists()) {
+        if (! $user->accessibleDistricts()->where('districts.id', $districtId)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
