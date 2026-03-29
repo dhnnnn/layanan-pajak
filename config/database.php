@@ -46,6 +46,20 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
+            'read' => [
+                'host' => [
+                    env('DB_READ_HOST', env('DB_HOST', '127.0.0.1')),
+                ],
+                'database' => env('DB_READ_DATABASE', 'simpadunew'),
+                'username' => env('DB_READ_USERNAME', env('DB_USERNAME', 'root')),
+                'password' => env('DB_READ_PASSWORD', env('DB_PASSWORD', '')),
+            ],
+            'write' => [
+                'host' => [
+                    env('DB_HOST', '127.0.0.1'),
+                ],
+            ],
+            'sticky' => true,
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
