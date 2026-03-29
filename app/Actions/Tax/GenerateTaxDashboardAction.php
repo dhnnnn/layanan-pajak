@@ -93,76 +93,67 @@ class GenerateTaxDashboardAction
             ->get()
             ->groupBy('tax_type_id');
 
-        $result = collect();
-
-        foreach ($taxTypes as $parent) {
+        $result = $taxTypes->flatMap(function (TaxType $parent) use ($year, $monthlyRealizations, $dailyRealizations, $uptId) {
             $parentData = $this->processTaxType($parent, $year, $monthlyRealizations, $dailyRealizations, $uptId);
 
-            // If parent has children, aggregate their values
-            if ($parent->children->isNotEmpty()) {
-                $childItems = collect();
-                foreach ($parent->children as $child) {
-                    $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $uptId);
-                    $childItems->push($childData);
-                }
+            if ($parent->children->isEmpty()) {
+                $parentData['is_parent'] = false;
 
-                // Ensure parent includes its own values PLUS children values
-                // For targets, if the parent has its own target in TaxTarget, use it (it should be the official total).
-                // If it doesn't, use the sum of children.
-                if ($parentData['target_total'] <= 0) {
-                    $parentData['target_total'] = $childItems->sum('target_total');
-                }
-
-                $parentData['total_realization'] += $childItems->sum('total_realization');
-                $parentData['more_less'] = $parentData['total_realization'] - $parentData['target_total'];
-                $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)(
-                    $parentData['total_realization'],
-                    $parentData['target_total']
-                );
-
-                foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
-                    // Pre-fix parents targets if they are in database
-                    // For realizations, always sum
-                    $parentData['targets'][$q] = $parentData['targets'][$q] ?: $childItems->sum(fn ($c) => $c['targets'][$q]);
-                    $parentData['realizations'][$q] += $childItems->sum(fn ($c) => $c['realizations'][$q]);
-                    $parentData['percentages'][$q] = ($this->calculateAchievementPercentage)(
-                        $parentData['realizations'][$q],
-                        $parentData['targets'][$q]
-                    );
-                }
-
-                $parentData['is_parent'] = true;
-                $result->push($parentData);
-
-                foreach ($childItems as $childData) {
-                    $childData['is_parent'] = false;
-                    $result->push($childData);
-                }
-            } else {
-                $parentData['is_parent'] = false; // it's a root type without children
-                $result->push($parentData);
+                return [$parentData];
             }
-        }
 
-        // Calculate Grand Totals
-        // Ensure we only sum items that have NO parent (Induk / Root)
-        $parentItems = $result->where('tax_type_parent_id', null);
+            $childItems = $parent->children->map(fn (TaxType $child) => $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $uptId));
 
-        $grandTotalTarget = $parentItems->sum('target_total');
-        $grandTotalRealization = $parentItems->sum('total_realization');
+            // Aggregate values if parent has children
+            if ($parentData['target_total'] <= 0) {
+                $parentData['target_total'] = $childItems->sum('target_total');
+            }
+
+            $parentData['total_realization'] += $childItems->sum('total_realization');
+            $parentData['more_less'] = $parentData['total_realization'] - $parentData['target_total'];
+            $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)(
+                $parentData['total_realization'],
+                $parentData['target_total']
+            );
+
+            $quarters = collect(['q1', 'q2', 'q3', 'q4']);
+
+            $quarters->each(function ($q) use (&$parentData, $childItems) {
+                $parentData['targets'][$q] = $parentData['targets'][$q] ?: $childItems->sum(fn ($c) => $c['targets'][$q]);
+                $parentData['realizations'][$q] += $childItems->sum(fn ($c) => $c['realizations'][$q]);
+                $parentData['percentages'][$q] = ($this->calculateAchievementPercentage)(
+                    $parentData['realizations'][$q],
+                    $parentData['targets'][$q]
+                );
+            });
+
+            $parentData['is_parent'] = true;
+
+            return collect([$parentData])->concat($childItems->map(function ($childData) {
+                $childData['is_parent'] = false;
+
+                return $childData;
+            }));
+        });
+
+        // 147. Calculate Grand Totals
+        $rootItems = $result->where('tax_type_parent_id', null);
+
+        $grandTotalTarget = $rootItems->sum('target_total');
+        $grandTotalRealization = $rootItems->sum('total_realization');
         $grandTotalMoreLess = $grandTotalRealization - $grandTotalTarget;
         $grandTotalPercentage = ($this->calculateAchievementPercentage)($grandTotalRealization, $grandTotalTarget);
 
-        $quarterTotals = [];
-        foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
-            $t = $parentItems->sum(fn ($i) => $i['targets'][$q]);
-            $r = $parentItems->sum(fn ($i) => $i['realizations'][$q]);
-            $quarterTotals[$q] = [
+        $quarterTotals = collect(['q1', 'q2', 'q3', 'q4'])->mapWithKeys(function ($q) use ($rootItems) {
+            $t = $rootItems->sum(fn ($i) => (float) $i['targets'][$q]);
+            $r = $rootItems->sum(fn ($i) => (float) $i['realizations'][$q]);
+
+            return [$q => [
                 'target' => $t,
                 'realization' => $r,
                 'percentage' => ($this->calculateAchievementPercentage)($r, $t),
-            ];
-        }
+            ]];
+        })->toArray();
 
         return [
             'data' => $result,

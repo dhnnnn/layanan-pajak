@@ -4,16 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\DashboardRequest;
 use App\Models\TaxTarget;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function show(
-        Request $request,
+        DashboardRequest $request,
         GenerateTaxDashboardAction $generateDashboard,
     ): View {
+        $user = auth()->user();
+        $isKepalaUpt = $user->isKepalaUpt();
+
         $availableYears = TaxTarget::query()
             ->distinct()
             ->orderByDesc('year')
@@ -29,9 +32,9 @@ class DashboardController extends Controller
         $selectedDistrictId = $request->query('district_id');
         $isAllDistricts = $selectedDistrictId === 'all';
 
-        if (auth()->user()->isKepalaUpt()) {
-            $uptId = auth()->user()->upt_id;
-            $assignedDistricts = auth()->user()->accessibleDistricts()->orderBy('name')->get();
+        if ($isKepalaUpt) {
+            $uptId = $user->upt_id;
+            $assignedDistricts = $user->accessibleDistricts()->orderBy('name')->get();
 
             // Handle district selection for kepala_upt
             if ($isAllDistricts) {
@@ -44,7 +47,7 @@ class DashboardController extends Controller
 
         $result = $generateDashboard($selectedYear, districtId: $selectedDistrictId, uptId: $uptId);
 
-        $view = auth()->user()->isKepalaUpt() ? 'admin.dashboard_kepala_upt' : 'admin.dashboard';
+        $view = $isKepalaUpt ? 'admin.dashboard_kepala_upt' : 'admin.dashboard';
 
         return view($view, [
             'dashboard' => $result['data'],

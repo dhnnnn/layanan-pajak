@@ -6,6 +6,7 @@ use App\Actions\Tax\ImportTaxRealizationAction;
 use App\Actions\Tax\PreviewTaxRealizationAction;
 use App\Exports\EmployeeRealizationTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Employee\ConfirmImportRequest;
 use App\Http\Requests\Employee\ImportRequest;
 use App\Models\ImportLog;
 use Illuminate\Http\RedirectResponse;
@@ -47,11 +48,6 @@ class ImportController extends Controller
         ImportRequest $request,
         PreviewTaxRealizationAction $previewImport,
     ): View {
-        $request->validate([
-            'district_id' => ['required', 'exists:employee_districts,district_id,user_id,'.$request->user()->id],
-            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
-        ]);
-
         $result = $previewImport(
             file: $request->file('file'),
             districtId: $request->string('district_id')->toString(),
@@ -69,16 +65,9 @@ class ImportController extends Controller
     }
 
     public function confirm(
-        Request $request,
+        ConfirmImportRequest $request,
         ImportTaxRealizationAction $importRealization,
     ): RedirectResponse {
-        $request->validate([
-            'stored_path' => ['required', 'string'],
-            'file_name' => ['required', 'string'],
-            'district_id' => ['required', 'exists:employee_districts,district_id,user_id,'.$request->user()->id],
-            'year' => ['required', 'integer'],
-        ]);
-
         $importLog = $importRealization(
             storedPath: $request->string('stored_path')->toString(),
             originalFileName: $request->string('file_name')->toString(),

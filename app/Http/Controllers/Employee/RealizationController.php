@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers\Employee;
 
+use App\Actions\Tax\GetDistrictRealizationDetailsAction;
+use App\Actions\Tax\GetEmployeeRealizationIndexAction;
 use App\Actions\Tax\StoreTaxRealizationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\StoreTaxRealizationRequest;
 use App\Models\Month;
 use App\Models\TaxRealization;
-use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
-use App\Models\UptComparison;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,59 +18,28 @@ use Illuminate\View\View;
 
 class RealizationController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, GetEmployeeRealizationIndexAction $getIndexData): View
     {
-        $user = $request->user();
         $year = $request->integer('year', (int) date('Y'));
         $search = $request->string('search')->trim();
 
-        $districts = $user->accessibleDistricts()
-            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
-            ->orderBy('name')
-            ->get();
+        $result = $getIndexData($request->user(), $year, $search);
 
-        $realizations = TaxRealization::query()
-            ->with(['taxType', 'district'])
-            ->when(! $user->hasRole('admin'), function ($query) use ($user) {
-                if ($user->hasRole('kepala_upt')) {
-                    $query->whereHas('district.upts', fn ($q) => $q->where('upts.id', $user->upt_id));
-                } else {
-                    $query->where('user_id', $user->id);
-                }
-            })
-            ->orderByDesc('year')
-            ->orderBy('tax_type_id')
-            ->paginate(15);
-
-        // UPT target for progress bar
-        $uptTarget = (float) UptComparison::query()
-            ->where('upt_id', $user->upt_id)
-            ->where('year', $year)
-            ->sum('target_amount');
-
-        // Total realization per district for the year
-        $districtTotals = TaxRealizationDailyEntry::query()
-            ->where('user_id', $user->id)
-            ->whereYear('entry_date', $year)
-            ->selectRaw('district_id, SUM(amount) as total')
-            ->groupBy('district_id')
-            ->pluck('total', 'district_id');
-
-        return view('employee.realizations.index', compact(
-            'realizations', 'year', 'districts', 'search', 'uptTarget', 'districtTotals'
-        ));
+        return view('employee.realizations.index', array_merge($result, [
+            'year' => $year,
+            'search' => $search,
+        ]));
     }
 
-    public function create(Request $request): View
+    public function create(): View
     {
-        $user = $request->user();
-
         $taxTypes = TaxType::query()
             ->whereNull('parent_id')
             ->with(['children' => fn ($q) => $q->orderBy('name')])
             ->orderBy('name')
             ->get();
-        $districts = $user->districts()->orderBy('name')->get();
+
+        $districts = auth()->user()->districts()->orderBy('name')->get();
         $months = Month::query()->orderBy('number')->get();
 
         $availableYears = TaxTarget::query()
@@ -97,7 +66,7 @@ class RealizationController extends Controller
 
     public function show(TaxRealization $realization): View
     {
-        $this->authorizeRealization($realization);
+        $this->authorize('view', $realization);
 
         $realization->load(['taxType', 'district']);
         $months = Month::query()->orderBy('number')->get();
@@ -108,17 +77,18 @@ class RealizationController extends Controller
         );
     }
 
-    public function edit(Request $request, TaxRealization $realization): View
+    public function edit(TaxRealization $realization): View
     {
-        $this->authorizeRealization($realization);
+        $this->authorize('update', $realization);
 
-        $user = $request->user();
+        $user = auth()->user();
 
         $taxTypes = TaxType::query()
             ->whereNull('parent_id')
             ->with(['children' => fn ($q) => $q->orderBy('name')])
             ->orderBy('name')
             ->get();
+
         $districts = $user->districts()->orderBy('name')->get();
         $months = Month::query()->orderBy('number')->get();
 
@@ -144,7 +114,7 @@ class RealizationController extends Controller
         TaxRealization $realization,
         StoreTaxRealizationAction $storeRealization,
     ): RedirectResponse {
-        $this->authorizeRealization($realization);
+        $this->authorize('update', $realization);
 
         $storeRealization($request->validated(), $request->user());
 
@@ -153,63 +123,20 @@ class RealizationController extends Controller
             ->with('success', 'Data realisasi pajak berhasil diperbarui.');
     }
 
-    private function authorizeRealization(TaxRealization $realization): void
-    {
-        $user = auth()->user();
-
-        if ($user->hasRole('admin')) {
-            return;
-        }
-
-        if ($user->hasRole('kepala_upt')) {
-            abort_if(
-                $realization->district->upts()->where('upts.id', $user->upt_id)->doesntExist(),
-                403,
-                'Anda tidak memiliki akses ke data realisasi di luar UPT Anda.'
-            );
-
-            return;
-        }
-
-        abort_if(
-            $realization->user_id !== $user->id,
-            403,
-            'Anda tidak memiliki akses ke data realisasi ini.',
-        );
-    }
-
-    public function getTaxTypesByDistrict(Request $request, int $districtId): JsonResponse
-    {
+    public function getTaxTypesByDistrict(
+        Request $request,
+        string $districtId,
+        GetDistrictRealizationDetailsAction $getDetails
+    ): JsonResponse {
         $user = $request->user();
-        $year = $request->integer('year', date('Y'));
+        $year = $request->integer('year', (int) date('Y'));
 
         if (! $user->accessibleDistricts()->where('districts.id', $districtId)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $taxTypes = TaxType::query()
-            ->whereNull('parent_id')
-            ->with(['children' => fn ($q) => $q->orderBy('name')])
-            ->orderBy('name')
-            ->get();
+        $result = $getDetails($districtId, $year);
 
-        $realizations = TaxRealization::query()
-            ->where('district_id', $districtId)
-            ->where('year', $year)
-            ->get();
-
-        // Total daily entries per tax type for the year
-        $yearlyTotals = TaxRealizationDailyEntry::query()
-            ->where('district_id', $districtId)
-            ->whereYear('entry_date', $year)
-            ->selectRaw('tax_type_id, SUM(amount) as total')
-            ->groupBy('tax_type_id')
-            ->pluck('total', 'tax_type_id');
-
-        return response()->json([
-            'taxTypes' => $taxTypes,
-            'realizations' => $realizations,
-            'yearlyTotals' => $yearlyTotals,
-        ]);
+        return response()->json($result);
     }
 }

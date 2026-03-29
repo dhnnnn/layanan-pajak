@@ -30,6 +30,10 @@ class UpdateEmployeeAction
 
         $employee->update($updateData);
 
+        if (isset($data['district_ids'])) {
+            $employee->districts()->sync($data['district_ids']);
+        }
+
         return $employee;
     }
 }

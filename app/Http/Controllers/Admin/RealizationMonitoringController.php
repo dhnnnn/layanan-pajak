@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -54,13 +55,7 @@ class RealizationMonitoringController extends Controller
         $year = $request->integer('year', (int) date('Y'));
         $month = $request->integer('month', (int) date('n'));
 
-        $months = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
-        ];
-
-        $monthName = strtolower(str_replace(' ', '-', $months[$month]));
+        $monthName = strtolower(Carbon::createFromDate($year, $month, 1)->translatedFormat('F'));
         $filename = "realisasi-{$upt->code}-{$monthName}-{$year}.xlsx";
 
         return Excel::download(new UptRealizationExport($upt->id, $year, $month), $filename);

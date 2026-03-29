@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Upt\GenerateComparisonReportAction;
+use App\Actions\Upt\GetUptComparisonDataAction;
 use App\Actions\Upt\ImportUptComparisonAction;
 use App\Actions\Upt\PreviewUptComparisonAction;
+use App\Actions\Upt\UpsertUptComparisonTargetsAction;
 use App\Exports\TaxRealizationTemplateExport;
 use App\Exports\UptComparisonReportExport;
 use App\Exports\UptComparisonTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ImportUptComparisonRequest;
 use App\Http\Requests\Admin\UpdateUptTargetRequest;
-use App\Models\TaxTarget;
-use App\Models\TaxType;
 use App\Models\Upt;
-use App\Models\UptComparison;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -116,123 +115,33 @@ class UptComparisonController extends Controller
         return Excel::download(new UptComparisonReportExport($year), $filename);
     }
 
-    public function manage(Request $request): View
+    public function manage(Request $request, GetUptComparisonDataAction $getData): View
     {
         $year = (int) $request->query('year', date('Y'));
         $uptId = $request->query('upt_id');
 
-        $upts = Upt::query()->orderBy('code')->get();
+        $result = $getData($year, $uptId);
 
-        // Identify which UPTs have targets for the current year
-        $uptsWithTargets = UptComparison::query()
-            ->where('year', $year)
-            ->distinct()
-            ->pluck('upt_id')
-            ->toArray();
-
-        // Add a temporary property to each UPT to indicate if it has targets
-        $upts->each(function ($upt) use ($uptsWithTargets) {
-            $upt->has_targets = in_array($upt->id, $uptsWithTargets);
-        });
-
-        // Ensure the selected uptId is valid, otherwise default it
-        if (! $uptId || ! $upts->contains('id', $uptId)) {
-            $firstWithTargets = $upts->firstWhere('has_targets', true);
-            $uptId = $firstWithTargets ? $firstWithTargets->id : ($upts->first()->id ?? null);
-        }
-
-        $taxTypes = TaxType::query()
-            ->whereNull('parent_id')
-            ->with(['children' => fn ($q) => $q->orderBy('code')])
-            ->orderBy('code')
-            ->get();
-
-        $targets = UptComparison::query()
-            ->where('upt_id', $uptId)
-            ->where('year', $year)
-            ->pluck('target_amount', 'tax_type_id');
-
-        // Pre-calculate parent totals for initial render
-        foreach ($taxTypes as $taxType) {
-            if ($taxType->children->isNotEmpty()) {
-                $sum = 0;
-                foreach ($taxType->children as $child) {
-                    $sum += (float) ($targets[$child->id] ?? 0);
-                }
-                $targets[$taxType->id] = $sum;
-            }
-        }
-
-        $availableYears = TaxTarget::query()
-            ->select('year')
-            ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year');
-
-        if ($availableYears->isEmpty()) {
-            $availableYears = collect([(int) date('Y')]);
-        }
-
-        return view('admin.upt-comparisons.manage', [
-            'upts' => $upts,
-            'taxTypes' => $taxTypes,
-            'targets' => $targets,
-            'availableYears' => $availableYears,
-            'year' => $year,
-            'uptId' => $uptId,
-        ]);
+        return view('admin.upt-comparisons.manage', $result);
     }
 
-    public function upsert(UpdateUptTargetRequest $request): RedirectResponse
-    {
+    public function upsert(
+        UpdateUptTargetRequest $request,
+        UpsertUptComparisonTargetsAction $upsertTargets
+    ): RedirectResponse {
         $validated = $request->validated();
-        $year = $validated['year'];
-        $uptId = $validated['upt_id'];
-        $targets = $validated['targets'];
 
-        // 1. First, save all individual targets (including those that might be children)
-        foreach ($targets as $taxTypeId => $amount) {
-            UptComparison::query()->updateOrCreate(
-                [
-                    'tax_type_id' => $taxTypeId,
-                    'upt_id' => $uptId,
-                    'year' => $year,
-                ],
-                [
-                    'target_amount' => $amount ?? 0,
-                ]
-            );
-        }
-
-        // 2. Then, identify all parent tax types that have children
-        $parentTaxTypes = TaxType::query()
-            ->whereNull('parent_id')
-            ->whereHas('children')
-            ->with('children')
-            ->get();
-
-        // 3. For each parent, sum up its children's targets and update the parent target
-        foreach ($parentTaxTypes as $parent) {
-            $sum = UptComparison::query()
-                ->where('upt_id', $uptId)
-                ->where('year', $year)
-                ->whereIn('tax_type_id', $parent->children->pluck('id'))
-                ->sum('target_amount');
-
-            UptComparison::query()->updateOrCreate(
-                [
-                    'tax_type_id' => $parent->id,
-                    'upt_id' => $uptId,
-                    'year' => $year,
-                ],
-                [
-                    'target_amount' => $sum ?? 0,
-                ]
-            );
-        }
+        $upsertTargets(
+            uptId: $validated['upt_id'],
+            year: $validated['year'],
+            targets: $validated['targets']
+        );
 
         return redirect()
-            ->route('admin.upt-comparisons.manage', ['year' => $year, 'upt_id' => $uptId])
+            ->route('admin.upt-comparisons.manage', [
+                'year' => $validated['year'],
+                'upt_id' => $validated['upt_id'],
+            ])
             ->with('success', 'Target UPT berhasil diperbarui.');
     }
 }

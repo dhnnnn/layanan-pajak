@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Tax\ImportTaxRealizationAction;
 use App\Actions\Tax\PreviewTaxRealizationAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ConfirmImportRequest;
 use App\Http\Requests\Admin\ImportRequest;
 use App\Models\District;
 use App\Models\ImportLog;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -26,10 +26,6 @@ class ImportController extends Controller
         ImportRequest $request,
         PreviewTaxRealizationAction $previewImport,
     ): View {
-        $request->validate([
-            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
-        ]);
-
         $result = $previewImport(
             file: $request->file('file'),
             year: $request->integer('year')
@@ -50,15 +46,9 @@ class ImportController extends Controller
     }
 
     public function confirm(
-        Request $request,
+        ConfirmImportRequest $request,
         ImportTaxRealizationAction $importRealization,
     ): RedirectResponse {
-        $request->validate([
-            'stored_path' => ['required', 'string'],
-            'file_name' => ['required', 'string'],
-            'year' => ['required', 'integer'],
-        ]);
-
         $districtCount = District::count();
 
         $importLog = $importRealization(

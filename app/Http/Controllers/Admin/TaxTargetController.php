@@ -6,6 +6,7 @@ use App\Actions\Tax\CreateTaxTargetAction;
 use App\Actions\Tax\DeleteTaxTargetAction;
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Actions\Tax\ListTaxTargetsAction;
+use App\Actions\Tax\ProcessTaxTargetImportAction;
 use App\Actions\Tax\UpdateTaxTargetAction;
 use App\Exports\TaxTargetExport;
 use App\Http\Controllers\Controller;
@@ -47,7 +48,7 @@ class TaxTargetController extends Controller
         ]);
     }
 
-    public function storeImport(Request $request): RedirectResponse
+    public function storeImport(Request $request, ProcessTaxTargetImportAction $processImport): RedirectResponse
     {
         $storedPath = $request->string('stored_path')->toString();
         $year = $request->integer('year');
@@ -55,25 +56,7 @@ class TaxTargetController extends Controller
         $import = new TaxTargetImport(year: $year);
         Excel::import($import, $storedPath, 'local');
 
-        $previewData = $import->getPreviewData();
-
-        foreach ($previewData as $row) {
-            if ($row['is_valid']) {
-                TaxTarget::query()->updateOrCreate(
-                    [
-                        'tax_type_id' => $row['tax_type_id'],
-                        'year' => $row['year'],
-                    ],
-                    [
-                        'target_amount' => $row['target_amount'],
-                        'q1_target' => $row['q1_target'],
-                        'q2_target' => $row['q2_target'],
-                        'q3_target' => $row['q3_target'],
-                        'q4_target' => $row['q4_target'],
-                    ]
-                );
-            }
-        }
+        $processImport($import->getPreviewData());
 
         Storage::disk('local')->delete($storedPath);
 

@@ -13,6 +13,7 @@ class CreateEmployeeAction
      *     email: string,
      *     password: string,
      *     upt_id?: string|null,
+     *     district_ids?: array<string>,
      * } $data
      */
     public function __invoke(array $data): User
@@ -25,6 +26,10 @@ class CreateEmployeeAction
         ]);
 
         $employee->assignRole('pegawai');
+
+        if (! empty($data['district_ids'])) {
+            $employee->districts()->sync($data['district_ids']);
+        }
 
         return $employee;
     }

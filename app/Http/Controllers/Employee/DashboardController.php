@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Employee;
 
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Employee\DashboardRequest;
 use App\Models\TaxTarget;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function show(
-        Request $request,
+        DashboardRequest $request,
         GenerateTaxDashboardAction $generateDashboard,
     ): View {
         $user = $request->user();
@@ -25,15 +25,12 @@ class DashboardController extends Controller
 
         $selectedYear = (int) $request->query(
             'year',
-            $availableYears->first() ?? date('Y'),
+            $availableYears->first() ?? (int) date('Y'),
         );
 
-        // Auto-select first district if not specified or invalid
-        $selectedDistrictId = $request->filled('district_id')
-            ? $request->string('district_id')->toString()
-            : null;
+        // Handle district selection
+        $selectedDistrictId = $request->query('district_id');
 
-        // 'all' means no district filter; otherwise validate it belongs to the user
         if ($selectedDistrictId === 'all') {
             $selectedDistrictId = null;
         } elseif (

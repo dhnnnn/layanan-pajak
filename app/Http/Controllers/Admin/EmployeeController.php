@@ -50,18 +50,8 @@ class EmployeeController extends Controller
     public function store(
         StoreEmployeeRequest $request,
         CreateEmployeeAction $createEmployee,
-        AssignEmployeeDistrictAction $assignDistricts,
     ): RedirectResponse {
-        $employee = $createEmployee([
-            'name' => $request->string('name')->toString(),
-            'email' => $request->string('email')->toString(),
-            'password' => $request->string('password')->toString(),
-            'upt_id' => $request->filled('upt_id') ? $request->string('upt_id')->toString() : null,
-        ]);
-
-        if ($request->filled('district_ids')) {
-            $assignDistricts($employee, $request->array('district_ids'));
-        }
+        $createEmployee($request->validated());
 
         return redirect()
             ->route('admin.employees.index')
@@ -95,16 +85,8 @@ class EmployeeController extends Controller
         UpdateEmployeeRequest $request,
         User $employee,
         UpdateEmployeeAction $updateEmployee,
-        AssignEmployeeDistrictAction $assignDistricts,
     ): RedirectResponse {
-        $updateEmployee([
-            'name' => $request->string('name')->toString(),
-            'email' => $request->string('email')->toString(),
-            'upt_id' => $request->filled('upt_id') ? $request->string('upt_id')->toString() : null,
-            'password' => $request->filled('password') ? $request->string('password')->toString() : null,
-        ], $employee);
-
-        $assignDistricts($employee, $request->array('district_ids', []));
+        $updateEmployee($request->validated(), $employee);
 
         return redirect()
             ->route('admin.employees.index')

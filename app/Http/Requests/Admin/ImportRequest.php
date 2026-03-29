@@ -11,13 +11,11 @@ class ImportRequest extends FormRequest
         return true;
     }
 
-    /**
-     * @return array<string, list<string>>
-     */
     public function rules(): array
     {
         return [
             'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
+            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
         ];
     }
 
@@ -31,6 +29,10 @@ class ImportRequest extends FormRequest
             'file.file' => 'Unggahan harus berupa file.',
             'file.mimes' => 'File harus berformat .xlsx atau .xls.',
             'file.max' => 'Ukuran file tidak boleh melebihi 10 MB.',
+            'year.required' => 'Tahun wajib diisi.',
+            'year.integer' => 'Tahun harus berupa angka.',
+            'year.min' => 'Tahun minimal 2000.',
+            'year.max' => 'Tahun maksimal 2100.',
         ];
     }
 }

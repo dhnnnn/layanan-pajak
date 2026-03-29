@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Employee;
 use App\Actions\Tax\DeleteDailyEntryAction;
 use App\Actions\Tax\StoreDailyEntryAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Employee\BatchStoreDailyEntryRequest;
+use App\Http\Requests\Employee\ListDailyEntryRequest;
+use App\Http\Requests\Employee\StoreDailyEntryRequest;
 use App\Models\District;
 use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxType;
@@ -66,21 +69,8 @@ class DailyEntryController extends Controller
     /**
      * List daily entries for a given tax_type + district + year + month (JSON).
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListDailyEntryRequest $request): JsonResponse
     {
-        $request->validate([
-            'tax_type_id' => ['required', 'string', 'exists:tax_types,id'],
-            'district_id' => ['required', 'string', 'exists:districts,id'],
-            'year' => ['required', 'integer'],
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-        ]);
-
-        $user = $request->user();
-
-        if (! $user->districts()->where('districts.id', $request->input('district_id'))->exists()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
         $entries = TaxRealizationDailyEntry::query()
             ->where('tax_type_id', $request->input('tax_type_id'))
             ->where('district_id', $request->input('district_id'))
@@ -95,24 +85,12 @@ class DailyEntryController extends Controller
     /**
      * Store multiple daily entries at once (batch).
      */
-    public function storeBatch(Request $request, StoreDailyEntryAction $storeDailyEntry): JsonResponse
+    public function storeBatch(BatchStoreDailyEntryRequest $request, StoreDailyEntryAction $storeDailyEntry): JsonResponse
     {
-        $validated = $request->validate([
-            'district_id' => ['required', 'string', 'exists:districts,id'],
-            'entries' => ['required', 'array', 'min:1'],
-            'entries.*.tax_type_id' => ['required', 'string', 'exists:tax_types,id'],
-            'entries.*.entry_date' => ['required', 'date'],
-            'entries.*.amount' => ['required', 'numeric', 'min:0.01'],
-            'entries.*.note' => ['nullable', 'string', 'max:255'],
-        ]);
-
+        $validated = $request->validated();
         $user = $request->user();
 
-        if (! $user->districts()->where('districts.id', $validated['district_id'])->exists()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        foreach ($validated['entries'] as $item) {
+        collect($validated['entries'])->each(function ($item) use ($validated, $user, $storeDailyEntry) {
             $storeDailyEntry([
                 'tax_type_id' => $item['tax_type_id'],
                 'district_id' => $validated['district_id'],
@@ -120,7 +98,7 @@ class DailyEntryController extends Controller
                 'amount' => $item['amount'],
                 'note' => $item['note'] ?? null,
             ], $user);
-        }
+        });
 
         return response()->json(['message' => count($validated['entries']).' data berhasil disimpan.'], 201);
     }
@@ -128,23 +106,9 @@ class DailyEntryController extends Controller
     /**
      * Store a new daily entry.
      */
-    public function store(Request $request, StoreDailyEntryAction $storeDailyEntry): JsonResponse
+    public function store(StoreDailyEntryRequest $request, StoreDailyEntryAction $storeDailyEntry): JsonResponse
     {
-        $validated = $request->validate([
-            'tax_type_id' => ['required', 'string', 'exists:tax_types,id'],
-            'district_id' => ['required', 'string', 'exists:districts,id'],
-            'entry_date' => ['required', 'date'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $user = $request->user();
-
-        if (! $user->accessibleDistricts()->where('districts.id', $validated['district_id'])->exists()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $entry = $storeDailyEntry($validated, $user);
+        $entry = $storeDailyEntry($request->validated(), $request->user());
 
         return response()->json(['entry' => $entry, 'message' => 'Data berhasil disimpan.'], 201);
     }
@@ -154,11 +118,7 @@ class DailyEntryController extends Controller
      */
     public function destroy(Request $request, TaxRealizationDailyEntry $dailyEntry, DeleteDailyEntryAction $deleteDailyEntry): JsonResponse
     {
-        $user = $request->user();
-
-        if ($dailyEntry->user_id !== $user->id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
+        abort_if($dailyEntry->user_id !== $request->user()->id, 403, 'Unauthorized');
 
         $deleteDailyEntry($dailyEntry);
 

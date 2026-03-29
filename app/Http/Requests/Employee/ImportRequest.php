@@ -18,6 +18,12 @@ class ImportRequest extends FormRequest
     {
         return [
             'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
+            'district_id' => [
+                'required',
+                'string',
+                'exists:employee_districts,district_id,user_id,'.$this->user()->id,
+            ],
+            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
         ];
     }
 
