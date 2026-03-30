@@ -63,6 +63,11 @@ class Upt extends Model
         return $this->hasMany(User::class);
     }
 
+    public function kepalaUpt()
+    {
+        return $this->users()->role('kepala_upt')->first();
+    }
+
     public function comparisons(): HasMany
     {
         return $this->hasMany(UptComparison::class);

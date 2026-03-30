@@ -18,15 +18,18 @@ class KepalaUptSeeder extends Seeder
         $upt1 = Upt::firstOrCreate(
             ['code' => 'UPT-01'],
             [
-                'name' => 'UPT Wilayah I',
+                'name' => 'UPT I',
                 'description' => 'Unit Pelaksana Teknis Wilayah I',
             ]
         );
 
-        $user1 = User::firstOrCreate(
-            ['email' => 'kepala.upt1@gmail.com'],
+        $name1 = 'MUCHAMAD KHASAN SOLEH S.E., M.M.';
+        $email1 = 'muchamad.khasan.soleh@upp.pendapatan';
+
+        $user1 = User::updateOrCreate(
+            ['email' => $email1],
             [
-                'name' => 'Kepala UPT 1',
+                'name' => $name1,
                 'password' => Hash::make('password'),
                 'upt_id' => $upt1->id,
             ]
@@ -37,15 +40,18 @@ class KepalaUptSeeder extends Seeder
         $upt2 = Upt::firstOrCreate(
             ['code' => 'UPT-02'],
             [
-                'name' => 'UPT Wilayah II',
+                'name' => 'UPT II',
                 'description' => 'Unit Pelaksana Teknis Wilayah II',
             ]
         );
 
-        $user2 = User::firstOrCreate(
-            ['email' => 'kepala.upt2@gmail.com'],
+        $name2 = 'ARDIE KURNIAWAN S. Pi, M.Si.';
+        $email2 = 'ardie.kurniawan@upp.pendapatan';
+
+        $user2 = User::updateOrCreate(
+            ['email' => $email2],
             [
-                'name' => 'Kepala UPT 2',
+                'name' => $name2,
                 'password' => Hash::make('password'),
                 'upt_id' => $upt2->id,
             ]

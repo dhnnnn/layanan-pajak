@@ -12,6 +12,12 @@ class UptSeeder extends Seeder
     {
         $districts = District::query()->get();
 
+        // Define districts for UPT I
+        $upt1Districts = [
+            'Purwodadi', 'Tutur', 'Purwosari', 'Prigen', 
+            'Sukorejo', 'Pandaan', 'Gempol', 'Beji', 'Bangil'
+        ];
+
         // Create UPT I
         $upt1 = Upt::query()->updateOrCreate(
             ['code' => 'UPT-01'],
@@ -21,24 +27,28 @@ class UptSeeder extends Seeder
             ]
         );
 
-        // Assign first half of districts to UPT I
         $upt1->districts()->sync(
-            $districts->take((int) ceil($districts->count() / 2))->pluck('id')
+            District::query()->whereIn('name', $upt1Districts)->pluck('id')
         );
+
+        // Define districts for UPT II
+        $upt2Districts = [
+            'Rejoso', 'Lekok', 'Gondangwetan', 'Pasrepan', 'Puspo', 'Tosari',
+            'Pohjentrek', 'Grati', 'Nguling', 'Rembang', 'Kraton', 'Kejayan',
+            'Winongan', 'Lumbang', 'Wonorejo'
+        ];
 
         // Create UPT II
         $upt2 = Upt::query()->updateOrCreate(
             ['code' => 'UPT-02'],
             [
                 'name' => 'UPT II',
-                'code' => 'UPT-02',
                 'description' => 'Unit Pelaksana Teknis Wilayah II',
             ]
         );
 
-        // Assign second half of districts to UPT II
         $upt2->districts()->sync(
-            $districts->skip((int) ceil($districts->count() / 2))->pluck('id')
+            District::query()->whereIn('name', $upt2Districts)->pluck('id')
         );
     }
 }

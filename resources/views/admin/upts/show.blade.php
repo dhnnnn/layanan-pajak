@@ -14,7 +14,7 @@
         {{-- UPT Info --}}
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h3 class="text-lg font-bold text-slate-800 mb-4">Informasi UPT</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                     <label class="text-xs font-semibold text-slate-500 uppercase">Nama UPT</label>
                     <p class="text-sm font-medium text-slate-900 mt-1">{{ $upt->name }}</p>
@@ -22,6 +22,10 @@
                 <div>
                     <label class="text-xs font-semibold text-slate-500 uppercase">Kode</label>
                     <p class="text-sm font-mono text-slate-900 mt-1">{{ $upt->code }}</p>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Nama Kepala UPT</label>
+                    <p class="text-sm font-medium text-slate-900 mt-1">{{ $upt->kepalaUpt()?->name ?? '-' }}</p>
                 </div>
                 <div>
                     <label class="text-xs font-semibold text-slate-500 uppercase">Deskripsi</label>
@@ -82,7 +86,10 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
-                        @forelse($upt->users as $user)
+                        @php
+                            $pegawai = $upt->users->filter(fn($u) => $u->hasRole('pegawai'));
+                        @endphp
+                        @forelse($pegawai as $user)
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-6 py-4 font-medium text-slate-900">
                                     {{ $user->name }}

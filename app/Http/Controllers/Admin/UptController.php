@@ -45,7 +45,7 @@ class UptController extends Controller
     {
         $this->authorize('view', $upt);
 
-        $upt->load(['districts', 'users.districts']);
+        $upt->load(['districts', 'users.districts', 'users.roles']);
 
         return view('admin.upts.show', compact('upt'));
     }
