@@ -30,6 +30,10 @@ class StoreTaxTargetRequest extends FormRequest
                 'max:2100',
             ],
             'target_amount' => ['required', 'numeric', 'min:0'],
+            'q1_target' => ['nullable', 'numeric', 'min:0'],
+            'q2_target' => ['nullable', 'numeric', 'min:0'],
+            'q3_target' => ['nullable', 'numeric', 'min:0'],
+            'q4_target' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

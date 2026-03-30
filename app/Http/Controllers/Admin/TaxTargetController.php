@@ -180,11 +180,45 @@ class TaxTargetController extends Controller
         return Excel::download(new TaxTargetExport($year), $filename);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        $tax_type_id = $request->string('tax_type_id')->toString();
+        $year = $request->integer('year') ?: (int) date('Y');
+        
         $taxTypes = TaxType::query()->orderBy('name')->get();
+        $baselineAmount = 0;
+        $q1_baseline = 0;
+        $q2_baseline = 0;
+        $q3_baseline = 0;
+        $q4_baseline = 0;
 
-        return view('admin.tax-targets.create', compact('taxTypes'));
+        if ($tax_type_id) {
+            $taxType = TaxType::find($tax_type_id);
+            if ($taxType) {
+                $sTarget = \App\Models\SimpaduTarget::where('no_ayat', $taxType->simpadu_code)
+                    ->where('year', $year)
+                    ->first();
+                
+                if ($sTarget) {
+                    $baselineAmount = (float) $sTarget->total_target;
+                    // Calculate quarterly amounts based on baseline percentages
+                    $q1_baseline = $baselineAmount * ($sTarget->q1_pct / 100);
+                    $q2_baseline = $baselineAmount * ($sTarget->q2_pct / 100);
+                    $q3_baseline = $baselineAmount * ($sTarget->q3_pct / 100);
+                    $q4_baseline = $baselineAmount * ($sTarget->q4_pct / 100);
+                }
+            }
+        }
+
+        return view('admin.tax-targets.create', compact(
+            'taxTypes', 
+            'baselineAmount', 
+            'year',
+            'q1_baseline',
+            'q2_baseline',
+            'q3_baseline',
+            'q4_baseline'
+        ));
     }
 
     public function store(StoreTaxTargetRequest $request, CreateTaxTargetAction $createTaxTarget): RedirectResponse
@@ -192,7 +226,7 @@ class TaxTargetController extends Controller
         $createTaxTarget($request->validated());
 
         return redirect()
-            ->route('admin.tax-targets.manage')
+            ->route('admin.tax-targets.manage', ['year' => $request->year])
             ->with('success', 'Target pajak berhasil ditambahkan.');
     }
 
@@ -211,16 +245,17 @@ class TaxTargetController extends Controller
         $updateTaxTarget($request->validated(), $taxTarget);
 
         return redirect()
-            ->route('admin.tax-targets.manage')
+            ->route('admin.tax-targets.manage', ['year' => $taxTarget->year])
             ->with('success', 'Target pajak berhasil diperbarui.');
     }
 
     public function destroy(TaxTarget $taxTarget, DeleteTaxTargetAction $deleteTaxTarget): RedirectResponse
     {
+        $year = $taxTarget->year;
         $deleteTaxTarget($taxTarget);
-
+ 
         return redirect()
-            ->route('admin.tax-targets.manage')
+            ->route('admin.tax-targets.manage', ['year' => $year])
             ->with('success', 'Target pajak berhasil dihapus.');
     }
 }

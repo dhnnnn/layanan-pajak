@@ -80,36 +80,127 @@
                     <p class="text-[10px] text-slate-400 mt-0.5">Menampilkan {{ number_format($payers->total(), 0, ',', '.') }} data hasil sinkronisasi</p>
                 </div>
                 <div class="text-[11px] text-slate-400 flex items-center gap-3">
-                    <form action="{{ route('admin.tax-targets.show', $taxType->id) }}" method="GET" class="flex items-center gap-2">
+                    <form action="{{ route('admin.tax-targets.show', $taxType->id) }}" method="GET" class="flex items-center gap-2" id="filterForm">
                         <input type="hidden" name="year" value="{{ $year }}">
+                        <input type="hidden" name="district" id="selectedDistrictInput" value="{{ $selectedDistrict }}">
                         
-                        {{-- Search Input --}}
-                        <div class="relative">
-                            <input type="text" name="search" value="{{ $search }}" 
-                                   placeholder="Cari Nama / NPWPD..." 
-                                   class="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-400 focus:border-slate-400 w-48 md:w-64">
-                            <svg class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
+                        {{-- Unified Filter Toolbar --}}
+                        <div class="flex items-center bg-white border border-slate-200 rounded-lg focus-within:ring-1 focus-within:ring-slate-400 focus-within:border-slate-400 transition-all divide-x divide-slate-100 shadow-sm">
+                            {{-- Name/NPWPD Search --}}
+                            <div class="flex items-center">
+                                <div class="pl-2.5 text-slate-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                                <input type="text" name="search" id="liveSearchInput" value="{{ $search }}" 
+                                       placeholder="Cari Nama / NPWPD..." 
+                                       class="pl-2 pr-3 py-1.5 text-xs border-none focus:ring-0 w-40 md:w-56 bg-transparent outline-none">
+                            </div>
+
+                            {{-- Searchable District Trigger --}}
+                            <div class="relative" id="districtDropdown">
+                                <button type="button" id="districtTrigger"
+                                        class="flex items-center justify-between w-44 px-3 py-1.5 text-xs bg-transparent border-none hover:bg-slate-50 transition-colors text-left group">
+                                    <span id="districtLabel" class="truncate text-slate-600 font-medium">
+                                        {{ $selectedDistrict ? ($districts->firstWhere('simpadu_code', $selectedDistrict)->name ?? 'Semua Kecamatan') : 'Kecamatan...' }}
+                                    </span>
+                                    <svg class="w-3 h-3 ml-2 text-slate-300 group-hover:text-slate-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+
+                                {{-- Dropdown Menu --}}
+                                <div id="districtMenu" class="hidden absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden transform transition-all">
+                                    <div class="p-2 border-b border-slate-100 bg-slate-50">
+                                        <input type="text" id="districtMenuSearch" placeholder="Filter Kecamatan..." 
+                                               class="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-400 focus:border-slate-400 bg-white outline-none">
+                                    </div>
+                                    <div class="max-h-60 overflow-y-auto pt-1 pb-1 custom-scrollbar">
+                                        <div class="district-option px-4 py-2.5 text-xs hover:bg-slate-50 cursor-pointer transition-colors text-slate-500 hover:text-slate-900 border-l-2 border-transparent hover:border-slate-400 flex items-center gap-2" 
+                                             data-value="" data-label="Kecamatan...">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                                            Semua Kecamatan
+                                        </div>
+                                        @foreach($districts as $district)
+                                            <div class="district-option px-4 py-2.5 text-xs hover:bg-slate-50 cursor-pointer transition-colors text-slate-700 hover:text-slate-900 border-l-2 border-transparent hover:border-slate-800 flex items-center justify-between group" 
+                                                 data-value="{{ $district->simpadu_code }}" data-label="{{ $district->name }}">
+                                                <span class="font-medium">{{ $district->name }}</span>
+                                                <span class="text-[9px] text-slate-300 group-hover:text-slate-400 font-mono">{{ $district->simpadu_code }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- District Filter --}}
-                        <select name="district" onchange="this.form.submit()" 
-                                class="pl-3 pr-8 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-400 focus:border-slate-400 bg-white">
-                            <option value="">Semua Kecamatan</option>
-                            @foreach($districts as $district)
-                                <option value="{{ $district->simpadu_code }}" {{ $selectedDistrict == $district->simpadu_code ? 'selected' : '' }}>
-                                    {{ $district->name }}
-                                </option>
-                            @endforeach
-                        </select>
-
                         @if($search || $selectedDistrict)
-                            <a href="{{ route('admin.tax-targets.show', $taxType->id) }}?year={{ $year }}" class="text-red-500 hover:text-red-700 font-bold p-1" title="Reset Filter">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            <a href="{{ route('admin.tax-targets.show', $taxType->id) }}?year={{ $year }}" 
+                               class="flex items-center px-3 py-1.5 bg-white border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 rounded-lg transition-colors group shadow-sm" title="Reset Filter">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <span class="text-[10px] font-bold uppercase ml-1 hidden lg:block">Reset</span>
                             </a>
                         @endif
                     </form>
+
+                    {{-- Unified jQuery Filter Management --}}
+                    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+                    <script>
+                        $(document).ready(function() {
+                            const $form = $('#filterForm');
+                            const $trigger = $('#districtTrigger');
+                            const $menu = $('#districtMenu');
+                            const $searchInMenu = $('#districtMenuSearch');
+                            const $options = $('.district-option');
+                            const $hiddenDistrict = $('#selectedDistrictInput');
+                            const $liveSearch = $('#liveSearchInput');
+                            
+                            let searchTimer;
+
+                            // 1. Live Search Logic
+                            $liveSearch.on('input', function() {
+                                clearTimeout(searchTimer);
+                                searchTimer = setTimeout(() => {
+                                    $form.submit();
+                                }, 600);
+                            });
+
+                            // Maintain cursor position
+                            const val = $liveSearch.val();
+                            $liveSearch.focus().val('').val(val);
+
+                            // 2. Custom Dropdown Logic
+                            $trigger.on('click', function(e) {
+                                e.stopPropagation();
+                                $menu.toggleClass('hidden');
+                                if (!$menu.hasClass('hidden')) {
+                                    $searchInMenu.focus();
+                                }
+                            });
+
+                            $(document).on('click', function(e) {
+                                if (!$('#districtDropdown').has(e.target).length) {
+                                    $menu.addClass('hidden');
+                                }
+                            });
+
+                            $searchInMenu.on('input', function() {
+                                const term = $(this).val().toLowerCase();
+                                $options.each(function() {
+                                    const text = $(this).data('label').toLowerCase();
+                                    const code = $(this).data('value').toString().toLowerCase();
+                                    $(this).toggle(text.includes(term) || code.includes(term));
+                                });
+                            });
+
+                            $options.on('click', function() {
+                                const val = $(this).data('value');
+                                $hiddenDistrict.val(val);
+                                $menu.addClass('hidden');
+                                $form.submit();
+                            });
+                        });
+                    </script>
                 </div>
             </div>
             
