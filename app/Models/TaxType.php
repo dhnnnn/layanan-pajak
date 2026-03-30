@@ -15,7 +15,7 @@ class TaxType extends Model
     use HasFactory, HasUuids;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'code', 'parent_id'];
+    protected $fillable = ['name', 'code', 'parent_id', 'simpadu_code'];
 
     protected $keyType = 'string';
 

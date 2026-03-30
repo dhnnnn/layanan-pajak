@@ -27,9 +27,9 @@
                 <p class="text-2xl font-bold text-slate-900">Rp {{ number_format($totalTarget, 0, ',', '.') }}</p>
             </div>
 
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Total Realisasi</p>
-                <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($totalRealization, 0, ',', '.') }}</p>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
+                <p class="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Total Realisasi</p>
+                <p class="text-2xl font-bold text-blue-700">Rp {{ number_format($totalRealization, 0, ',', '.') }}</p>
             </div>
 
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -63,7 +63,7 @@
                             <th rowspan="2" class="px-3 py-5 border border-slate-200 text-right min-w-[140px]">Target Total</th>
                             <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-slate-50">Tribulan 1</th>
                             <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-white">Tribulan 2</th>
-                            <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-slate-50">Tribulan 3</th>
+                             <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-slate-50">Tribulan 3</th>
                             <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-white">Tribulan 4</th>
                             <th rowspan="2" class="px-3 py-5 border border-slate-200 text-right min-w-[140px]">Lebih/(Kurang)</th>
                         </tr>
@@ -110,7 +110,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="15" class="px-6 py-16 text-center text-slate-500 bg-white">
+                                <td colspan="17" class="px-6 py-16 text-center text-slate-500 bg-white">
                                     <div class="flex flex-col items-center">
                                         <svg class="w-16 h-16 text-slate-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>

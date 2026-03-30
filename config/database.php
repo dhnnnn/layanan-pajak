@@ -46,20 +46,6 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
-            'read' => [
-                'host' => [
-                    env('DB_READ_HOST', env('DB_HOST', '127.0.0.1')),
-                ],
-                'database' => env('DB_READ_DATABASE', 'simpadunew'),
-                'username' => env('DB_READ_USERNAME', env('DB_USERNAME', 'root')),
-                'password' => env('DB_READ_PASSWORD', env('DB_PASSWORD', '')),
-            ],
-            'write' => [
-                'host' => [
-                    env('DB_HOST', '127.0.0.1'),
-                ],
-            ],
-            'sticky' => true,
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
@@ -76,6 +62,19 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+        ],
+
+        'simpadunew' => [
+            'driver' => 'mysql',
+            'host' => env('DB_READ_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('DB_READ_DATABASE', 'simpadunew'),
+            'username' => env('DB_READ_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('DB_READ_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
         ],
 
         'mariadb' => [

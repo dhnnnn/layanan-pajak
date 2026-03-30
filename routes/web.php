@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\RealizationMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
 use App\Http\Controllers\Admin\TemplateController;
+use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\UptComparisonController;
 use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
@@ -98,6 +99,14 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
             'tax-targets',
             TaxTargetController::class,
         )->except(['show', 'index']);
+
+        // Monitoring WP & Penugasan
+        Route::prefix('monitoring')
+            ->name('monitoring.')
+            ->group(function (): void {
+                Route::get('/', [TaxPayerMonitoringController::class, 'index'])->name('index');
+                Route::post('/assign', [TaxPayerMonitoringController::class, 'storeTask'])->name('assign');
+            });
 
         // Download Template
         Route::get('/template', [TemplateController::class, 'index'])->name('template.index');

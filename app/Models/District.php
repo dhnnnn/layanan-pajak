@@ -15,7 +15,7 @@ class District extends Model
     use HasFactory, HasUuids;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'code'];
+    protected $fillable = ['name', 'code', 'simpadu_code'];
 
     protected $keyType = 'string';
 
