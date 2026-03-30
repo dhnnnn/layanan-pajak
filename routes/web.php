@@ -93,6 +93,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
         Route::get('target-tax', [TaxTargetController::class, 'index'])->name('tax-targets.index');
         Route::get('tax-targets/manage', [TaxTargetController::class, 'manage'])->name('tax-targets.manage');
+        Route::get('tax-targets/{taxType}/show', [TaxTargetController::class, 'show'])->name('tax-targets.show');
         Route::post('tax-targets/preview', [TaxTargetController::class, 'preview'])->name('tax-targets.preview');
         Route::post('tax-targets/import', [TaxTargetController::class, 'storeImport'])->name('tax-targets.import');
         Route::resource(

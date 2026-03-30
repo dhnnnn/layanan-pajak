@@ -105,45 +105,62 @@ class GenerateTaxDashboardAction
 
             if ($parent->children->isEmpty()) {
                 $parentData['is_parent'] = false;
-
                 return [$parentData];
             }
 
-            $childItems = $parent->children->map(fn (TaxType $child) => $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId));
+            // Process children (Level 2)
+            $childItems = $parent->children->map(function (TaxType $child) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId) {
+                $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId);
+                
+                // CRITICAL: If Level 2 child (e.g. Hotel) has its own children (Level 3, e.g. Bintang Lima),
+                // we must aggregate Level 3 into this Level 2 item, but NOT show Level 3 in the table.
+                if ($child->children->isNotEmpty()) {
+                    $subChildren = $child->children->map(fn($sc) => $this->processTaxType($sc, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId));
+                    
+                    // Sum targets
+                    if ($childData['target_total'] <= 0) {
+                        $childData['target_total'] = $subChildren->sum('target_total');
+                    }
+                    
+                    // Sum realizations
+                    $childData['total_realization'] += $subChildren->sum('total_realization');
+                    $childData['more_less'] = $childData['total_realization'] - $childData['target_total'];
+                    $childData['achievement_percentage'] = ($this->calculateAchievementPercentage)($childData['total_realization'], $childData['target_total']);
 
-            // Aggregate values if parent has children
+                    foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
+                        $childData['targets'][$q] = $childData['targets'][$q] ?: $subChildren->sum(fn($sc) => $sc['targets'][$q]);
+                        $childData['realizations'][$q] += $subChildren->sum(fn($sc) => $sc['realizations'][$q]);
+                        $childData['percentages'][$q] = ($this->calculateAchievementPercentage)($childData['realizations'][$q], $childData['targets'][$q]);
+                    }
+                }
+                
+                $childData['is_parent'] = false;
+                return $childData;
+            });
+
+            // Aggregate Level 2 children into Parent (Level 1, e.g. PBJT)
             if ($parentData['target_total'] <= 0) {
                 $parentData['target_total'] = $childItems->sum('target_total');
             }
 
             $parentData['total_realization'] += $childItems->sum('total_realization');
             $parentData['more_less'] = $parentData['total_realization'] - $parentData['target_total'];
-            $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)(
-                $parentData['total_realization'],
-                $parentData['target_total']
-            );
+            $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)($parentData['total_realization'], $parentData['target_total']);
 
-            $quarters = collect(['q1', 'q2', 'q3', 'q4']);
-
-            $quarters->each(function ($q) use (&$parentData, $childItems) {
-                $parentData['targets'][$q] = $parentData['targets'][$q] ?: $childItems->sum(fn ($c) => $c['targets'][$q]);
-                $parentData['realizations'][$q] += $childItems->sum(fn ($c) => $c['realizations'][$q]);
-                $parentData['percentages'][$q] = ($this->calculateAchievementPercentage)(
-                    $parentData['realizations'][$q],
-                    $parentData['targets'][$q]
-                );
-            });
+            foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
+                $parentData['targets'][$q] = $parentData['targets'][$q] ?: $childItems->sum(fn($c) => $c['targets'][$q]);
+                $parentData['realizations'][$q] += $childItems->sum(fn($c) => $c['realizations'][$q]);
+                $parentData['percentages'][$q] = ($this->calculateAchievementPercentage)($parentData['realizations'][$q], $parentData['targets'][$q]);
+            }
 
             $parentData['is_parent'] = true;
 
-            return collect([$parentData])->concat($childItems->map(function ($childData) {
-                $childData['is_parent'] = false;
-
-                return $childData;
-            }));
+            // Return only Level 1 and Level 2 (Hide Level 3)
+            return collect([$parentData])->concat($childItems);
         });
 
         // 147. Calculate Grand Totals
+        // To avoid double counting, we sum from the Level 1 root items only
         $rootItems = $result->where('tax_type_parent_id', null);
 
         $grandTotalTarget = $rootItems->sum('target_total');
@@ -162,8 +179,13 @@ class GenerateTaxDashboardAction
             ]];
         })->toArray();
 
+        // 160. Filter out items with 0 target AND 0 realization (User request to hide empty rows)
+        $filteredResult = $result->reject(function ($item) {
+            return $item['target_total'] <= 0 && $item['total_realization'] <= 0;
+        });
+
         return [
-            'data' => $result,
+            'data' => $filteredResult,
             'totals' => [
                 'target' => $grandTotalTarget,
                 'realization' => $grandTotalRealization,
@@ -229,37 +251,47 @@ class GenerateTaxDashboardAction
         $rq4 = (float) ($quarterlyFromSimpadu['q4'] ?? 0) + $quarterlyFromMonthly['q4'] + (float) ($quarterlyFromDaily['q4'] ?? 0);
 
         $target = $taxType->taxTargets->first();
+        
+        // 1. Try to get Simpadu target first
+        $sTarget = \App\Models\SimpaduTarget::where('no_ayat', $taxType->simpadu_code)
+            ->where('year', $year)
+            ->first();
 
         // Use UPT-specific target if uptId is provided, otherwise fall back to global target
         $uptTarget = $uptId ? $taxType->uptComparisons->where('upt_id', $uptId)->first() : null;
-        $targetTotal = $uptTarget ? (float) $uptTarget->target_amount : ($target ? (float) $target->target_amount : 0.0);
+        
+        $targetTotal = 0.0;
+        if ($uptTarget) {
+            $targetTotal = (float) $uptTarget->target_amount;
+        } elseif ($target) {
+            $targetTotal = (float) $target->target_amount;
+        } elseif ($sTarget) {
+            $targetTotal = (float) $sTarget->total_target;
+        }
 
-        // For quarterly targets, if UPT target exists, we'll distribute it using global ratios or equally
-        // If global target exists, compute its non-cumulative quarterly targets
-        $gtTotal = $target ? (float) $target->target_amount : 0.0;
         $tq1 = 0.0;
         $tq2 = 0.0;
         $tq3 = 0.0;
         $tq4 = 0.0;
 
-        if ($uptTarget && $gtTotal > 0) {
-            // Apply global target ratios to the UPT target (keeping it cumulative)
-            $tq1 = ($target->q1_target / $gtTotal) * $targetTotal;
-            $tq2 = ($target->q2_target / $gtTotal) * $targetTotal;
-            $tq3 = ($target->q3_target / $gtTotal) * $targetTotal;
-            $tq4 = ($target->q4_target / $gtTotal) * $targetTotal;
-        } elseif ($uptTarget) {
-            // Standard cumulative distribution
+        if ($uptTarget) {
+            // Standard cumulative distribution for UPT
             $tq1 = $targetTotal * 0.25;
             $tq2 = $targetTotal * 0.50;
             $tq3 = $targetTotal * 0.75;
             $tq4 = $targetTotal;
         } elseif ($target) {
-            // Use cumulative targets from DB directly, fallback to distribution if 0
+            // Use cumulative targets from local DB directly (Manual Override)
             $tq1 = (float) $target->q1_target ?: $targetTotal * 0.25;
             $tq2 = (float) $target->q2_target ?: $targetTotal * 0.50;
             $tq3 = (float) $target->q3_target ?: $targetTotal * 0.75;
             $tq4 = (float) $target->q4_target ?: $targetTotal;
+        } elseif ($sTarget) {
+            // Use percentages from Simpadu baseline
+            $tq1 = $targetTotal * ($sTarget->q1_pct / 100);
+            $tq2 = $targetTotal * ($sTarget->q2_pct / 100);
+            $tq3 = $targetTotal * ($sTarget->q3_pct / 100);
+            $tq4 = $targetTotal * ($sTarget->q4_pct / 100);
         } else {
             // No target record, use default distribution
             $tq1 = $targetTotal * 0.25;
@@ -278,6 +310,7 @@ class GenerateTaxDashboardAction
 
         return [
             'tax_type_id' => $taxType->id,
+            'tax_target_id' => $target?->id, // Add this for management links
             'tax_type_name' => $taxType->name,
             'tax_type_code' => $taxType->code,
             'tax_type_parent_id' => $taxType->parent_id,

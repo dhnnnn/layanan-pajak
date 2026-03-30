@@ -30,25 +30,11 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
     public function array(): array
     {
         $year = $this->year ?? (int) date('Y');
-
-        $taxTypes = TaxType::query()
-            ->with(['children' => fn ($q) => $q->orderBy('code')])
-            ->whereNull('parent_id')
-            ->orderBy('name')
-            ->get();
-
-        $allTargets = TaxTarget::query()
-            ->where('year', $year)
-            ->get()
-            ->keyBy('tax_type_id');
-
-        $realizations = TaxRealizationDailyEntry::query()
-            ->whereYear('entry_date', $year)
-            ->selectRaw('tax_type_id, MONTH(entry_date) as month, SUM(amount) as total')
-            ->groupBy('tax_type_id', 'month')
-            ->get()
-            ->groupBy('tax_type_id')
-            ->map(fn ($rows) => $rows->pluck('total', 'month')->map(fn ($v) => (float) $v));
+        
+        // Use the same action as the dashboard for consistency
+        $generateDashboard = app(\App\Actions\Tax\GenerateTaxDashboardAction::class);
+        $result = $generateDashboard(year: $year);
+        $dashboardData = $result['data'];
 
         $rows = [];
 
@@ -83,129 +69,43 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
         $header2[17] = '%';
         $rows[] = $header2;
 
-        foreach ($taxTypes as $taxType) {
-            $childData = [];
-
-            // Get official parent values from DB
-            $officialParentTarget = $allTargets->get($taxType->id);
-            $rootAmount = $officialParentTarget ? (float) $officialParentTarget->target_amount : 0.0;
-            $rootQ1 = $officialParentTarget ? (float) $officialParentTarget->q1_target : 0.0;
-            $rootQ2 = $officialParentTarget ? (float) $officialParentTarget->q2_target : 0.0;
-            $rootQ3 = $officialParentTarget ? (float) $officialParentTarget->q3_target : 0.0;
-            $rootQ4 = $officialParentTarget ? (float) $officialParentTarget->q4_target : 0.0;
-
-            $aggregatedChildTarget = 0.0;
-            $rootRealizations = collect();
-
-            if ($taxType->children->isNotEmpty()) {
-                foreach ($taxType->children as $child) {
-                    $target = $allTargets->get($child->id) ?? new TaxTarget([
-                        'target_amount' => 0.0,
-                    ]);
-
-                    $amount = (float) $target->target_amount;
-                    $aggregatedChildTarget += $amount;
-
-                    // Realizations are ALWAYS aggregated from children
-                    $monthTotals = $realizations->get($child->id, collect());
-                    foreach ($monthTotals as $m => $total) {
-                        $rootRealizations[$m] = ($rootRealizations[$m] ?? 0.0) + $total;
-                    }
-
-                    $childData[] = $this->formatRow(" - {$child->name}", $target, $monthTotals);
-                }
-
-                // If parent has NO official target record, use the sum of children
-                if ($rootAmount <= 0) {
-                    $rootAmount = $aggregatedChildTarget;
-                }
-
-                // For realizations, also include parent's own realizations if any
-                $parentRealizations = $realizations->get($taxType->id, collect());
-                foreach ($parentRealizations as $m => $total) {
-                    $rootRealizations[$m] = ($rootRealizations[$m] ?? 0.0) + $total;
-                }
-
-                $pseudoTarget = new TaxTarget([
-                    'target_amount' => $rootAmount,
-                    'q1_target' => $rootQ1 ?: ($rootAmount * 0.25),
-                    'q2_target' => $rootQ2 ?: ($rootAmount * 0.50),
-                    'q3_target' => $rootQ3 ?: ($rootAmount * 0.75),
-                    'q4_target' => $rootQ4 ?: ($rootAmount),
-                ]);
-
+        foreach ($dashboardData as $item) {
+            $name = $item['is_parent'] ? $item['tax_type_name'] : " - " . $item['tax_type_name'];
+            
+            if ($item['is_parent']) {
                 $this->parentRows[] = count($rows) + 1;
-                $rows[] = $this->formatRow($taxType->name, $pseudoTarget, $rootRealizations);
-
-                foreach ($childData as $cRow) {
-                    $rows[] = $cRow;
-                }
-            } else {
-                $target = $allTargets->get($taxType->id) ?? new TaxTarget(['target_amount' => 0.0]);
-                $monthTotals = $realizations->get($taxType->id, collect());
-                $rows[] = $this->formatRow($taxType->name, $target, $monthTotals);
             }
+
+            $rows[] = [
+                $name,
+                $item['target_total'],
+                // Q1
+                $item['targets']['q1'],
+                round(($item['targets']['q1'] / ($item['target_total'] ?: 1)) * 100, 1) . '%',
+                $item['realizations']['q1'],
+                $item['percentages']['q1'] . '%',
+                // Q2
+                $item['targets']['q2'],
+                round(($item['targets']['q2'] / ($item['target_total'] ?: 1)) * 100, 1) . '%',
+                $item['realizations']['q2'],
+                $item['percentages']['q2'] . '%',
+                // Q3
+                $item['targets']['q3'],
+                round(($item['targets']['q3'] / ($item['target_total'] ?: 1)) * 100, 1) . '%',
+                $item['realizations']['q3'],
+                $item['percentages']['q3'] . '%',
+                // Q4
+                $item['targets']['q4'],
+                round(($item['targets']['q4'] / ($item['target_total'] ?: 1)) * 100, 1) . '%',
+                $item['realizations']['q4'],
+                $item['percentages']['q4'] . '%',
+                // Lebih Kurang
+                $item['more_less']
+            ];
         }
 
         $this->data = $rows;
-
         return $rows;
-    }
-
-    private function formatRow(string $name, TaxTarget $target, $monthTotals): array
-    {
-        $amount = (float) $target->target_amount;
-        $q1 = (float) ($target->q1_target ?? $amount * 0.25);
-        $q2 = (float) ($target->q2_target ?? $amount * 0.50);
-        $q3 = (float) ($target->q3_target ?? $amount * 0.75);
-        $q4 = (float) ($target->q4_target ?? $amount);
-
-        // Cumulative realization per quarter
-        $r1 = 0.0;
-        for ($m = 1; $m <= 3; $m++) {
-            $r1 += $monthTotals->get($m, 0.0);
-        }
-        $r2 = $r1;
-        for ($m = 4; $m <= 6; $m++) {
-            $r2 += $monthTotals->get($m, 0.0);
-        }
-        $r3 = $r2;
-        for ($m = 7; $m <= 9; $m++) {
-            $r3 += $monthTotals->get($m, 0.0);
-        }
-        $r4 = $r3;
-        for ($m = 10; $m <= 12; $m++) {
-            $r4 += $monthTotals->get($m, 0.0);
-        }
-
-        $pR1 = $amount > 0 ? round($r1 / $amount * 100, 1) : 0;
-        $pR2 = $amount > 0 ? round($r2 / $amount * 100, 1) : 0;
-        $pR3 = $amount > 0 ? round($r3 / $amount * 100, 1) : 0;
-        $pR4 = $amount > 0 ? round($r4 / $amount * 100, 1) : 0;
-
-        $lebihKurang = $r4 - $amount;
-
-        return [
-            $name,
-            $amount,
-            $q1,
-            round($target->getQ1Percentage(), 1).'%',
-            $r1,
-            $pR1.'%',
-            $q2,
-            round($target->getQ2Percentage(), 1).'%',
-            $r2,
-            $pR2.'%',
-            $q3,
-            round($target->getQ3Percentage(), 1).'%',
-            $r3,
-            $pR3.'%',
-            $q4,
-            round($target->getQ4Percentage(), 1).'%',
-            $r4,
-            $pR4.'%',
-            $lebihKurang,
-        ];
     }
 
     /** @return array<string, int|float> */

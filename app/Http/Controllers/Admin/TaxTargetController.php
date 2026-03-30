@@ -16,6 +16,7 @@ use App\Models\TaxTarget;
 use App\Models\TaxType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -74,7 +75,6 @@ class TaxTargetController extends Controller
 
         return view('admin.tax-targets.manage', [
             'taxTypes' => $result['taxTypes'],
-            'targets' => $result['targets'],
             'availableYears' => $result['availableYears'],
             'year' => $result['year'],
         ]);
@@ -107,6 +107,69 @@ class TaxTargetController extends Controller
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
         ]);
+    }
+
+    public function show(
+        TaxType $taxType, 
+        Request $request, 
+        GenerateTaxDashboardAction $generateDashboard
+    ): View {
+        $year = $request->filled('year') ? (int) $request->year : (int) date('Y');
+        $search = $request->query('search');
+        $selectedDistrict = $request->query('district');
+        
+        // Get summarized data for the header (Consistency with dashboard)
+        $dashboard = $generateDashboard(year: $year);
+        $summary = collect($dashboard['data'])->firstWhere('tax_type_id', $taxType->id);
+
+        // Get all descendant IDs recursively to aggregate WP data
+        $allTaxTypeIds = $this->getAllDescendantIds($taxType);
+
+        $query = \App\Models\SimpaduTaxPayerRealization::query()
+            ->select('npwpd', 'nm_wp', DB::raw('SUM(total_realization) as total_realization'), DB::raw('MAX(last_sync_at) as last_sync_at'))
+            ->whereIn('tax_type_id', $allTaxTypeIds)
+            ->where('year', $year);
+
+        // Search Filter
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nm_wp', 'like', "%{$search}%")
+                  ->orWhere('npwpd', 'like', "%{$search}%");
+            });
+        }
+
+        // District Filter
+        if ($selectedDistrict) {
+            $query->where('kd_kecamatan', $selectedDistrict);
+        }
+
+        $payers = $query->groupBy('npwpd', 'nm_wp')
+            ->orderByDesc('total_realization')
+            ->paginate(15)
+            ->withQueryString();
+
+        $districts = \App\Models\District::query()->orderBy('name')->get();
+
+        return view('admin.tax-targets.show', [
+            'taxType' => $taxType,
+            'year' => $year,
+            'summary' => $summary,
+            'payers' => $payers,
+            'districts' => $districts,
+            'search' => $search,
+            'selectedDistrict' => $selectedDistrict,
+        ]);
+    }
+
+    private function getAllDescendantIds(TaxType $taxType): array
+    {
+        $ids = [$taxType->id];
+
+        foreach ($taxType->children as $child) {
+            $ids = array_merge($ids, $this->getAllDescendantIds($child));
+        }
+
+        return $ids;
     }
 
     public function export(): BinaryFileResponse

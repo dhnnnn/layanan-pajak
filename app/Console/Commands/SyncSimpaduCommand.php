@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Actions\Simpadu\SyncSimpaduReferencesAction;
 use App\Actions\Simpadu\SyncSimpaduTaxPayersAction;
+use App\Actions\Simpadu\SyncSimpaduTargetsAction;
 
 class SyncSimpaduCommand extends Command
 {
@@ -27,7 +28,8 @@ class SyncSimpaduCommand extends Command
      */
     public function handle(
         SyncSimpaduReferencesAction $syncAction,
-        SyncSimpaduTaxPayersAction $syncWpAction
+        SyncSimpaduTaxPayersAction $syncWpAction,
+        SyncSimpaduTargetsAction $syncTargetAction
     ) {
         $this->info('Starting Simpadu synchronization...');
 
@@ -41,6 +43,11 @@ class SyncSimpaduCommand extends Command
         $this->info("Syncing WP data for year {$year}...");
         $wpResult = $syncWpAction($year);
         $this->info("WP Sync: {$wpResult['count']} records processed in {$wpResult['duration']}s");
+
+        // 3. Sync Target data for current year
+        $this->info("Syncing Target data for year {$year}...");
+        $targetResult = $syncTargetAction($year);
+        $this->info("Target Sync: {$targetResult['count']} records processed.");
 
         $this->info('Synchronization completed successfully!');
     }
