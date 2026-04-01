@@ -45,8 +45,12 @@ class RealizationMonitoringController extends Controller
     ): View {
         $year = $request->integer('year', (int) date('Y'));
         $month = $request->integer('month', (int) date('n'));
+        $search = $request->query('search');
+        $sortBy = $request->query('sort_by', 'sptpd');
+        $sortDir = $request->query('sort_dir', 'desc');
+        $taxTypeId = $request->query('tax_type_id');
 
-        $result = $showEmployeeMonitoring($upt, $employee, $year, $month);
+        $result = $showEmployeeMonitoring($upt, $employee, $year, $month, $search, $sortBy, $sortDir, $taxTypeId);
 
         return view('admin.realization-monitoring.employee', $result);
     }
