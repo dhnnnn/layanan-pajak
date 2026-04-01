@@ -91,7 +91,10 @@
                                     </div>
                                     <div>
                                         <p class="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{{ $data['employee']->name }}</p>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{{ $data['districts_count'] }} Kecamatan Tugas</p>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                                            {{ $data['districts_count'] }} Kecamatan: 
+                                            <span class="text-slate-500 italic">{{ $data['employee']->districts->pluck('name')->implode(', ') }}</span>
+                                        </p>
                                     </div>
                                 </div>
                             </td>

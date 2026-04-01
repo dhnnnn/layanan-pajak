@@ -45,11 +45,18 @@
             
             <div class="relative z-10">
                 <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
-                    <div>
-                        <h3 class="text-white text-lg font-black uppercase tracking-widest">Atp Achievement Progress</h3>
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-tighter">Monitoring Kinerja Berdasarkan Ketetapan SPTPD</p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white ring-1 ring-white/20">
+                            <span class="text-xl font-black">{{ strtoupper(substr($employee->name, 0, 1)) }}</span>
+                        </div>
+                        <div>
+                            <h3 class="text-white text-lg font-black uppercase tracking-widest leading-none mb-1">{{ $employee->name }}</h3>
+                            <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                Wilayah Tugas: <span class="text-blue-400">{{ $employee->districts->pluck('name')->implode(', ') }}</span>
+                            </p>
+                        </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-left md:text-right mt-4 md:mt-0">
                         <span class="text-white text-4xl font-black">{{ number_format($summary['attainment'], 1) }}%</span>
                     </div>
                 </div>
