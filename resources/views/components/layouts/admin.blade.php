@@ -108,49 +108,13 @@
                 @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pengelolaan</p>
                 
-                <x-layouts.sidebar-dropdown 
-                    label="Target APBD" 
-                    :active="request()->routeIs('admin.tax-targets.*') || request()->routeIs('admin.import.*')">
-                    <x-slot:icon>
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
-                    </x-slot:icon>
-                    
-                    <x-layouts.sidebar-submenu-item route="admin.tax-targets.manage" :active="request()->routeIs('admin.tax-targets.manage')">
-                        Kelola Target APBD
-                    </x-layouts.sidebar-submenu-item>
+                <x-layouts.sidebar-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Laporan APBD
+                </x-layouts.sidebar-item>
 
-                    <x-layouts.sidebar-submenu-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
-                        Lihat Laporan
-                    </x-layouts.sidebar-submenu-item>
-                    
-                    <x-layouts.sidebar-submenu-item route="admin.tax-targets.index" :active="request()->routeIs('admin.tax-targets.index')">
-                        Import Data
-                    </x-layouts.sidebar-submenu-item>
-                </x-layouts.sidebar-dropdown>
-
-                <x-layouts.sidebar-dropdown 
-                    label="Perbandingan UPT" 
-                    :active="request()->routeIs('admin.upt-comparisons.*')">
-                    <x-slot:icon>
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
-                    </x-slot:icon>
-                    
-                    <x-layouts.sidebar-submenu-item route="admin.upt-comparisons.manage" :active="request()->routeIs('admin.upt-comparisons.manage')">
-                        Kelola Target UPT
-                    </x-layouts.sidebar-submenu-item>
-                    
-                    <x-layouts.sidebar-submenu-item route="admin.upt-comparisons.report" :active="request()->routeIs('admin.upt-comparisons.report')">
-                        Lihat Laporan
-                    </x-layouts.sidebar-submenu-item>
-                    
-                    <x-layouts.sidebar-submenu-item route="admin.upt-comparisons.index" :active="request()->routeIs('admin.upt-comparisons.index')">
-                        Import Data
-                    </x-layouts.sidebar-submenu-item>
-                </x-layouts.sidebar-dropdown>
 
                 <x-layouts.sidebar-item route="admin.realization-monitoring.index" :active="request()->routeIs('admin.realization-monitoring.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,12 +130,6 @@
                     Pemantauan WP
                 </x-layouts.sidebar-item>
 
-                <x-layouts.sidebar-item route="admin.template.index" :active="request()->routeIs('admin.template.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Unduh Template
-                </x-layouts.sidebar-item>
                 @endif
             </nav>
 

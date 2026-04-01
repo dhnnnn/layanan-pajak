@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Exports\TaxRealizationTemplateExport;
-use App\Exports\UptComparisonTemplateExport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,14 +16,6 @@ class TemplateController extends Controller
         $type = $request->query('type', 'apbd');
         $year = $request->integer('year', (int) date('Y'));
 
-        if ($type === 'upt') {
-            $filename = 'template-perbandingan-target-upt-'.$year.'.xlsx';
-
-            return Excel::download(
-                new UptComparisonTemplateExport($year),
-                $filename
-            );
-        }
 
         // Default: APBD template
         $filename = 'template-realisasi-pajak-master-'.$year.'.xlsx';

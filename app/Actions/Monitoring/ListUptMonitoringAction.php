@@ -23,6 +23,7 @@ class ListUptMonitoringAction
     public function __invoke(int $year): array
     {
         $upts = Upt::query()
+            ->with(['districts', 'employees'])
             ->withCount('employees')
             ->orderBy('code')
             ->get();

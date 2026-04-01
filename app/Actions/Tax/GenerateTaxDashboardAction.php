@@ -2,6 +2,7 @@
 
 namespace App\Actions\Tax;
 
+use App\Models\SimpaduTarget;
 use App\Models\TaxRealization;
 use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxType;
@@ -48,12 +49,8 @@ class GenerateTaxDashboardAction
         $taxTypes = TaxType::query()
             ->with([
                 'taxTargets' => fn ($query) => $query->where('year', $year),
-                'uptComparisons' => fn ($query) => $query->where('year', $year)
-                    ->when($uptId, fn ($q) => $q->where('upt_id', $uptId)),
                 'children' => fn ($query) => $query->with([
                     'taxTargets' => fn ($q) => $q->where('year', $year),
-                    'uptComparisons' => fn ($q) => $q->where('year', $year)
-                        ->when($uptId, fn ($q2) => $q2->where('upt_id', $uptId)),
                 ]),
             ])
             ->whereNull('parent_id')
@@ -80,6 +77,12 @@ class GenerateTaxDashboardAction
             $filterDistrictIds = Upt::find($uptId)?->districts->pluck('id')->toArray();
         }
 
+        // Fetch Simpadu targets for the year to avoid N+1
+        $simpaduTargets = SimpaduTarget::query()
+            ->where('year', $year)
+            ->get()
+            ->keyBy('no_ayat');
+
         // 1. Fetch monthly realizations from TaxRealization (Legacy/Import source)
         $monthlyRealizations = TaxRealization::query()
             ->where('year', $year)
@@ -100,8 +103,8 @@ class GenerateTaxDashboardAction
             ->get()
             ->groupBy('tax_type_id');
 
-        $result = $taxTypes->flatMap(function (TaxType $parent) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId) {
-            $parentData = $this->processTaxType($parent, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId);
+        $result = $taxTypes->flatMap(function (TaxType $parent) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId) {
+            $parentData = $this->processTaxType($parent, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId);
 
             if ($parent->children->isEmpty()) {
                 $parentData['is_parent'] = false;
@@ -109,13 +112,13 @@ class GenerateTaxDashboardAction
             }
 
             // Process children (Level 2)
-            $childItems = $parent->children->map(function (TaxType $child) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId) {
-                $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId);
+            $childItems = $parent->children->map(function (TaxType $child) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId) {
+                $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId);
                 
                 // CRITICAL: If Level 2 child (e.g. Hotel) has its own children (Level 3, e.g. Bintang Lima),
                 // we must aggregate Level 3 into this Level 2 item, but NOT show Level 3 in the table.
                 if ($child->children->isNotEmpty()) {
-                    $subChildren = $child->children->map(fn($sc) => $this->processTaxType($sc, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $uptId, $districtId));
+                    $subChildren = $child->children->map(fn($sc) => $this->processTaxType($sc, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId));
                     
                     // Sum targets
                     if ($childData['target_total'] <= 0) {
@@ -196,7 +199,7 @@ class GenerateTaxDashboardAction
         ];
     }
 
-    private function processTaxType(TaxType $taxType, int $year, Collection $monthlyRealizations, Collection $dailyRealizations, Collection $simpaduRealizations, ?string $uptId = null, ?string $districtId = null): array
+    private function processTaxType(TaxType $taxType, int $year, Collection $monthlyRealizations, Collection $dailyRealizations, Collection $simpaduRealizations, Collection $simpaduTargets, ?string $uptId = null, ?string $districtId = null): array
     {
         // 0. Filter Simpadu data for this tax type and optionally for specific district
         $simpaduItems = $simpaduRealizations->get($taxType->simpadu_code, collect());
@@ -252,18 +255,11 @@ class GenerateTaxDashboardAction
 
         $target = $taxType->taxTargets->first();
         
-        // 1. Try to get Simpadu target first
-        $sTarget = \App\Models\SimpaduTarget::where('no_ayat', $taxType->simpadu_code)
-            ->where('year', $year)
-            ->first();
+        // 1. Try to get Simpadu target from pre-fetched collection
+        $sTarget = $simpaduTargets->get($taxType->simpadu_code);
 
-        // Use UPT-specific target if uptId is provided, otherwise fall back to global target
-        $uptTarget = $uptId ? $taxType->uptComparisons->where('upt_id', $uptId)->first() : null;
-        
         $targetTotal = 0.0;
-        if ($uptTarget) {
-            $targetTotal = (float) $uptTarget->target_amount;
-        } elseif ($target) {
+        if ($target) {
             $targetTotal = (float) $target->target_amount;
         } elseif ($sTarget) {
             $targetTotal = (float) $sTarget->total_target;
@@ -274,13 +270,7 @@ class GenerateTaxDashboardAction
         $tq3 = 0.0;
         $tq4 = 0.0;
 
-        if ($uptTarget) {
-            // Standard cumulative distribution for UPT
-            $tq1 = $targetTotal * 0.25;
-            $tq2 = $targetTotal * 0.50;
-            $tq3 = $targetTotal * 0.75;
-            $tq4 = $targetTotal;
-        } elseif ($target) {
+        if ($target) {
             // Use cumulative targets from local DB directly (Manual Override)
             $tq1 = (float) $target->q1_target ?: $targetTotal * 0.25;
             $tq2 = (float) $target->q2_target ?: $targetTotal * 0.50;
@@ -341,4 +331,5 @@ class GenerateTaxDashboardAction
             'simpadu_achievement_percentage' => ($this->calculateAchievementPercentage)($simpaduTotal, $targetTotal),
         ];
     }
+
 }

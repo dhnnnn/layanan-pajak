@@ -17,39 +17,10 @@ class TaxTypeFactory extends Factory
      */
     public function definition(): array
     {
-        $taxNames = [
-            'Pajak Bumi dan Bangunan',
-            'Bea Perolehan Hak atas Tanah dan Bangunan',
-            'Pajak Hotel',
-            'Pajak Restoran',
-            'Pajak Hiburan',
-            'Pajak Reklame',
-            'Pajak Penerangan Jalan',
-            'Pajak Parkir',
-            'Pajak Air Tanah',
-            'Pajak Mineral Bukan Logam dan Batuan',
-        ];
-
-        $codes = [
-            'PBB',
-            'BPHTB',
-            'P-HTL',
-            'P-RST',
-            'P-HBR',
-            'P-RKL',
-            'P-PPJ',
-            'P-PRK',
-            'P-AT',
-            'P-MBLB',
-        ];
-
-        $index = fake()
-            ->unique()
-            ->numberBetween(0, count($taxNames) - 1);
-
         return [
-            'name' => $taxNames[$index],
-            'code' => $codes[$index],
+            'name' => fake()->unique()->word() . ' Tax',
+            'code' => strtoupper(fake()->unique()->lexify('???')),
+            'simpadu_code' => fake()->unique()->numerify('1.1.1.##.##'),
         ];
     }
 }

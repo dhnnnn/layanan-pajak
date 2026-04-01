@@ -23,9 +23,10 @@ class ShowUptMonitoringAction
      */
     public function __invoke(Upt $upt, int $year, int $month): array
     {
-        $upt->load(['users' => function ($q): void {
-            $q->role('pegawai')->with('districts');
-        }]);
+        $upt->load([
+            'districts',
+            'users' => fn ($q) => $q->role('pegawai')->with('districts')
+        ]);
 
         $uptDistrictCodes = $upt->districts->pluck('simpadu_code')->filter()->toArray();
 

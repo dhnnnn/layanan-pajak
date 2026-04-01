@@ -1,13 +1,6 @@
 <x-layouts.admin title="Laporan Target APBD" header="Laporan Target APBD">
     <x-slot:headerActions>
-        <div class="flex items-center gap-2">
-            <a href="{{ route('admin.tax-targets.manage', array_filter(['year' => request('year')])) }}"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
-                Kelola Target
-            </a>
+        <div class="flex items-center gap-3">
             <a href="{{ route('admin.tax-targets.export', array_filter(['year' => request('year')])) }}"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-lg transition-colors shadow-sm border border-slate-200">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,34 +119,40 @@
     @php
         $totalTarget = $totals['target'];
         $totalRealization = $totals['realization'];
+        $avgPercentage = $totals['percentage'];
         $totalMoreLess = $totals['more_less'];
     @endphp
 
     <div class="space-y-6">
+        {{-- Summary Cards --}}
+
         {{-- Realization Table --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden mb-8">
             <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
                 <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
                     Realisasi Penerimaan Pajak Daerah Per-Tribulan ({{ $selectedYear }})
                 </h3>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs border-collapse">
-                    <thead class="bg-white text-slate-700 font-bold uppercase border-b-2 border-slate-200">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-[11px] border-collapse bg-white">
+                    <thead class="bg-slate-50 text-slate-900 uppercase font-bold sticky top-0 z-30 border-b-2 border-slate-300">
                         <tr>
-                            <th rowspan="2" class="px-3 py-5 border border-slate-200 text-left min-w-[220px] sticky left-0 bg-white z-20">Nama Pajak</th>
-                            <th rowspan="2" class="px-3 py-5 border border-slate-200 text-right min-w-[140px]">Target Total</th>
-                            <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-slate-50">Tribulan 1</th>
-                            <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-white">Tribulan 2</th>
-                            <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-slate-50">Tribulan 3</th>
-                            <th colspan="3" class="px-3 py-3 border border-slate-200 text-center bg-white">Tribulan 4</th>
-                            <th rowspan="2" class="px-3 py-5 border border-slate-200 text-right min-w-[140px]">Lebih/(Kurang)</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-left min-w-[200px] sticky left-0 bg-slate-50 z-40 shadow-[1px_0_0_rgba(0,0,0,0.1)]">Nama Pajak</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-right min-w-[140px]">Target Total</th>
+                            <th colspan="3" class="px-3 py-3 border border-slate-300 text-center bg-slate-100">Tribulan 1</th>
+                            <th colspan="3" class="px-3 py-3 border border-slate-300 text-center bg-slate-200/50">Tribulan 2</th>
+                            <th colspan="3" class="px-3 py-3 border border-slate-300 text-center bg-slate-100">Tribulan 3</th>
+                            <th colspan="3" class="px-3 py-3 border border-slate-300 text-center bg-slate-200/50">Tribulan 4</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-right min-w-[140px] bg-slate-50">Lebih/(Kurang)</th>
                         </tr>
                         <tr>
                             @for($i = 1; $i <= 4; $i++)
-                                <th class="px-3 py-3 border border-slate-200 text-right min-w-[110px] {{ $i % 2 == 1 ? 'bg-slate-50' : 'bg-white' }}">Target</th>
-                                <th class="px-3 py-3 border border-slate-200 text-right min-w-[110px] {{ $i % 2 == 1 ? 'bg-slate-50' : 'bg-white' }}">Realisasi</th>
-                                <th class="px-3 py-3 border border-slate-200 text-center min-w-[50px] {{ $i % 2 == 1 ? 'bg-slate-50' : 'bg-white' }}">%</th>
+                                <th class="px-3 py-3 border border-slate-300 text-right min-w-[110px] bg-slate-50 font-bold">Target</th>
+                                <th class="px-3 py-3 border border-slate-300 text-right min-w-[110px] bg-slate-50 font-bold">Realisasi</th>
+                                <th class="px-3 py-3 border border-slate-300 text-center min-w-[40px] bg-slate-50 font-bold">%</th>
                             @endfor
                         </tr>
                     </thead>
@@ -163,30 +162,30 @@
                                 $isParent = $item['is_parent'];
                                 $hasParent = $item['tax_type_parent_id'] !== null;
                             @endphp
-                            <tr class="{{ $isParent ? 'bg-slate-50 font-bold' : 'hover:bg-slate-50' }} transition-colors">
-                                <td class="px-4 py-3 border border-slate-200 sticky left-0 {{ $isParent ? 'bg-slate-50' : 'bg-white' }} z-10">
-                                    <div class="{{ $hasParent ? 'pl-5 italic text-slate-600' : 'text-slate-900 text-[13px] font-bold' }} whitespace-nowrap">
+                            <tr class="{{ $isParent ? 'bg-slate-100 font-extrabold' : 'hover:bg-slate-50' }} transition-colors group">
+                                <td class="px-4 py-3 border-x border-slate-200 sticky left-0 {{ $isParent ? 'bg-slate-100' : 'bg-white group-hover:bg-slate-50' }} z-10 transition-colors shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                                    <div class="{{ $hasParent ? 'pl-6 text-slate-600 font-medium' : 'text-slate-900 font-black' }} whitespace-nowrap">
                                         {{ $hasParent ? '- ' : '' }}{{ $item['tax_type_name'] }}
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 border border-slate-200 text-right {{ $isParent ? 'text-slate-900 text-[13px]' : 'text-slate-600' }}">
+                                <td class="px-4 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-slate-900 bg-slate-100' : 'text-slate-700' }} font-bold">
                                     {{ number_format($item['target_total'], 0, ',', '.') }}
                                 </td>
                                 
                                 {{-- Quarters --}}
                                 @foreach(['q1', 'q2', 'q3', 'q4'] as $q)
-                                    <td class="px-3 py-3 border border-slate-200 text-right text-slate-600">
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right text-slate-600 {{ $isParent ? 'bg-slate-100' : '' }}">
                                         {{ number_format($item['targets'][$q], 0, ',', '.') }}
                                     </td>
-                                    <td class="px-3 py-3 border border-slate-200 text-right {{ $isParent ? 'text-blue-700' : 'text-blue-600 font-medium' }}">
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-slate-900 bg-slate-100' : 'text-slate-900 font-bold' }}">
                                         {{ number_format($item['realizations'][$q], 0, ',', '.') }}
                                     </td>
-                                    <td class="px-3 py-3 border border-slate-200 text-center font-bold {{ $item['percentages'][$q] >= 100 ? 'text-emerald-600' : ($item['percentages'][$q] >= 50 ? 'text-blue-600' : 'text-rose-600') }}">
-                                        {{ number_format($item['percentages'][$q], 0, ',', '.') }}
+                                    <td class="px-3 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-slate-100' : '' }} text-slate-800">
+                                        {{ number_format($item['percentages'][$q], 0, ',', '.') }}%
                                     </td>
                                 @endforeach
 
-                                <td class="px-4 py-3 border border-slate-200 text-right font-bold {{ $item['more_less'] >= 0 ? 'text-emerald-700' : 'text-rose-700' }} bg-slate-50/30 text-[13px]">
+                                <td class="px-4 py-3 border-r border-slate-200 text-right font-black {{ $isParent ? 'bg-slate-100' : '' }} {{ $item['more_less'] >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">
                                     {{ number_format($item['more_less'], 0, ',', '.') }}
                                 </td>
                             </tr>
@@ -197,31 +196,31 @@
                                         <svg class="w-16 h-16 text-slate-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
-                                        <p class="text-base font-medium">Belum ada data realisasi untuk tahun {{ $selectedYear }}</p>
+                                        <p class="text-base font-medium text-slate-400">Belum ada data realisasi untuk tahun {{ $selectedYear }}</p>
                                     </div>
                                 </td>
                             </tr>
                         @endforelse
                     </tbody>
                     @if($dashboard->isNotEmpty())
-                    <tfoot class="bg-slate-100 text-slate-900 font-bold border-t-2 border-slate-300">
+                    <tfoot class="bg-slate-200 text-slate-900 font-black border-t-2 border-slate-400">
                         <tr>
-                            <td class="px-4 py-4 border border-slate-300 sticky left-0 bg-slate-100 z-10 text-[13px]">JUMLAH TOTAL</td>
-                            <td class="px-4 py-4 border border-slate-300 text-right text-[13px]">{{ number_format($totalTarget, 0, ',', '.') }}</td>
+                            <td class="px-4 py-4 border-x border-slate-300 sticky left-0 bg-slate-200 z-10 text-[12px] shadow-[1px_0_0_rgba(0,0,0,0.1)]">JUMLAH TOTAL</td>
+                            <td class="px-4 py-4 border-r border-slate-300 text-right text-[12px]">{{ number_format($totalTarget, 0, ',', '.') }}</td>
                             
                             @foreach(['q1', 'q2', 'q3', 'q4'] as $q)
-                                <td class="px-3 py-4 border border-slate-300 text-right">
+                                <td class="px-3 py-4 border-r border-slate-300 text-right text-slate-700 font-bold">
                                     {{ number_format($totals['quarters'][$q]['target'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-4 border border-slate-300 text-right">
+                                <td class="px-3 py-4 border-r border-slate-300 text-right text-slate-900 underline">
                                     {{ number_format($totals['quarters'][$q]['realization'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-4 border border-slate-300 text-center">
-                                    {{ number_format($totals['quarters'][$q]['percentage'], 0, ',', '.') }}
+                                <td class="px-3 py-4 border-r border-slate-300 text-center">
+                                    {{ number_format($totals['quarters'][$q]['percentage'], 0, ',', '.') }}%
                                 </td>
                             @endforeach
 
-                            <td class="px-4 py-4 border border-slate-300 text-right bg-slate-200 text-[13px]">
+                            <td class="px-4 py-4 border-r border-slate-300 text-right underline">
                                 {{ number_format($totalMoreLess, 0, ',', '.') }}
                             </td>
                         </tr>
@@ -229,10 +228,22 @@
                     @endif
                 </table>
             </div>
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 italic">
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-400 italic">
                 * Angka Target dan Realisasi pada kolom Tribulan bersifat kumulatif (contoh: Tribulan 2 adalah akumulasi T1 + T2).
             </div>
         </div>
     </div>
-    </div>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+    </style>
 </x-layouts.admin>

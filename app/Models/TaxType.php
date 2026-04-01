@@ -109,8 +109,4 @@ class TaxType extends Model
         return $this->hasMany(TaxRealization::class);
     }
 
-    public function uptComparisons(): HasMany
-    {
-        return $this->hasMany(UptComparison::class);
-    }
 }

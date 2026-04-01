@@ -73,8 +73,4 @@ class Upt extends Model
         return $this->users()->role('kepala_upt')->first();
     }
 
-    public function comparisons(): HasMany
-    {
-        return $this->hasMany(UptComparison::class);
-    }
 }

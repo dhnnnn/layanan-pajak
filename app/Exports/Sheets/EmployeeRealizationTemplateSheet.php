@@ -4,7 +4,6 @@ namespace App\Exports\Sheets;
 
 use App\Models\District;
 use App\Models\TaxType;
-use App\Models\UptComparison;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -20,7 +19,7 @@ class EmployeeRealizationTemplateSheet implements FromArray, WithColumnWidths, W
     /** @var list<District> */
     private array $districtList;
 
-    /** @var array<string, float> target per tax_type_id from UptComparison */
+    /** @var array<string, float> target per tax_type_id */
     private array $uptTargets;
 
     public function __construct(
@@ -35,16 +34,7 @@ class EmployeeRealizationTemplateSheet implements FromArray, WithColumnWidths, W
             ->get()
             ->all();
 
-        // Load UPT targets keyed by tax_type_id, sum in case of duplicates
-        $this->uptTargets = UptComparison::query()
-            ->where('upt_id', $this->uptId)
-            ->where('year', $this->year)
-            ->selectRaw('tax_type_id, SUM(target_amount) as total')
-            ->groupBy('tax_type_id')
-            ->get()
-            ->pluck('total', 'tax_type_id')
-            ->map(fn ($v) => (float) $v)
-            ->all();
+        $this->uptTargets = [];
     }
 
     /** @return array<int, array<int, mixed>> */

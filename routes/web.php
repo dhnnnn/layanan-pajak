@@ -6,14 +6,11 @@ use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\RealizationMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
-use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\TaxPayerMonitoringController;
-use App\Http\Controllers\Admin\UptComparisonController;
 use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Employee\DailyEntryController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
-use App\Http\Controllers\Employee\ImportController as EmployeeImportController;
 use App\Http\Controllers\Employee\RealizationController;
 use Illuminate\Support\Facades\Route;
 
@@ -69,18 +66,6 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::post('upts/{upt}/employees', [UptController::class, 'storeEmployees'])->name('upts.employees.store');
         Route::get('upts/{upt}/employees/{employee}/districts', [UptController::class, 'assignEmployeeDistricts'])->name('upts.employees.districts');
 
-        // Perbandingan Target UPT
-        Route::prefix('upt-comparisons')
-            ->name('upt-comparisons.')
-            ->group(function (): void {
-                Route::get('/', [UptComparisonController::class, 'index'])->name('index');
-                Route::post('/preview', [UptComparisonController::class, 'preview'])->name('preview');
-                Route::post('/import', [UptComparisonController::class, 'import'])->name('import');
-                Route::get('/report', [UptComparisonController::class, 'report'])->name('report');
-                Route::get('/report/export', [UptComparisonController::class, 'exportReport'])->name('report.export');
-                Route::get('/manage', [UptComparisonController::class, 'manage'])->name('manage');
-                Route::post('/manage', [UptComparisonController::class, 'upsert'])->name('upsert');
-            });
 
         // Monitoring Realisasi
         Route::get('realization-monitoring/export', [RealizationMonitoringController::class, 'exportAll'])->name('realization-monitoring.export-all');
@@ -92,15 +77,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         // Target Pajak (APBD)
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
-        Route::get('target-tax', [TaxTargetController::class, 'index'])->name('tax-targets.index');
-        Route::get('tax-targets/manage', [TaxTargetController::class, 'manage'])->name('tax-targets.manage');
         Route::get('tax-targets/{taxType}/show', [TaxTargetController::class, 'show'])->name('tax-targets.show');
-        Route::post('tax-targets/preview', [TaxTargetController::class, 'preview'])->name('tax-targets.preview');
-        Route::post('tax-targets/import', [TaxTargetController::class, 'storeImport'])->name('tax-targets.import');
-        Route::resource(
-            'tax-targets',
-            TaxTargetController::class,
-        )->except(['show', 'index']);
 
         // Monitoring WP & Penugasan
         Route::prefix('monitoring')
@@ -109,10 +86,6 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
                 Route::get('/', [TaxPayerMonitoringController::class, 'index'])->name('index');
                 Route::post('/assign', [TaxPayerMonitoringController::class, 'storeTask'])->name('assign');
             });
-
-        // Download Template
-        Route::get('/template', [TemplateController::class, 'index'])->name('template.index');
-        Route::get('/template/download', [TemplateController::class, 'download'])->name('template.download');
     });
 
 /*
@@ -141,18 +114,4 @@ Route::middleware(['auth', 'role:pegawai|kepala_upt'])
             'realizations',
             RealizationController::class,
         )->except(['destroy']);
-
-        // Import Realisasi Pajak
-        Route::prefix('import')
-            ->name('import.')
-            ->group(function (): void {
-                Route::get('/', [EmployeeImportController::class, 'index'])->name('index');
-                Route::get('/template', [EmployeeImportController::class, 'downloadTemplate'])->name('template');
-                Route::post('/preview', [EmployeeImportController::class, 'preview'])->name('preview');
-                Route::post('/confirm', [EmployeeImportController::class, 'confirm'])->name('confirm');
-            });
-
-        // Download Template
-        Route::get('/template', [TemplateController::class, 'index'])->name('template.index');
-        Route::get('/template/download', [TemplateController::class, 'download'])->name('template.download');
     });

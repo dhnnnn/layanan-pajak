@@ -4,7 +4,6 @@ namespace App\Actions\Tax;
 
 use App\Models\TaxRealization;
 use App\Models\TaxRealizationDailyEntry;
-use App\Models\UptComparison;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -39,10 +38,7 @@ class GetEmployeeRealizationIndexAction
             ->orderBy('tax_type_id')
             ->paginate(15);
 
-        $uptTarget = (float) UptComparison::query()
-            ->where('upt_id', $user->upt_id)
-            ->where('year', $year)
-            ->sum('target_amount');
+        $uptTarget = 0.0;
 
         $districtTotals = TaxRealizationDailyEntry::query()
             ->where('user_id', $user->id)

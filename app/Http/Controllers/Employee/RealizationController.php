@@ -39,7 +39,7 @@ class RealizationController extends Controller
             ->orderBy('name')
             ->get();
 
-        $districts = auth()->user()->districts()->orderBy('name')->get();
+        $districts = auth()->user()->accessibleDistricts()->orderBy('name')->get();
         $months = Month::query()->orderBy('number')->get();
 
         $availableYears = TaxTarget::query()
@@ -89,7 +89,7 @@ class RealizationController extends Controller
             ->orderBy('name')
             ->get();
 
-        $districts = $user->districts()->orderBy('name')->get();
+        $districts = $user->accessibleDistricts()->orderBy('name')->get();
         $months = Month::query()->orderBy('number')->get();
 
         $availableYears = TaxTarget::query()
