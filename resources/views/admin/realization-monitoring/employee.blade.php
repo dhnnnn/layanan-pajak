@@ -1,29 +1,13 @@
-<x-layouts.admin :title="'Progress ' . $employee->name" :header="'Progress Realisasi: ' . $employee->name">
+<x-layouts.admin :title="'Monitoring WP ' . $employee->name" :header="'Detil Realisasi Petugas: ' . $employee->name">
     <x-slot:headerActions>
         <form method="GET" action="{{ route('admin.realization-monitoring.employee', [$upt, $employee]) }}" id="filterForm" class="flex items-center gap-2">
-            {{-- Month Dropdown --}}
-            <div class="relative" id="monthDropdownWrapper">
-                <button type="button" id="monthDropdownBtn"
-                    class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-                    <span id="monthDropdownLabel">{{ $months[$month] }}</span>
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-                <input type="hidden" name="month" id="monthValue" value="{{ $month }}">
-                <div id="monthDropdownMenu" class="hidden absolute right-0 z-20 mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
-                    @foreach($months as $num => $label)
-                        <button type="button" data-value="{{ $num }}" class="month-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ $month == $num ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
-                            {{ $label }}
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-
             {{-- Year Dropdown --}}
             <div class="relative" id="yearDropdownWrapper">
                 <button type="button" id="yearDropdownBtn"
                     class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
                     <span id="yearDropdownLabel">{{ $year }}</span>
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -40,14 +24,6 @@
             </div>
         </form>
 
-        <a href="{{ route('admin.realization-monitoring.export', ['upt' => $upt, 'year' => $year, 'month' => $month]) }}"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            Export Excel
-        </a>
-
         <a href="{{ route('admin.realization-monitoring.show', [$upt, 'year' => $year]) }}"
             class="inline-flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,172 +33,166 @@
         </a>
     </x-slot:headerActions>
 
-    {{-- Summary Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">UPT</p>
-            <p class="text-lg font-bold text-slate-900">{{ $upt->name }}</p>
-            <p class="text-xs text-slate-400 font-mono">{{ $upt->code }}</p>
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Target UPT {{ $year }}</p>
-            <p class="text-xl font-bold text-blue-600">Rp {{ number_format($uptTarget, 0, ',', '.') }}</p>
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Realisasi {{ $year }}</p>
-            <p class="text-xl font-bold text-green-600">Rp {{ number_format($yearlyTotal, 0, ',', '.') }}</p>
-            @if($uptTarget > 0)
-                <p class="text-xs text-slate-400 mt-1">{{ number_format($progress, 1) }}% dari target</p>
-            @endif
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Bulan {{ $months[$month] }}</p>
-            <p class="text-xl font-bold text-slate-900">Rp {{ number_format($monthlyTotal, 0, ',', '.') }}</p>
-        </div>
-    </div>
-
-    {{-- Progress Bar --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
-        <div class="flex items-center justify-between mb-2">
-            <p class="text-sm font-semibold text-slate-700">Progress Realisasi {{ $year }}</p>
-            <span class="text-sm font-bold {{ $progress >= 100 ? 'text-green-600' : ($progress >= 50 ? 'text-blue-600' : 'text-orange-500') }}">
-                {{ number_format($progress, 1) }}%
-            </span>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-3">
-            <div class="h-3 rounded-full transition-all {{ $progress >= 100 ? 'bg-green-500' : ($progress >= 50 ? 'bg-blue-500' : 'bg-orange-400') }}"
-                style="width: {{ min($progress, 100) }}%"></div>
-        </div>
-        @if($uptTarget > 0)
-            <p class="text-xs text-slate-400 mt-2">
-                Rp {{ number_format($yearlyTotal, 0, ',', '.') }} dari Rp {{ number_format($uptTarget, 0, ',', '.') }}
-            </p>
-        @endif
-    </div>
-
-    {{-- Wilayah Tabs + Entries --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {{-- Wilayah Filter --}}
-        @if($employee->districts->count() > 0)
-            <div class="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 flex-wrap">
-                <span class="text-xs text-slate-500 mr-1">Wilayah:</span>
-                <button type="button" onclick="filterDistrict(null)"
-                    class="district-tab active-tab px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors bg-blue-600 text-white border-blue-600"
-                    data-district="all">
-                    Semua
-                </button>
-                @foreach($employee->districts as $district)
-                    <button type="button" onclick="filterDistrict('{{ $district->id }}')"
-                        class="district-tab px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600"
-                        data-district="{{ $district->id }}">
-                        {{ $district->name }}
-                    </button>
-                @endforeach
+    {{-- Performance Summary Container --}}
+    <div class="mb-8">
+        {{-- Progress Bar --}}
+        <div class="bg-slate-900 rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-6">
+            <div class="absolute top-0 right-0 p-8 opacity-10">
+                <svg class="w-32 h-32 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
             </div>
-        @endif
+            
+            <div class="relative z-10">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-white text-lg font-black uppercase tracking-widest">Atp Achievement Progress</h3>
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-tighter">Monitoring Kinerja Berdasarkan Ketetapan SPTPD</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-white text-4xl font-black">{{ number_format($summary['attainment'], 1) }}%</span>
+                    </div>
+                </div>
+                
+                <div class="w-full bg-slate-800 rounded-full h-4 ring-1 ring-white/10 p-1">
+                    <div class="h-full rounded-full transition-all duration-1000 ease-out {{ $summary['attainment'] >= 90 ? 'bg-emerald-400' : ($summary['attainment'] >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
+                        style="width: {{ min($summary['attainment'], 100) }}%"></div>
+                </div>
+            </div>
+        </div>
 
-        {{-- Entries Table --}}
-        @if($monthlyEntries->count() > 0)
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap" id="entriesTable">
-                    <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-xs">
-                        <tr>
-                            <th class="px-5 py-3">Tanggal</th>
-                            <th class="px-5 py-3">Jenis Pajak</th>
-                            <th class="px-5 py-3">Kecamatan</th>
-                            <th class="px-5 py-3 text-right">Jumlah</th>
-                            <th class="px-5 py-3">Catatan</th>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Ketetapan</p>
+                        <p class="text-xl font-black text-slate-900">Rp {{ number_format($summary['total_sptpd'], 0, ',', '.') }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Pembayaran</p>
+                        <p class="text-xl font-black text-emerald-600">Rp {{ number_format($summary['total_bayar'], 0, ',', '.') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Tunggakan</p>
+                        <p class="text-xl font-black text-rose-600">Rp {{ number_format($summary['total_tunggakan'], 0, ',', '.') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- WP Details Table --}}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-black text-slate-900 uppercase tracking-widest">Daftar Wajib Pajak Penanganan</h4>
+            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-bold">{{ $wpData->count() }} WP Terdeteksi</span>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                    <tr>
+                        <th class="px-6 py-4">Wajib Pajak / NPWPD</th>
+                        <th class="px-6 py-4 text-center">Status WP</th>
+                        <th class="px-6 py-4 text-right">Jml SPTPD</th>
+                        <th class="px-6 py-4 text-right">Jml Bayar</th>
+                        <th class="px-6 py-4 text-right">Selisih</th>
+                        <th class="px-6 py-4 text-right">Tunggakan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($wpData as $wp)
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-slate-900 leading-tight uppercase">{{ $wp['nm_wp'] }}</div>
+                                <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ $wp['npwpd'] }}</div>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                @if($wp['status_code'] == '1')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter bg-emerald-100 text-emerald-700 border border-emerald-200">AKTIF</span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter bg-rose-100 text-rose-700 border border-rose-200">NON AKTIF</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 text-right font-medium text-slate-600">
+                                {{ number_format($wp['total_sptpd'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-6 py-4 text-right font-bold text-emerald-600">
+                                {{ number_format($wp['total_bayar'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-6 py-4 text-right font-bold {{ $wp['selisih'] >= 0 ? 'text-blue-600' : 'text-slate-400' }}">
+                                {{ number_format($wp['selisih'], 0, ',', '.') }}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                @if($wp['tunggakan'] > 0)
+                                    <span class="font-black text-rose-600">
+                                        {{ number_format($wp['tunggakan'], 0, ',', '.') }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-300">-</span>
+                                @endif
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach($monthlyEntries as $entry)
-                            <tr class="hover:bg-slate-50 entry-row" data-district="{{ $entry->district_id }}">
-                                <td class="px-5 py-3 font-mono">{{ $entry->entry_date->format('d/m/Y') }}</td>
-                                <td class="px-5 py-3">{{ $entry->taxType->name }}</td>
-                                <td class="px-5 py-3">{{ $entry->district->name }}</td>
-                                <td class="px-5 py-3 text-right font-semibold text-green-600">
-                                    Rp {{ number_format($entry->amount, 0, ',', '.') }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-400">{{ $entry->note ?? '-' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div id="entriesEmpty" class="hidden px-6 py-8 text-center text-sm text-slate-400 italic">
-                Tidak ada data di wilayah ini.
-            </div>
-        @else
-            <div class="px-6 py-10 text-center text-sm text-slate-400 italic">
-                Belum ada input di {{ $months[$month] }} {{ $year }}.
-            </div>
-        @endif
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center">
+                                <p class="text-slate-400 italic">Tidak ada data Wajib Pajak untuk wilayah petugas ini pada tahun {{ $year }}.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
-        function filterDistrict(districtId) {
-            document.querySelectorAll('.district-tab').forEach(btn => {
-                const isActive = districtId === null
-                    ? btn.dataset.district === 'all'
-                    : btn.dataset.district === districtId;
+        const yearBtn = document.getElementById('yearDropdownBtn');
+        const yearMenu = document.getElementById('yearDropdownMenu');
+        const yearValue = document.getElementById('yearValue');
+        const yearLabel = document.getElementById('yearDropdownLabel');
 
-                if (isActive) {
-                    btn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-                    btn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200', 'hover:border-blue-400', 'hover:text-blue-600');
-                } else {
-                    btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                    btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200', 'hover:border-blue-400', 'hover:text-blue-600');
+        if (yearBtn && yearMenu) {
+            yearBtn.addEventListener('click', () => yearMenu.classList.toggle('hidden'));
+
+            document.addEventListener('click', function (e) {
+                if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
+                    yearMenu.classList.add('hidden');
                 }
             });
 
-            const table = document.getElementById('entriesTable');
-            if (!table) { return; }
-
-            let visibleCount = 0;
-            table.querySelectorAll('.entry-row').forEach(row => {
-                const show = districtId === null || row.dataset.district === districtId;
-                row.style.display = show ? '' : 'none';
-                if (show) { visibleCount++; }
+            document.querySelectorAll('.year-option').forEach(function (opt) {
+                opt.addEventListener('click', function () {
+                    yearValue.value = this.dataset.value;
+                    yearLabel.textContent = this.textContent.trim();
+                    yearMenu.classList.add('hidden');
+                    document.getElementById('filterForm').submit();
+                });
             });
-
-            document.getElementById('entriesEmpty').style.display = visibleCount === 0 ? '' : 'none';
         }
-
-        // Month dropdown
-        document.getElementById('monthDropdownBtn').addEventListener('click', () => {
-            document.getElementById('monthDropdownMenu').classList.toggle('hidden');
-        });
-
-        // Year dropdown
-        document.getElementById('yearDropdownBtn').addEventListener('click', () => {
-            document.getElementById('yearDropdownMenu').classList.toggle('hidden');
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!document.getElementById('monthDropdownWrapper').contains(e.target)) {
-                document.getElementById('monthDropdownMenu').classList.add('hidden');
-            }
-            if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
-                document.getElementById('yearDropdownMenu').classList.add('hidden');
-            }
-        });
-
-        document.querySelectorAll('.month-option').forEach(function (opt) {
-            opt.addEventListener('click', function () {
-                document.getElementById('monthValue').value = this.dataset.value;
-                document.getElementById('monthDropdownLabel').textContent = this.textContent.trim();
-                document.getElementById('monthDropdownMenu').classList.add('hidden');
-                document.getElementById('filterForm').submit();
-            });
-        });
-
-        document.querySelectorAll('.year-option').forEach(function (opt) {
-            opt.addEventListener('click', function () {
-                document.getElementById('yearValue').value = this.dataset.value;
-                document.getElementById('yearDropdownLabel').textContent = this.textContent.trim();
-                document.getElementById('yearDropdownMenu').classList.add('hidden');
-                document.getElementById('filterForm').submit();
-            });
-        });
     </script>
 </x-layouts.admin>

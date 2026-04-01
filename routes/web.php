@@ -83,6 +83,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
             });
 
         // Monitoring Realisasi
+        Route::get('realization-monitoring/export', [RealizationMonitoringController::class, 'exportAll'])->name('realization-monitoring.export-all');
         Route::get('realization-monitoring', [RealizationMonitoringController::class, 'index'])->name('realization-monitoring.index');
         Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
         Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');

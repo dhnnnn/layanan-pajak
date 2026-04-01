@@ -2,13 +2,11 @@
 
 namespace App\Actions\Monitoring;
 
-use App\Models\TaxRealization;
-use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\Upt;
-use App\Models\UptComparison;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ShowEmployeeMonitoringAction
 {
@@ -16,13 +14,14 @@ class ShowEmployeeMonitoringAction
      * @return array{
      *     upt: Upt,
      *     employee: User,
-     *     uptTarget: float,
-     *     yearlyTotal: float,
-     *     monthlyEntries: Collection,
-     *     monthlyTotal: float,
-     *     progress: float,
+     *     wpData: Collection,
+     *     summary: array{
+     *         total_sptpd: float,
+     *         total_bayar: float,
+     *         total_tunggakan: float,
+     *         attainment: float
+     *     },
      *     availableYears: Collection,
-     *     months: array<int, string>,
      *     year: int,
      *     month: int,
      * }
@@ -31,36 +30,39 @@ class ShowEmployeeMonitoringAction
     {
         $employee->load('districts');
 
-        $uptTarget = (float) UptComparison::query()
-            ->where('upt_id', $upt->id)
+        $assignedDistrictCodes = $employee->districts->pluck('simpadu_code')->filter()->toArray();
+
+        if (empty($assignedDistrictCodes)) {
+            return $this->returnEmpty($upt, $employee, $year, $month);
+        }
+
+        // Reading from LOCAL simpadu_tax_payers table (Populated via php artisan sync:tax-payers)
+        $results = DB::table('simpadu_tax_payers')
             ->where('year', $year)
-            ->sum('target_amount');
-
-        $assignedDistrictIds = $employee->districts->pluck('id');
-
-        $legacyTotal = (float) TaxRealization::query()
-            ->whereIn('district_id', $assignedDistrictIds)
-            ->where('year', $year)
-            ->selectRaw('SUM(january+february+march+april+may+june+july+august+september+october+november+december) as total')
-            ->value('total') ?? 0;
-
-        $dailyTotal = (float) TaxRealizationDailyEntry::query()
-            ->whereIn('district_id', $assignedDistrictIds)
-            ->whereYear('entry_date', $year)
-            ->sum('amount');
-
-        $yearlyTotal = $legacyTotal + $dailyTotal;
-
-        $monthlyEntries = TaxRealizationDailyEntry::query()
-            ->where('user_id', $employee->id)
-            ->whereYear('entry_date', $year)
-            ->whereMonth('entry_date', $month)
-            ->with(['taxType', 'district'])
-            ->orderByDesc('entry_date')
+            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
+            ->orderByDesc('total_ketetapan')
             ->get();
 
-        $monthlyTotal = (float) $monthlyEntries->sum('amount');
-        $progress = $uptTarget > 0 ? ($yearlyTotal / $uptTarget) * 100 : 0;
+        $wpData = collect($results)->map(function ($row) {
+            return [
+                'npwpd' => $row->npwpd,
+                'nop' => $row->nop,
+                'nm_wp' => $row->nm_wp,
+                'status' => 'CEK SIMPADU', // Di tabel lokal saat ini tidak menyimpan status aktif/non-aktif, kita bisa asumsikan Aktif jika ada di tabel ini
+                'status_code' => '1',
+                'total_sptpd' => (float) $row->total_ketetapan,
+                'total_bayar' => (float) $row->total_bayar,
+                'selisih' => (float) ($row->total_bayar - $row->total_ketetapan),
+                'tunggakan' => (float) ($row->total_tunggakan > 0 ? $row->total_tunggakan : 0),
+            ];
+        });
+
+        $summary = [
+            'total_sptpd' => (float) $wpData->sum('total_sptpd'),
+            'total_bayar' => (float) $wpData->sum('total_bayar'),
+            'total_tunggakan' => (float) $wpData->sum('tunggakan'),
+            'attainment' => $wpData->sum('total_sptpd') > 0 ? ($wpData->sum('total_bayar') / $wpData->sum('total_sptpd')) * 100 : 0
+        ];
 
         $availableYears = TaxTarget::query()
             ->select('year')
@@ -68,22 +70,30 @@ class ShowEmployeeMonitoringAction
             ->orderByDesc('year')
             ->pluck('year');
 
-        $months = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
-        ];
-
         return [
             'upt' => $upt,
             'employee' => $employee,
-            'uptTarget' => $uptTarget,
-            'yearlyTotal' => $yearlyTotal,
-            'monthlyEntries' => $monthlyEntries,
-            'monthlyTotal' => $monthlyTotal,
-            'progress' => $progress,
+            'wpData' => $wpData,
+            'summary' => $summary,
             'availableYears' => $availableYears,
-            'months' => $months,
+            'year' => $year,
+            'month' => $month,
+        ];
+    }
+
+    private function returnEmpty(Upt $upt, User $employee, int $year, int $month): array
+    {
+        return [
+            'upt' => $upt,
+            'employee' => $employee,
+            'wpData' => collect(),
+            'summary' => [
+                'total_sptpd' => 0,
+                'total_bayar' => 0,
+                'total_tunggakan' => 0,
+                'attainment' => 0,
+            ],
+            'availableYears' => collect([$year]),
             'year' => $year,
             'month' => $month,
         ];

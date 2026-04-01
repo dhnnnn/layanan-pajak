@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Monitoring\ListUptMonitoringAction;
 use App\Actions\Monitoring\ShowEmployeeMonitoringAction;
 use App\Actions\Monitoring\ShowUptMonitoringAction;
+use App\Exports\RealizationMonitoringExport;
 use App\Exports\UptRealizationExport;
 use App\Http\Controllers\Controller;
 use App\Models\Upt;
@@ -59,5 +60,17 @@ class RealizationMonitoringController extends Controller
         $filename = "realisasi-{$upt->code}-{$monthName}-{$year}.xlsx";
 
         return Excel::download(new UptRealizationExport($upt->id, $year, $month), $filename);
+    }
+
+    /**
+     * Export all UPT realization data to a matrix-style Excel report.
+     */
+    public function exportAll(Request $request): BinaryFileResponse
+    {
+        $year = $request->integer('year', (int) date('Y'));
+        // Filename requested: monitoring-ralisasi-upt-tahun.xlsx
+        $filename = "monitoring-realisasi-upt-{$year}.xlsx";
+
+        return Excel::download(new RealizationMonitoringExport($year), $filename);
     }
 }

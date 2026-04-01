@@ -2,21 +2,19 @@
 
 namespace App\Actions\Monitoring;
 
-use App\Models\TaxRealization;
-use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\Upt;
-use App\Models\UptComparison;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ShowUptMonitoringAction
 {
     /**
      * @return array{
      *     upt: Upt,
-     *     uptTarget: float,
      *     employeeData: Collection,
-     *     uptYearlyTotal: float,
+     *     uptSptpd: float,
+     *     uptPay: float,
      *     availableYears: Collection,
      *     months: array<int, string>,
      *     year: int,
@@ -26,75 +24,43 @@ class ShowUptMonitoringAction
     public function __invoke(Upt $upt, int $year, int $month): array
     {
         $upt->load(['users' => function ($q): void {
-            $q->role('pegawai');
+            $q->role('pegawai')->with('districts');
         }]);
 
-        $uptTarget = (float) UptComparison::query()
-            ->where('upt_id', $upt->id)
+        $uptDistrictCodes = $upt->districts->pluck('simpadu_code')->filter()->toArray();
+
+        // Fetch data from LOCAL simpadu_tax_payers table
+        $districtStats = DB::table('simpadu_tax_payers')
             ->where('year', $year)
-            ->sum('target_amount');
+            ->whereIn('kd_kecamatan', $uptDistrictCodes)
+            ->selectRaw('kd_kecamatan, SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_pay')
+            ->groupBy('kd_kecamatan')
+            ->get();
 
-        $districtIds = $upt->districts->pluck('id');
+        $districtSptpd = $districtStats->pluck('total_sptpd', 'kd_kecamatan');
+        $districtPay = $districtStats->pluck('total_pay', 'kd_kecamatan');
 
-        // 1. Calculate UPT Total (Aggregated by District to avoid double-counting)
-        $legacyByDistrict = TaxRealization::query()
-            ->whereIn('district_id', $districtIds)
-            ->where('year', $year)
-            ->get()
-            ->groupBy('district_id')
-            ->map(fn (Collection $recs): float => (float) $recs->sum(
-                fn ($r) => $r->january + $r->february + $r->march + $r->april
-                + $r->may + $r->june + $r->july + $r->august
-                + $r->september + $r->october + $r->november + $r->december
-            ));
-
-        $dailyByDistrict = TaxRealizationDailyEntry::query()
-            ->whereIn('district_id', $districtIds)
-            ->whereYear('entry_date', $year)
-            ->selectRaw('district_id, SUM(amount) as total')
-            ->groupBy('district_id')
-            ->pluck('total', 'district_id')
-            ->map(fn ($t) => (float) $t);
-
-        $uptYearlyTotal = $legacyByDistrict->sum() + $dailyByDistrict->sum();
-
-        // 2. Calculate Employee Contributions (Aggregated by User)
-        $employeeIds = $upt->users->pluck('id');
-
-        $legacyByUser = TaxRealization::query()
-            ->whereIn('user_id', $employeeIds)
-            ->where('year', $year)
-            ->get()
-            ->groupBy('user_id')
-            ->map(fn (Collection $recs): float => (float) $recs->sum(
-                fn ($r) => $r->january + $r->february + $r->march + $r->april
-                + $r->may + $r->june + $r->july + $r->august
-                + $r->september + $r->october + $r->november + $r->december
-            ));
-
-        $dailyByUser = TaxRealizationDailyEntry::query()
-            ->whereIn('user_id', $employeeIds)
-            ->whereYear('entry_date', $year)
-            ->selectRaw('user_id, SUM(amount) as total')
-            ->groupBy('user_id')
-            ->pluck('total', 'user_id')
-            ->map(fn ($t) => (float) $t);
-
-        $employeeData = $upt->users->map(function ($employee) use ($legacyByUser, $dailyByUser, $uptTarget): array {
-            $contribution = (float) (($legacyByUser->get($employee->id) ?? 0) + ($dailyByUser->get($employee->id) ?? 0));
+        // 2. Map metrics to Officers
+        $employeeData = $upt->users->map(function ($employee) use ($districtSptpd, $districtPay) {
+            $codes = $employee->districts->pluck('simpadu_code')->filter();
+            
+            $sptpd = (float) $codes->sum(fn ($code) => (float) $districtSptpd->get($code) ?? 0);
+            $pay = (float) $codes->sum(fn ($code) => (float) $districtPay->get($code) ?? 0);
+            $pct = $sptpd > 0 ? ($pay / $sptpd) * 100 : 0;
 
             return [
                 'employee' => $employee,
-                'yearly_total' => $contribution,
-                'progress' => $uptTarget > 0 ? ($contribution / $uptTarget) * 100 : 0,
+                'sptpd_total' => $sptpd,
+                'pay_total' => $pay,
+                'attainment_pct' => $pct,
+                'districts_count' => $codes->count(),
             ];
-        });
+        })->sortByDesc('attainment_pct')->values();
 
-        $availableYears = TaxTarget::query()
-            ->select('year')
-            ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year');
+        $uptSptpd = (float) collect($uptDistrictCodes)->sum(fn ($code) => (float) $districtSptpd->get($code) ?? 0);
+        $uptPay = (float) collect($uptDistrictCodes)->sum(fn ($code) => (float) $districtPay->get($code) ?? 0);
+
+        $availableYears = TaxTarget::query()->select('year')->distinct()->orderByDesc('year')->pluck('year');
 
         $months = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
@@ -104,9 +70,9 @@ class ShowUptMonitoringAction
 
         return [
             'upt' => $upt,
-            'uptTarget' => $uptTarget,
             'employeeData' => $employeeData,
-            'uptYearlyTotal' => $uptYearlyTotal,
+            'uptSptpd' => $uptSptpd,
+            'uptPay' => $uptPay,
             'availableYears' => $availableYears,
             'months' => $months,
             'year' => $year,

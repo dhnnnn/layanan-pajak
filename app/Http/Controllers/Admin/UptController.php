@@ -26,7 +26,7 @@ class UptController extends Controller
         }
 
         $upts = Upt::query()
-            ->withCount(['users', 'districts'])
+            ->withCount(['employees', 'districts'])
             ->when(auth()->user()->hasRole('kepala_upt'), function ($q) {
                 $q->where('id', auth()->user()->upt_id);
             })
