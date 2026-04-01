@@ -26,7 +26,7 @@ class TaxPayerMonitoringController extends Controller
         $taxPayers = $getTaxPayers($year, $districtCode, $search);
         
         // Get existing tasks to show status
-        $existingTasks = OfficerTask::whereIn('tax_payer_id', collect($taxPayers)->pluck('npwpd'))
+        $existingTasks = OfficerTask::whereIn('tax_payer_id', $taxPayers->pluck('npwpd'))
             ->get()
             ->groupBy('tax_payer_id');
 

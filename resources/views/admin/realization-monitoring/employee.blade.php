@@ -264,10 +264,11 @@
             document.querySelectorAll('th[data-sort]').forEach(th => {
                 th.addEventListener('click', function() {
                     const column = this.dataset.sort;
-                    let direction = 'asc';
+                    // Klik pertama langsung ke 'desc' (panah bawah)
+                    let direction = 'desc';
 
                     if (sortByValue.value === column) {
-                        direction = sortDirValue.value === 'asc' ? 'desc' : 'asc';
+                        direction = sortDirValue.value === 'desc' ? 'asc' : 'desc';
                     }
 
                     sortByValue.value = column;

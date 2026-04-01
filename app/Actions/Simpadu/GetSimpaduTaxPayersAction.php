@@ -19,6 +19,6 @@ class GetSimpaduTaxPayersAction
                   ->orWhere('npwpd', 'like', "%{$search}%")
                   ->orWhere('nm_op', 'like', "%{$search}%");
             }))
-            ->get();
+            ->paginate(20);
     }
 }

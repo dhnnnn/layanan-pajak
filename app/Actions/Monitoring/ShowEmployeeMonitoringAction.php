@@ -108,12 +108,15 @@ class ShowEmployeeMonitoringAction
             ->orderBy($orderCol, $orderDir);
 
         $wpData = $query->paginate(15)->through(function ($row) {
+            $statusStr = (string) $row->status;
+            $isActive = $statusStr === '1';
+
             return [
                 'npwpd' => $row->npwpd,
                 'nop' => $row->nop,
                 'nm_wp' => $row->nm_wp,
-                'status' => 'CEK SIMPADU',
-                'status_code' => '1',
+                'status' => $isActive ? 'AKTIF' : 'NON AKTIF',
+                'status_code' => $statusStr,
                 'total_sptpd' => (float) $row->total_ketetapan,
                 'total_bayar' => (float) $row->total_bayar,
                 'selisih' => (float) ($row->total_bayar - $row->total_ketetapan),
