@@ -59,6 +59,7 @@
                         <tr>
                             <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle">NPWPD</th>
                             <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle">Wajib Pajak</th>
+                            <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle uppercase">Alamat Wajib Pajak</th>
                             <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle text-center uppercase">Kecamatan</th>
                             @for($m = $selectedMonthFrom; $m <= $selectedMonthTo; $m++)
                                 <th colspan="3" class="px-4 py-3 border-r border-slate-200 border-b border-slate-200 text-center bg-slate-100/50">
@@ -83,6 +84,9 @@
                                 </td>
                                 <td class="px-4 py-3 border-r border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
                                     {{ $wp->nm_wp }}
+                                </td>
+                                <td class="px-4 py-3 border-r border-slate-200 text-slate-500 font-medium uppercase text-[9px]">
+                                    {{ $wp->almt_op }}
                                 </td>
                                 <td class="px-4 py-3 border-r border-slate-200 text-center uppercase text-slate-600 font-medium whitespace-nowrap">
                                     {{ $wp->nm_kecamatan }}
