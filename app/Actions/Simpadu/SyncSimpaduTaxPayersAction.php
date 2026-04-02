@@ -25,6 +25,7 @@ class SyncSimpaduTaxPayersAction
                 o.name as nm_op,
                 o.jalan_op as almt_op,
                 o.kd_kecamatan,
+                o.JENIS_PAJAK as ayat,
                 COALESCE(sums.total_ketetapan, 0) as total_ketetapan,
                 COALESCE(sums.total_bayar, 0) as total_bayar,
                 (COALESCE(sums.total_ketetapan, 0) - COALESCE(sums.total_bayar, 0)) as total_tunggakan
@@ -75,6 +76,7 @@ class SyncSimpaduTaxPayersAction
                     'total_ketetapan' => $row->total_ketetapan,
                     'total_bayar' => $row->total_bayar,
                     'total_tunggakan' => $row->total_tunggakan,
+                    'ayat' => $row->ayat,
                     'updated_at' => now(),
                     'created_at' => now(),
                 ];
@@ -84,7 +86,7 @@ class SyncSimpaduTaxPayersAction
             SimpaduTaxPayer::upsert(
                 $dataToUpsert, 
                 ['npwpd', 'nop', 'year'], 
-                ['nm_wp', 'nm_op', 'almt_op', 'kd_kecamatan', 'total_ketetapan', 'total_bayar', 'total_tunggakan', 'updated_at']
+                ['nm_wp', 'nm_op', 'almt_op', 'kd_kecamatan', 'total_ketetapan', 'total_bayar', 'total_tunggakan', 'ayat', 'updated_at']
             );
             $count += count($chunk);
         }
