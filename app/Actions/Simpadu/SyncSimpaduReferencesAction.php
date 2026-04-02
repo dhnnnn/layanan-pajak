@@ -30,7 +30,7 @@ class SyncSimpaduReferencesAction
 
             // 2. If not found, try to find by name (to "claim" seeded districts)
             if (!$district) {
-                $district = District::where('name', $name)->first();
+                $district = District::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
             }
 
             if ($district) {
