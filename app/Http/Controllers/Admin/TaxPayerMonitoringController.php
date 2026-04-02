@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
-use App\Actions\Simpadu\GetSimpaduTaxPayersAction;
+use App\Actions\Simpadu\GetTaxPayerMatrixAction;
 use App\Models\District;
 use App\Models\OfficerTask;
 use App\Models\User;
@@ -14,31 +14,33 @@ use Illuminate\View\View;
 
 class TaxPayerMonitoringController extends Controller
 {
-    public function index(Request $request, GetSimpaduTaxPayersAction $getTaxPayers): View
+    public function index(Request $request, GetTaxPayerMatrixAction $getMatrix): View
     {
-        $year = $request->integer('year', date('Y'));
-        $districtId = $request->string('district_id');
+        $year = $request->integer('year', (int) date('Y'));
+        $monthFrom = $request->integer('month_from', 1);
+        $monthTo = $request->integer('month_to', (int) date('n'));
         $search = $request->string('search');
 
-        $district = $districtId ? District::find($districtId) : null;
-        $districtCode = $district ? $district->simpadu_code : null;
+        $districtCodes = null;
+        if (auth()->user()->isKepalaUpt()) {
+            $districtCodes = auth()->user()->upt->districts->pluck('simpadu_code')->toArray();
+        }
 
-        $taxPayers = $getTaxPayers($year, $districtCode, $search);
+        $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes);
         
         // Get existing tasks to show status
         $existingTasks = OfficerTask::whereIn('tax_payer_id', $taxPayers->pluck('npwpd'))
             ->get()
             ->groupBy('tax_payer_id');
 
-        $districts = District::whereNotNull('simpadu_code')->orderBy('name')->get();
         $officers = User::orderBy('name')->get(); // Adjust filter if there's a specific role
 
         return view('admin.monitoring.index', [
             'taxPayers' => $taxPayers,
-            'districts' => $districts,
             'officers' => $officers,
             'selectedYear' => $year,
-            'selectedDistrict' => $districtId,
+            'selectedMonthFrom' => $monthFrom,
+            'selectedMonthTo' => $monthTo,
             'existingTasks' => $existingTasks,
         ]);
     }

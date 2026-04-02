@@ -93,4 +93,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Upt::class);
     }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(OfficerTask::class, 'officer_id');
+    }
 }

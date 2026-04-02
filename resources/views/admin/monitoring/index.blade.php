@@ -1,103 +1,121 @@
 <x-layouts.admin title="Pemantauan Wajib Pajak" header="Pemantauan & Penagihan WP">
     <div class="space-y-6">
         {{-- Filters --}}
-        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <form action="{{ route('admin.monitoring.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                    <label for="year" class="block text-sm font-medium text-slate-700 mb-1">Tahun Anggaran</label>
-                    <select name="year" id="year" class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
+        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm mb-6">
+            <form id="filterForm" action="{{ route('admin.monitoring.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 items-end">
+                <div class="lg:col-span-1">
+                    <label for="year" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-widest text-[10px]">Tahun Anggaran</label>
+                    <select name="year" id="year" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs py-3 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all filter-input font-semibold">
                         @for($y = date('Y'); $y >= 2020; $y--)
                             <option value="{{ $y }}" {{ $selectedYear == $y ? 'selected' : '' }}>{{ $y }}</option>
                         @endfor
                     </select>
                 </div>
-                <div>
-                    <label for="district_id" class="block text-sm font-medium text-slate-700 mb-1">Kecamatan</label>
-                    <select name="district_id" id="district_id" class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Semua Kecamatan</option>
-                        @foreach($districts as $d)
-                            <option value="{{ $d->id }}" {{ $selectedDistrict == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
+                <div class="lg:col-span-1">
+                    <label for="month_from" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-widest text-[10px]">Dari Bulan</label>
+                    <select name="month_from" id="month_from" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs py-3 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all filter-input font-semibold">
+                        @foreach(range(1, 12) as $m)
+                            <option value="{{ $m }}" {{ $selectedMonthFrom == $m ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
-                <div>
-                    <label for="search" class="block text-sm font-medium text-slate-700 mb-1">Cari Nama/NPWPD</label>
-                    <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Contoh: Budi atau 01.234..." 
-                        class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
+                <div class="lg:col-span-1">
+                    <label for="month_to" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-widest text-[10px]">Sampai Bulan</label>
+                    <select name="month_to" id="month_to" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs py-3 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all filter-input font-semibold">
+                        @foreach(range(1, 12) as $m)
+                            <option value="{{ $m }}" {{ $selectedMonthTo == $m ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm">
-                        Filter Data
-                    </button>
-                    <a href="{{ route('admin.monitoring.index') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg transition-colors text-sm">
-                        Reset
+                <div class="lg:col-span-3">
+                    <label for="search" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-widest text-[10px]">Cari Nama / NPWPD (Minimal 3 Karakter)</label>
+                    <div class="relative group">
+                        <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Cari berdasarkan nama atau NPWPD..." 
+                            class="w-full rounded-2xl border-slate-200 bg-slate-50 text-[13px] py-3.5 pl-5 pr-12 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all filter-input font-bold text-slate-800 placeholder-slate-400">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                            <div class="p-1.5 bg-blue-50 rounded-lg group-focus-within:bg-blue-600 group-focus-within:text-white transition-colors">
+                                <svg class="h-4 w-4 text-blue-600 group-focus-within:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-6 flex justify-end gap-3">
+                    <a href="{{ route('admin.monitoring.index') }}" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-6 rounded-2xl transition-all text-[11px] uppercase tracking-widest border border-slate-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Reset Filter
                     </a>
                 </div>
             </form>
         </div>
 
-        {{-- Monitoring Table --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left border-collapse">
-                    <thead class="bg-slate-50 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-600 font-bold uppercase text-[9px] tracking-widest border-b border-slate-200">
                         <tr>
-                            <th class="px-4 py-4 border-r border-slate-200">NPWPD & WP</th>
-                            <th class="px-4 py-4 border-r border-slate-200">Alamat & Objek</th>
-                            <th class="px-4 py-4 border-r border-slate-200 text-right">Ketetapan</th>
-                            <th class="px-4 py-4 border-r border-slate-200 text-right">Dibayar</th>
-                            <th class="px-4 py-4 border-r border-slate-200 text-right">Tunggakan</th>
-                            <th class="px-4 py-4 text-center">Aksi / Status</th>
+                            <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle">NPWPD</th>
+                            <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle">Wajib Pajak</th>
+                            <th rowspan="2" class="px-4 py-4 border-r border-slate-200 align-middle text-center uppercase">Kecamatan</th>
+                            @for($m = $selectedMonthFrom; $m <= $selectedMonthTo; $m++)
+                                <th colspan="3" class="px-4 py-3 border-r border-slate-200 border-b border-slate-200 text-center bg-slate-100/50">
+                                    {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
+                                </th>
+                            @endfor
+                            <th rowspan="2" class="px-4 py-4 text-center align-middle">Status</th>
+                        </tr>
+                        <tr class="bg-slate-50/80">
+                            @for($m = $selectedMonthFrom; $m <= $selectedMonthTo; $m++)
+                                <th class="px-2 py-2 text-center border-r border-slate-200 text-[9px] font-bold text-slate-500">Tgl SPTPD</th>
+                                <th class="px-2 py-2 text-center border-r border-slate-200 text-[9px] font-bold text-slate-500">Masa Pajak</th>
+                                <th class="px-2 py-2 text-center border-r border-slate-200 text-[9px] font-bold text-slate-500">Jml SPTPD</th>
+                            @endfor
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200 text-[13px]">
+                    <tbody class="divide-y divide-slate-200 text-[11px]">
                         @forelse($taxPayers as $wp)
-                            @php
-                                $task = $existingTasks->get($wp->npwpd)?->first();
-                            @endphp
-                            <tr class="hover:bg-slate-50/50 transition-colors">
-                                <td class="px-4 py-4 border-r border-slate-200">
-                                    <div class="font-bold text-slate-900">{{ $wp->npwpd }}</div>
-                                    <div class="text-slate-600 uppercase">{{ $wp->nm_wp }}</div>
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="px-4 py-3 border-r border-slate-200 font-bold text-slate-900">
+                                    {{ $wp->npwpd }}
                                 </td>
-                                <td class="px-4 py-4 border-r border-slate-200">
-                                    <span class="text-[10px] uppercase font-bold text-slate-400 block px-0">OBJET PAJAK:</span>
-                                    <div class="font-medium text-slate-800">{{ $wp->nm_op }}</div>
-                                    <div class="text-[11px] text-slate-500 italic">{{ $wp->almt_op }}</div>
+                                <td class="px-4 py-3 border-r border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                                    {{ $wp->nm_wp }}
                                 </td>
-                                <td class="px-4 py-4 border-r border-slate-200 text-right font-medium text-slate-900">
-                                    Rp {{ number_format($wp->total_ketetapan, 0, ',', '.') }}
+                                <td class="px-4 py-3 border-r border-slate-200 text-center uppercase text-slate-600 font-medium whitespace-nowrap">
+                                    {{ $wp->nm_kecamatan }}
                                 </td>
-                                <td class="px-4 py-4 border-r border-slate-200 text-right font-medium text-emerald-600">
-                                    Rp {{ number_format($wp->total_bayar, 0, ',', '.') }}
-                                </td>
-                                <td class="px-4 py-4 border-r border-slate-200 text-right font-bold {{ $wp->total_tunggakan > 0 ? 'text-rose-600' : 'text-slate-400' }}">
-                                    Rp {{ number_format($wp->total_tunggakan, 0, ',', '.') }}
-                                </td>
-                                <td class="px-4 py-4 text-center">
-                                    @if($task)
-                                        <div class="flex flex-col items-center gap-1">
-                                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
-                                                {{ $task->status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                                {{ $task->status }}
-                                            </span>
-                                            <span class="text-[10px] text-slate-500">Petugas: {{ $task->officer->name }}</span>
-                                        </div>
-                                    @elseif($wp->total_tunggakan > 0)
-                                        <button type="button" 
-                                            onclick="openAssignModal('{{ $wp->npwpd }}', '{{ addslashes($wp->nm_wp) }}', '{{ addslashes($wp->almt_op) }}', {{ $wp->total_ketetapan }}, {{ $wp->total_bayar }})"
-                                            class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
-                                            Tugaskan Petugas
-                                        </button>
+                                @for($m = $selectedMonthFrom; $m <= $selectedMonthTo; $m++)
+                                    @php $data = $wp->monthly_data[$m]; @endphp
+                                    <td class="px-2 py-3 border-r border-slate-200 text-center text-slate-500 font-medium">
+                                        {{ $data['tgl_lapor'] }}
+                                    </td>
+                                    <td class="px-2 py-3 border-r border-slate-200 text-center text-slate-500 font-medium">
+                                        {{ $data['masa_pajak'] }}
+                                    </td>
+                                    <td class="px-2 py-3 border-r border-slate-200 text-right font-bold {{ $data['jml_lapor'] > 0 ? 'text-blue-600' : 'text-slate-300' }}">
+                                        {{ $data['jml_lapor'] > 0 ? number_format($data['jml_lapor'], 0, ',', '.') : '-' }}
+                                    </td>
+                                @endfor
+                                <td class="px-4 py-3 text-center">
+                                    @if($wp->status == '1')
+                                        <span class="text-emerald-500 font-bold text-[10px]">AKTIF</span>
                                     @else
-                                        <span class="text-emerald-500 font-bold text-[10px] uppercase">Lunas</span>
+                                        <span class="text-rose-500 font-bold text-[10px]">NON-AKTIF</span>
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-slate-500">
-                                    Tidak ada data Wajib Pajak ditemukan.
+                                <td colspan="{{ 3 + ($selectedMonthTo - $selectedMonthFrom + 1) * 3 }}" class="px-6 py-20 text-center">
+                                    <div class="flex flex-col items-center justify-center space-y-3">
+                                        <div class="p-4 bg-slate-50 rounded-full">
+                                            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        </div>
+                                        <p class="text-slate-500 font-medium">Data tidak ditemukan dalam rentang periode tersebut.</p>
+                                    </div>
                                 </td>
                             </tr>
                         @endforelse
@@ -130,7 +148,6 @@
                     <input type="hidden" name="tax_payer_address" id="modal_wp_address">
                     <input type="hidden" name="amount_sptpd" id="modal_amount_sptpd">
                     <input type="hidden" name="amount_paid" id="modal_amount_paid">
-                    <input type="hidden" name="district_id" value="{{ $selectedDistrict }}">
 
                     <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
                         <p class="text-xs text-blue-600 font-bold uppercase mb-1">Wajib Pajak Terpilih:</p>
@@ -167,7 +184,31 @@
     </div>
 
     @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        $(document).ready(function() {
+            // Auto submit on select change or debounced input
+            let searchTimer;
+            $('.filter-input').on('change keyup', function(e) {
+                if (e.type === 'keyup') {
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(() => {
+                        $('#filterForm').submit();
+                    }, 500); // 500ms debounce
+                } else {
+                    $('#filterForm').submit();
+                }
+            });
+
+            // Prevent form submit on enter inside search (since we auto-submit)
+            $('#search').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    $('#filterForm').submit();
+                }
+            });
+        });
+
         function openAssignModal(id, name, address, sptpd, paid) {
             document.getElementById('modal_wp_id').value = id;
             document.getElementById('modal_wp_name').value = name;

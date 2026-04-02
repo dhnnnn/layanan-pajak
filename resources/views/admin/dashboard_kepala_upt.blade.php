@@ -1,4 +1,4 @@
-<x-layouts.admin title="Dashboard UPT" header="Dashboard Realisasi Pajak">
+<x-layouts.admin title="Dashboard UPT" header="Ringkasan UPT">
     <x-slot:headerActions>
         <form action="{{ route('admin.dashboard') }}" method="GET" id="filterForm" class="flex items-center gap-2">
             {{-- Wilayah Dropdown --}}
@@ -77,7 +77,11 @@
             </div>
         </div>
 
-        {{-- Summary Cards --}}
+        {{-- Statistik Section --}}
+        <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest pl-1 mb-4 flex items-center gap-2">
+            <div class="w-1.5 h-4 bg-blue-600 rounded-full"></div>
+            Statistik
+        </h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             @php
                 $totalTarget = $totals['target'] ?? 0;
@@ -107,61 +111,97 @@
             </div>
         </div>
 
-        {{-- Realization Table --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30">
-                <h3 class="font-bold text-slate-800 text-sm italic uppercase tracking-wider">Progres Realisasi UPT</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {{-- Kepatuhan Pelaporan Section --}}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30">
+                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Kepatuhan Pelaporan Bulan Ini</h3>
+                </div>
+                <div class="p-6 flex-1 flex flex-col justify-center items-center">
+                    @if($compliance)
+                    <div class="relative w-32 h-32 mb-4">
+                        <svg class="w-full h-full" viewBox="0 0 36 36">
+                            <path class="text-slate-100" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="text-blue-600" stroke-width="3" stroke-dasharray="{{ $compliance['percentage'] }}, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-2xl font-bold text-slate-900">{{ round($compliance['percentage']) }}%</span>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500 font-medium">
+                            <span class="font-bold text-blue-600">{{ $compliance['reported'] }}</span> WP Sudah Lapor dari total <span class="font-bold text-slate-800">{{ $compliance['total'] }}</span>
+                        </p>
+                    </div>
+                    @else
+                    <p class="text-slate-400 italic text-sm">Data tidak tersedia</p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Kinerja Petugas Section --}}
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30">
+                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Kinerja Petugas</h3>
+                </div>
+                <div class="p-4 space-y-4">
+                    @forelse($officerStats as $officer)
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <p class="text-[11px] font-bold text-slate-700 uppercase tracking-tight">{{ $officer->name }}</p>
+                                <p class="text-[10px] text-slate-400">{{ $officer->completed_tasks }}/{{ $officer->total_tasks }} Tugas Selesai</p>
+                            </div>
+                            <span class="text-[11px] font-bold text-blue-600">{{ round($officer->performance) }}%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5">
+                            <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ $officer->performance }}%"></div>
+                        </div>
+                    </div>
+                    @empty
+                    <p class="text-slate-400 italic text-xs py-4 text-center">Belum ada penugasan petugas.</p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        {{-- Prioritas Penagihan Section --}}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Prioritas Penagihan (Tunggakan Terbesar)</h3>
+                <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Tindak Lanjut Segera</span>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-slate-50 text-slate-600 font-semibold uppercase text-xs border-b border-slate-200">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
                         <tr>
-                            <th class="px-6 py-4">Jenis Pajak</th>
-                            <th class="px-6 py-4 text-right">Target</th>
-                            <th class="px-6 py-4 text-right">Q1</th>
-                            <th class="px-6 py-4 text-right">Q2</th>
-                            <th class="px-6 py-4 text-right">Q3</th>
-                            <th class="px-6 py-4 text-right">Q4</th>
-                            <th class="px-6 py-4 text-right">Total</th>
-                            <th class="px-6 py-4 text-center">%</th>
+                            <th class="px-6 py-3">Wajib Pajak</th>
+                            <th class="px-6 py-3 text-right">Target</th>
+                            <th class="px-6 py-3 text-right">Realisasi</th>
+                            <th class="px-6 py-3 text-right">Tunggakan</th>
+                            <th class="px-6 py-3 text-center">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        @forelse($dashboard as $item)
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-6 py-4 font-bold text-slate-900 border-r border-slate-100">
-                                    {{ $item['tax_type_name'] }}
-                                </td>
-                                <td class="px-6 py-4 text-right font-medium text-slate-700">
-                                    {{ number_format($item['target_total'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-right text-slate-500">
-                                    {{ number_format($item['realizations']['q1'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-right text-slate-500">
-                                    {{ number_format($item['realizations']['q2'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-right text-slate-500">
-                                    {{ number_format($item['realizations']['q3'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-right text-slate-500 border-r border-slate-100">
-                                    {{ number_format($item['realizations']['q4'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-right font-bold text-blue-700 bg-blue-50/10">
-                                    {{ number_format($item['total_realization'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold {{ $item['achievement_percentage'] >= 100 ? 'bg-emerald-100 text-emerald-800' : ($item['achievement_percentage'] >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ number_format($item['achievement_percentage'], 2, ',', '.') }}%
-                                    </span>
-                                </td>
-                            </tr>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($topDelinquents as $dp)
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-3">
+                                <div class="font-bold text-slate-800">{{ $dp->nm_wp }}</div>
+                                <div class="text-[10px] text-slate-400 uppercase tracking-tight">{{ $dp->nm_op }}</div>
+                            </td>
+                            <td class="px-6 py-3 text-right font-medium">Rp {{ number_format($dp->target, 0, ',', '.') }}</td>
+                            <td class="px-6 py-3 text-right font-medium text-emerald-600">Rp {{ number_format($dp->realization, 0, ',', '.') }}</td>
+                            <td class="px-6 py-3 text-right font-bold text-red-600">Rp {{ number_format($dp->debt, 0, ',', '.') }}</td>
+                            <td class="px-6 py-3 text-center">
+                                <a href="{{ route('admin.monitoring.index', ['search' => $dp->npwpd]) }}" class="px-3 py-1.5 bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 font-bold rounded-lg transition-all">
+                                    Pantau
+                                </a>
+                            </td>
+                        </tr>
                         @empty
-                            <tr>
-                                <td colspan="8" class="px-6 py-10 text-center text-slate-400">
-                                    <p class="text-sm italic">Tidak ada data untuk UPT ini.</p>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-slate-400 italic">Tidak ada data tunggakan.</td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>

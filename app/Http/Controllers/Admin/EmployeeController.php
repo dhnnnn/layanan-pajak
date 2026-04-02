@@ -6,6 +6,7 @@ use App\Actions\Admin\CreateEmployeeAction;
 use App\Actions\Admin\DeleteEmployeeAction;
 use App\Actions\Admin\UpdateEmployeeAction;
 use App\Actions\Employee\AssignEmployeeDistrictAction;
+use App\Actions\Monitoring\ShowEmployeeMonitoringAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignDistrictRequest;
 use App\Http\Requests\Admin\StoreEmployeeRequest;
@@ -14,6 +15,7 @@ use App\Models\District;
 use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -58,15 +60,32 @@ class EmployeeController extends Controller
             ->with('success', 'Pegawai berhasil ditambahkan.');
     }
 
-    public function show(User $employee): View
-    {
-        $employee->load(
-            'districts',
-            'taxRealizations.taxType',
-            'taxRealizations.district',
-        );
+    public function show(
+        Request $request,
+        User $employee,
+        ShowEmployeeMonitoringAction $showEmployeeMonitoring,
+    ): View {
+        $year = $request->integer('year', (int) date('Y'));
+        $month = $request->integer('month', (int) date('n'));
+        $search = $request->query('search');
+        $sortBy = $request->query('sort_by', 'sptpd');
+        $sortDir = $request->query('sort_dir', 'desc');
+        $taxTypeId = $request->query('tax_type_id');
 
-        return view('admin.employees.show', compact('employee'));
+        $upt = $employee->upt;
+
+        if (! $upt) {
+            $employee->load('districts');
+
+            return view('admin.employees.show', [
+                'employee' => $employee,
+                'error' => 'Pegawai belum ditugaskan ke UPT mana pun.',
+            ]);
+        }
+
+        $result = $showEmployeeMonitoring($upt, $employee, $year, $month, $search, $sortBy, $sortDir, $taxTypeId);
+
+        return view('admin.employees.show', $result);
     }
 
     public function edit(User $employee): View
