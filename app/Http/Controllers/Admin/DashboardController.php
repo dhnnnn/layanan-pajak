@@ -59,7 +59,32 @@ class DashboardController extends Controller
         if ($isKepalaUpt && $user->upt) {
             $currentMonth = date('n');
             $districtCodes = $user->upt->districts->pluck('simpadu_code')->toArray();
-            
+
+            // Find current simpadu_code if district filter is set
+            $filterCodes = $districtCodes;
+            if ($selectedDistrictId && !$isAllDistricts) {
+                $targetDist = $assignedDistricts->firstWhere('id', $selectedDistrictId);
+                if ($targetDist && $targetDist->simpadu_code) {
+                    $filterCodes = [$targetDist->simpadu_code];
+                }
+            }
+
+            // Calculate global totals from simpadu_tax_payers based on filter
+            $simpaduTotals = DB::table('simpadu_tax_payers')
+                ->where('year', $selectedYear)
+                ->whereIn('kd_kecamatan', $filterCodes)
+                ->select([
+                    DB::raw('SUM(total_ketetapan) as target'),
+                    DB::raw('SUM(total_bayar) as realization')
+                ])
+                ->first();
+
+            $result['totals']['target'] = $simpaduTotals->target ?? 0;
+            $result['totals']['realization'] = $simpaduTotals->realization ?? 0;
+            $result['totals']['percentage'] = ($result['totals']['target'] > 0) 
+                ? ($result['totals']['realization'] / $result['totals']['target']) * 100 
+                : 0;
+
             // 1. Kepatuhan Pelaporan (Bulan Berjalan)
             $totalWp = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
@@ -101,18 +126,47 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            // 3. Kinerja Petugas (Hanya Petugas di UPT ini)
-            $officerStats = User::role('pegawai')
-                ->where('upt_id', $user->upt_id)
-                ->whereHas('tasks')
-                ->withCount(['tasks as total_tasks'])
-                ->withCount(['tasks as completed_tasks' => fn($q) => $q->where('status', 'completed')])
+            // 3. Kinerja Petugas (Top 5 berdasarkan attainment % wilayahnya)
+            $districtStats = DB::table('simpadu_tax_payers')
+                ->where('year', $selectedYear)
+                ->whereIn('kd_kecamatan', $districtCodes)
+                ->select([
+                    'kd_kecamatan',
+                    DB::raw('SUM(total_ketetapan) as total_target'),
+                    DB::raw('SUM(total_bayar) as total_realization')
+                ])
+                ->groupBy('kd_kecamatan')
                 ->get()
-                ->map(function($officer) {
-                    $officer->performance = $officer->total_tasks > 0 ? ($officer->completed_tasks / $officer->total_tasks) * 100 : 0;
-                    return $officer;
+                ->keyBy('kd_kecamatan');
+
+            $employeeDashboardData = User::role('pegawai')
+                ->where('upt_id', $user->upt_id)
+                ->with('districts')
+                ->get()
+                ->map(function($employee) use ($districtStats) {
+                    $empDistricts = $employee->districts;
+                    $totalTarget = 0;
+                    $totalRealization = 0;
+                    
+                    foreach($empDistricts as $d) {
+                        $stats = $districtStats->get($d->simpadu_code);
+                        if($stats) {
+                            $totalTarget += $stats->total_target;
+                            $totalRealization += $stats->total_realization;
+                        }
+                    }
+
+                    return [
+                        'employee' => $employee,
+                        'sptpd_total' => $totalTarget,
+                        'pay_total' => $totalRealization,
+                        'remaining' => max(0, $totalTarget - $totalRealization),
+                        'attainment_pct' => $totalTarget > 0 ? ($totalRealization / $totalTarget) * 100 : 0,
+                        'districts_count' => $empDistricts->count(),
+                    ];
                 })
-                ->sortByDesc('performance');
+                ->sortByDesc('attainment_pct')
+                ->take(5);
         }
 
         return view($view, [
@@ -125,7 +179,7 @@ class DashboardController extends Controller
             'isAllDistricts' => $isAllDistricts,
             'compliance' => $compliance,
             'topDelinquents' => $topDelinquents,
-            'officerStats' => $officerStats,
+            'employeeDashboardData' => $employeeDashboardData ?? collect(),
         ]);
     }
 }

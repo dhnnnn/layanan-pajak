@@ -1,7 +1,6 @@
 <x-layouts.admin title="Dashboard UPT" header="Ringkasan UPT">
     <x-slot:headerActions>
         <form action="{{ route('admin.dashboard') }}" method="GET" id="filterForm" class="flex items-center gap-2">
-            {{-- Wilayah Dropdown --}}
             <span class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</span>
             <div class="relative" id="districtDropdownWrapper">
                 <button type="button" id="districtDropdownBtn"
@@ -28,7 +27,6 @@
                 </div>
             </div>
 
-            {{-- Tahun Dropdown --}}
             <span class="text-xs font-semibold text-slate-500 uppercase">Tahun:</span>
             <div class="relative" id="yearDropdownWrapper">
                 <button type="button" id="yearDropdownBtn"
@@ -66,18 +64,16 @@
                 </div>
                 <div>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Unit Pelaksana Teknis</p>
-                    <p class="text-sm font-bold text-slate-800">
-                        {{ auth()->user()->upt?->name ?? 'UPT' }}
-                    </p>
+                    <p class="text-sm font-bold text-slate-800">{{ auth()->user()->upt?->name ?? 'UPT' }}</p>
                 </div>
             </div>
-            <div class="text-right">
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Filter Aktif</p>
-                <p class="text-sm font-bold text-slate-800">{{ $isAllDistricts ? 'Semua Wilayah' : $assignedDistricts->firstWhere('id', $selectedDistrictId)?->name }} ({{ $selectedYear }})</p>
+            <div class="text-right text-[10px]">
+                <p class="text-slate-400 font-bold uppercase tracking-wider">Filter Aktif</p>
+                <p class="font-bold text-slate-800">{{ $isAllDistricts ? 'Semua Wilayah' : $assignedDistricts->firstWhere('id', $selectedDistrictId)?->name }} ({{ $selectedYear }})</p>
             </div>
         </div>
 
-        {{-- Statistik Section --}}
+        {{-- Statistik Utama Section (REVERTED TO BIG CARDS) --}}
         <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest pl-1 mb-4 flex items-center gap-2">
             <div class="w-1.5 h-4 bg-blue-600 rounded-full"></div>
             Statistik
@@ -91,23 +87,23 @@
             @endphp
 
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Target</p>
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Total Ketetapan SPTPD</p>
                 <p class="text-2xl font-bold text-slate-900">Rp {{ number_format($totalTarget, 0, ',', '.') }}</p>
             </div>
 
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Realisasi</p>
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Realisasi Bayar</p>
                 <p class="text-2xl font-bold text-blue-600">Rp {{ number_format($totalRealization, 0, ',', '.') }}</p>
             </div>
 
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Sisa Target</p>
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Sisa</p>
                 <p class="text-2xl font-bold text-orange-600">Rp {{ number_format($remainingTarget, 0, ',', '.') }}</p>
             </div>
 
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Capaian</p>
-                <p class="text-2xl font-bold text-blue-600">{{ number_format($avgPercentage, 2, ',', '.') }}%</p>
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Persentase Capaian</p>
+                <p class="text-2xl font-black text-emerald-600">{{ number_format($avgPercentage, 2, ',', '.') }}%</p>
             </div>
         </div>
 
@@ -139,27 +135,34 @@
                 </div>
             </div>
 
-            {{-- Kinerja Petugas Section --}}
+            {{-- Kinerja Petugas (REVERTED TO LIST BARS) --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30">
-                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Kinerja Petugas</h3>
+                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Kinerja Petugas (Top 5)</h3>
                 </div>
-                <div class="p-4 space-y-4">
-                    @forelse($officerStats as $officer)
-                    <div class="space-y-1.5">
+                <div class="p-5 space-y-5">
+                    @forelse($employeeDashboardData as $data)
+                    <div class="space-y-2">
                         <div class="flex justify-between items-end">
-                            <div>
-                                <p class="text-[11px] font-bold text-slate-700 uppercase tracking-tight">{{ $officer->name }}</p>
-                                <p class="text-[10px] text-slate-400">{{ $officer->completed_tasks }}/{{ $officer->total_tasks }} Tugas Selesai</p>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-slate-700 uppercase tracking-tight truncate">{{ $data['employee']->name }}</p>
+                                <p class="text-[10px] text-slate-400">
+                                    Rp{{ number_format($data['pay_total'], 0, ',', '.') }} / 
+                                    Rp{{ number_format($data['sptpd_total'], 0, ',', '.') }}
+                                </p>
                             </div>
-                            <span class="text-[11px] font-bold text-blue-600">{{ round($officer->performance) }}%</span>
+                            <span class="text-[11px] font-black text-blue-600">{{ number_format($data['attainment_pct'], 1) }}%</span>
                         </div>
-                        <div class="w-full bg-slate-100 rounded-full h-1.5">
-                            <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ $officer->performance }}%"></div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $data['attainment_pct'] }}%"></div>
+                        </div>
+                        <div class="flex justify-between text-[9px] text-slate-400 italic">
+                            <span>Sisa: Rp{{ number_format($data['remaining'], 0, ',', '.') }}</span>
+                            <span>{{ $data['districts_count'] }} Wilayah</span>
                         </div>
                     </div>
                     @empty
-                    <p class="text-slate-400 italic text-xs py-4 text-center">Belum ada penugasan petugas.</p>
+                    <p class="text-slate-400 italic text-xs py-4 text-center">Belum ada data kinerja petugas.</p>
                     @endforelse
                 </div>
             </div>
