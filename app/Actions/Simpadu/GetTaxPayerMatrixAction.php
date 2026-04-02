@@ -29,7 +29,7 @@ class GetTaxPayerMatrixAction
                 's.status'
             ])
             ->where('s.year', $year)
-            ->when(strlen((string) $search) >= 3, function ($q) use ($search) {
+            ->when(!empty($search), function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->where('s.nm_wp', 'like', "%{$search}%")
                       ->orWhere('s.npwpd', 'like', "%{$search}%")

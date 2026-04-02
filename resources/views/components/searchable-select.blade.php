@@ -13,12 +13,12 @@
     $selectedLabel = $selectedOption ? $selectedOption['name'] : $placeholder;
 @endphp
 
-<div x-data="{
+<div class="relative" x-data='{
     open: false,
-    search: '',
-    value: '{{ $value }}',
-    label: '{{ $selectedLabel }}',
-    targetId: '{{ $targetInputId }}',
+    search: "",
+    value: "{{ $value }}",
+    label: "{{ $selectedLabel }}",
+    targetId: "{{ $targetInputId }}",
     options: {{ json_encode($options) }},
     get filteredOptions() {
         if (!this.search) return this.options;
@@ -30,7 +30,7 @@
         this.value = opt.id;
         this.label = opt.name;
         this.open = false;
-        this.search = '';
+        this.search = "";
         
         let input;
         if (this.targetId) {
@@ -41,10 +41,19 @@
 
         if (input) {
             input.value = opt.id;
-            input.closest('form').submit();
+            // Dispatch a native change event that can be listened to outside
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+            
+            // Still check if there is a form to submit if no AJAX is handling it
+            // but we will let the AJAX logic intercept the form is submit event
+            // or just rely on the "change" event we just fired.
+            const form = input.closest("form");
+            if (form) {
+                form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+            }
         }
     }
-}" class="relative w-full md:w-64" id="{{ $id }}">
+}'>
     @if(!$targetInputId)
         <input type="hidden" name="{{ $name }}" x-ref="input" :value="value">
     @endif

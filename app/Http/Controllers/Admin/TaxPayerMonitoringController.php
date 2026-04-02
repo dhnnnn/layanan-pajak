@@ -14,35 +14,67 @@ use Illuminate\View\View;
 
 class TaxPayerMonitoringController extends Controller
 {
-    public function index(Request $request, GetTaxPayerMatrixAction $getMatrix): View
+    public function index(Request $request, GetTaxPayerMatrixAction $getMatrix)
     {
         $year = $request->integer('year', (int) date('Y'));
         $monthFrom = $request->integer('month_from', 1);
         $monthTo = $request->integer('month_to', (int) date('n'));
         $search = $request->string('search')->trim();
+        $selectedDistrict = $request->string('district');
 
+        // Determine which district codes to filter by
         $districtCodes = null;
         if (auth()->user()->isKepalaUpt()) {
-            $districtCodes = auth()->user()->upt->districts->pluck('simpadu_code')->toArray();
+            // Limited to UPT's districts
+            $uptDistricts = auth()->user()->upt->districts->pluck('simpadu_code')->toArray();
+            
+            if ($selectedDistrict->isNotEmpty()) {
+                // If a specific district is selected, check if it's within UPT's districts
+                if (in_array($selectedDistrict->toString(), $uptDistricts)) {
+                    $districtCodes = [$selectedDistrict->toString()];
+                } else {
+                    // Fallback to all UPT districts if invalid
+                    $districtCodes = $uptDistricts;
+                }
+            } else {
+                $districtCodes = $uptDistricts;
+            }
+        } elseif ($selectedDistrict->isNotEmpty()) {
+            // Admin can filter by any district
+            $districtCode = $selectedDistrict->toString();
+            if (is_numeric($districtCode) && strlen($districtCode) < 3) {
+                $districtCode = str_pad($districtCode, 3, '0', STR_PAD_LEFT);
+            }
+            $districtCodes = [$districtCode];
         }
 
         $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes);
         
-        // Get existing tasks to show status
-        $existingTasks = OfficerTask::whereIn('tax_payer_id', $taxPayers->pluck('npwpd'))
-            ->get()
-            ->groupBy('tax_payer_id');
+        $officers = User::orderBy('name')->get(); 
 
-        $officers = User::orderBy('name')->get(); // Adjust filter if there's a specific role
+        // Fetch districts for the filter dropdown
+        $districtsQuery = District::orderBy('name');
+        if (auth()->user()->isKepalaUpt()) {
+            $districtsQuery->whereIn('id', auth()->user()->upt->districts->pluck('id'));
+        }
+        $districts = $districtsQuery->get();
 
-        return view('admin.monitoring.index', [
+        $data = [
             'taxPayers' => $taxPayers,
             'officers' => $officers,
+            'districts' => $districts,
             'selectedYear' => $year,
             'selectedMonthFrom' => $monthFrom,
             'selectedMonthTo' => $monthTo,
-            'existingTasks' => $existingTasks,
-        ]);
+            'selectedDistrict' => (string) $selectedDistrict,
+            'availableYears' => range(date('Y'), date('Y') - 5),
+        ];
+
+        if ($request->ajax()) {
+            return view('admin.monitoring._table', $data)->render();
+        }
+
+        return view('admin.monitoring.index', $data);
     }
 
     public function storeTask(Request $request): RedirectResponse
