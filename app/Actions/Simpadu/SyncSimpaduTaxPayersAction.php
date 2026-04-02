@@ -34,10 +34,10 @@ class SyncSimpaduTaxPayersAction
             JOIN dat_subjek_pajak s ON s.npwpd = o.npwpd
             LEFT JOIN (
                 SELECT 
-                    r.npwpd, 
-                    r.nop,
-                    SUM(r.jml_ketetapan) as total_ketetapan,
-                    SUM(q.jml_byr_pokok) as total_bayar
+                    r_all.npwpd, 
+                    r_all.nop,
+                    SUM(r_all.jml_ketetapan) as total_ketetapan,
+                    SUM(COALESCE(q.total_byr_kohir, 0)) as total_bayar
                 FROM (
                     SELECT npwpd, nop, kohir, jmlsptpd as jml_ketetapan FROM dat_sptpd_at WHERE YEAR(tgldata) = :y1
                     UNION ALL
@@ -48,9 +48,13 @@ class SyncSimpaduTaxPayersAction
                     SELECT npwpd, nop, kohir, pajak as jml_ketetapan FROM dat_sptpd_ppj WHERE YEAR(tgldata) = :y4
                     UNION ALL
                     SELECT npwpd, nop, kohir, pajak as jml_ketetapan FROM dat_sptpd_self WHERE YEAR(tgl_data) = :y5
-                ) r
-                LEFT JOIN pembayaran q ON q.kohir = r.kohir
-                GROUP BY r.npwpd, r.nop
+                ) r_all
+                LEFT JOIN (
+                    SELECT kohir, SUM(jml_byr_pokok) as total_byr_kohir 
+                    FROM pembayaran 
+                    GROUP BY kohir
+                ) q ON q.kohir = r_all.kohir
+                GROUP BY r_all.npwpd, r_all.nop
             ) sums ON sums.npwpd = o.npwpd AND sums.nop = o.nop
             WHERE 1=1
         ";
