@@ -9,11 +9,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Synchronization Schedule - every 5 hours (0 */5 * * *)
+// Synchronization Schedule - every 6 hours
 Schedule::command('simpadu:sync')
-    ->cron('0 */5 * * *')
+    ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
 
 Schedule::command('simpadu:sync-payers')
-    ->cron('0 */5 * * *')
+    ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_payers_sync.log'));

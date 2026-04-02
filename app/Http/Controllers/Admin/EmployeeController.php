@@ -7,6 +7,7 @@ use App\Actions\Admin\DeleteEmployeeAction;
 use App\Actions\Admin\UpdateEmployeeAction;
 use App\Actions\Employee\AssignEmployeeDistrictAction;
 use App\Actions\Monitoring\ShowEmployeeMonitoringAction;
+use App\Actions\Monitoring\ShowUptMonitoringAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignDistrictRequest;
 use App\Http\Requests\Admin\StoreEmployeeRequest;
@@ -20,15 +21,27 @@ use Illuminate\View\View;
 
 class EmployeeController extends Controller
 {
-    public function index(): View
+    public function index(Request $request, ShowUptMonitoringAction $showUptMonitoring): View
     {
-        $search = request()->string('search')->trim();
+        $user = auth()->user();
+
+        if ($user->isKepalaUpt() && $user->upt_id) {
+            $year = $request->integer('year', (int) date('Y'));
+            $month = $request->integer('month', (int) date('n'));
+            $upt = $user->upt;
+
+            $monitoringData = $showUptMonitoring($upt, $year, $month);
+
+            return view('admin.employees.index', $monitoringData);
+        }
+
+        $search = $request->string('search')->trim();
 
         $employees = User::query()
             ->role('pegawai')
             ->with(['districts', 'upt'])
-            ->when(auth()->user()->hasRole('kepala_upt'), function ($q) {
-                $q->where('upt_id', auth()->user()->upt_id);
+            ->when($user->hasRole('kepala_upt'), function ($q) use ($user) {
+                $q->where('upt_id', $user->upt_id);
             })
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
