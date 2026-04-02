@@ -18,6 +18,7 @@ class SimpaduTaxPayer extends Model
         'total_bayar',
         'total_tunggakan',
         'ayat',
+        'month',
     ];
 
     protected $casts = [
