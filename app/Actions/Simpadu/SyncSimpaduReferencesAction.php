@@ -22,13 +22,31 @@ class SyncSimpaduReferencesAction
             ->get();
 
         foreach ($simpaduDistricts as $sDistrict) {
-            $district = District::updateOrCreate(
-                ['simpadu_code' => $sDistrict->KD_KECAMATAN],
-                [
-                    'name' => $sDistrict->NM_KECAMATAN,
-                    'code' => 'KEC-' . Str::slug($sDistrict->NM_KECAMATAN),
-                ]
-            );
+            $name = $sDistrict->NM_KECAMATAN;
+            $simpaduCode = $sDistrict->KD_KECAMATAN;
+
+            // 1. Try to find by simpadu_code
+            $district = District::where('simpadu_code', $simpaduCode)->first();
+
+            // 2. If not found, try to find by name (to "claim" seeded districts)
+            if (!$district) {
+                $district = District::where('name', $name)->first();
+            }
+
+            if ($district) {
+                $district->update([
+                    'simpadu_code' => $simpaduCode,
+                    'name' => $name,
+                    // Ensure code is updated if missing or inconsistent
+                    'code' => $district->code ?: 'KEC-' . strtoupper(str_replace(' ', '-', trim($name))),
+                ]);
+            } else {
+                $district = District::create([
+                    'simpadu_code' => $simpaduCode,
+                    'name' => $name,
+                    'code' => 'KEC-' . strtoupper(str_replace(' ', '-', trim($name))),
+                ]);
+            }
 
             if ($district->wasRecentlyCreated) {
                 $results['districts']['created']++;

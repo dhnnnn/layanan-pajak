@@ -19,7 +19,7 @@ class TaxPayerMonitoringController extends Controller
         $year = $request->integer('year', (int) date('Y'));
         $monthFrom = $request->integer('month_from', 1);
         $monthTo = $request->integer('month_to', (int) date('n'));
-        $search = $request->string('search');
+        $search = $request->string('search')->trim();
 
         $districtCodes = null;
         if (auth()->user()->isKepalaUpt()) {
