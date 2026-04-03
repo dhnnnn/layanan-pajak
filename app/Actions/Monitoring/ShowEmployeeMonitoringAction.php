@@ -60,6 +60,7 @@ class ShowEmployeeMonitoringAction
         // 2. Calculate Summary (Sensitive to tax type filter)
         $summaryQuery = DB::table('simpadu_tax_payers')
             ->where('year', $year)
+            ->where('month', 0)
             ->whereIn('kd_kecamatan', $assignedDistrictCodes);
 
         if ($statusFilter !== 'all') {
@@ -100,6 +101,7 @@ class ShowEmployeeMonitoringAction
         $query = DB::table('simpadu_tax_payers as stp')
             ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
             ->where('stp.year', $year)
+            ->where('stp.month', 0)
             ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
             ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', $statusFilter))
             ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))

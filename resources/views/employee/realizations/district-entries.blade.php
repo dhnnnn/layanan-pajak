@@ -3,7 +3,7 @@
     :header="'Input Realisasi Pajak: ' . $district->name">
 
     <x-slot:headerActions>
-        <a href="{{ route('pegawai.realizations.index', ['year' => $year]) }}"
+        <a href="{{ route('field-officer.realizations.index', ['year' => $year]) }}"
             class="inline-flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -37,7 +37,7 @@
         </div>
         <div class="flex items-center gap-3">
             <label class="text-sm font-semibold text-slate-700">Tahun:</label>
-            <form method="GET" action="{{ route('pegawai.daily-entries.show', $district->id) }}">
+            <form method="GET" action="{{ route('field-officer.daily-entries.show', $district->id) }}">
                 <select name="year" onchange="this.form.submit()"
                     class="no-search text-sm rounded-lg bg-slate-50 text-slate-700 px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/20">
                     @for($y = (int) date('Y'); $y <= (int) date('Y') + 2; $y++)

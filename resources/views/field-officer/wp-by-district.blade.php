@@ -1,6 +1,6 @@
 <x-layouts.field-officer title="WP per Kecamatan" header="Data Wajib Pajak per Kecamatan yang Diampu">
     <x-slot:headerActions>
-        <form action="{{ route('pegawai.monitoring.wp-per-kecamatan') }}" method="GET" class="flex items-center gap-2">
+        <form action="{{ route('field-officer.monitoring.assigned-districts') }}" method="GET" class="flex items-center gap-2">
             <select name="year" onchange="this.form.submit()" class="appearance-none bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 pr-8 hover:bg-slate-50 cursor-pointer">
                 @foreach($availableYears as $y)
                     <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>

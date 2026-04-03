@@ -22,10 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($user?->hasRole('pegawai')) {
-                return route('pegawai.monitoring.index');
+                return route('field-officer.monitoring.index');
             }
 
-            return route('pegawai.dashboard');
+            return route('field-officer.dashboard');
         });
         $middleware->alias([
             'role' => RoleMiddleware::class,

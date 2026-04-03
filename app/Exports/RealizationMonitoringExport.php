@@ -49,6 +49,7 @@ class RealizationMonitoringExport implements FromArray, WithColumnWidths, WithEv
 
         $simpaduTaxPayers = DB::table('simpadu_tax_payers')
             ->where('year', $this->year)
+            ->where('month', 0)
             ->selectRaw('ayat, kd_kecamatan, SUM(total_ketetapan) as t_ket, SUM(total_bayar) as t_byr')
             ->groupBy('ayat', 'kd_kecamatan')
             ->get();

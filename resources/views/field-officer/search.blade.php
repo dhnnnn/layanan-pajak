@@ -1,6 +1,6 @@
 <x-layouts.field-officer title="Pencarian WP" header="Cari Wajib Pajak">
     <x-slot:headerActions>
-        <form action="{{ route('pegawai.monitoring.pencarian') }}" method="GET" class="flex items-center gap-2">
+        <form action="{{ route('field-officer.monitoring.search') }}" method="GET" class="flex items-center gap-2">
             <select name="year" onchange="this.form.submit()" class="appearance-none bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 pr-8 hover:bg-slate-50 cursor-pointer">
                 @foreach($availableYears as $y)
                     <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
@@ -47,7 +47,7 @@
                             <td class="px-6 py-4 text-right text-slate-600">Rp {{ number_format($wp->total_ketetapan, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 text-right text-emerald-600 font-medium">Rp {{ number_format($wp->total_bayar, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 text-center">
-                                <a href="{{ route('pegawai.monitoring.wp-detail', $wp->npwpd) }}?year={{ $year }}" 
+                                <a href="{{ route('field-officer.monitoring.wp-detail', $wp->npwpd) }}?year={{ $year }}" 
                                     class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
                                     Detail
                                 </a>

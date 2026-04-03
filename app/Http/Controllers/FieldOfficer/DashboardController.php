@@ -15,46 +15,67 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $year = $request->integer('year', (int) date('Y'));
+        $complianceMonth = max(1, min(12, $request->integer('compliance_month', (int) date('n'))));
 
         $assignedDistrictCodes = $user->accessibleDistricts()
             ->pluck('simpadu_code')
             ->filter()
             ->toArray();
 
-        if (empty($assignedDistrictCodes)) {
-            return view('field-officer.dashboard', [
-                'summary' => [
-                    'total_wp' => 0,
-                    'total_tunggakan' => 0,
-                    'total_ketetapan' => 0,
-                    'total_bayar' => 0,
-                    'persentase' => 0,
-                ],
-                'districts' => collect(),
-                'year' => $year,
-                'availableYears' => $this->getAvailableYears(),
-            ]);
-        }
-
-        $stats = DB::table('simpadu_tax_payers')
-            ->where('year', $year)
-            ->where('status', '1')
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
-            ->selectRaw('
-                COUNT(*) as total_wp,
-                COALESCE(SUM(total_tunggakan), 0) as total_tunggakan,
-                COALESCE(SUM(total_ketetapan), 0) as total_ketetapan,
-                COALESCE(SUM(total_bayar), 0) as total_bayar
-            ')
-            ->first();
-
-        $percentage = $stats->total_ketetapan > 0
-            ? ($stats->total_bayar / $stats->total_ketetapan) * 100
-            : 0;
-
         $districts = District::whereIn('simpadu_code', $assignedDistrictCodes)
             ->orderBy('name')
             ->get();
+
+        $empty = [
+            'summary' => ['total_wp' => 0, 'total_tunggakan' => 0, 'total_ketetapan' => 0, 'total_bayar' => 0, 'persentase' => 0],
+            'districts' => $districts,
+            'topDelinquents' => collect(),
+            'compliance' => ['month' => $complianceMonth, 'total' => 0, 'reported' => 0, 'percentage' => 0],
+            'year' => $year,
+            'complianceMonth' => $complianceMonth,
+            'availableYears' => $this->getAvailableYears(),
+        ];
+
+        if (empty($assignedDistrictCodes)) {
+            return view('field-officer.dashboard', $empty);
+        }
+
+        // Summary totals
+        $stats = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('status', '1')->where('month', 0)
+            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
+            ->selectRaw('COUNT(*) as total_wp, COALESCE(SUM(total_tunggakan),0) as total_tunggakan, COALESCE(SUM(total_ketetapan),0) as total_ketetapan, COALESCE(SUM(total_bayar),0) as total_bayar')
+            ->first();
+
+        $percentage = $stats->total_ketetapan > 0 ? ($stats->total_bayar / $stats->total_ketetapan) * 100 : 0;
+
+        // Top 5 tunggakan
+        $topDelinquents = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('status', '1')->where('month', 0)
+            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
+            ->where('total_tunggakan', '>', 0)
+            ->select(['npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan',
+                DB::raw('SUM(total_ketetapan) as target'),
+                DB::raw('SUM(total_bayar) as realization'),
+                DB::raw('SUM(total_tunggakan) as debt')])
+            ->groupBy(['npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan'])
+            ->orderByDesc('debt')
+            ->limit(5)
+            ->get();
+
+        // Kepatuhan bulan ini
+        $totalWp = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('status', '1')->where('month', 0)
+            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
+            ->distinct()->count(DB::raw('CONCAT(npwpd, nop)'));
+
+        $reportedWp = DB::table('simpadu_sptpd_reports')
+            ->where('year', $year)->where('month', $complianceMonth)
+            ->whereIn('npwpd', function ($q) use ($assignedDistrictCodes, $year) {
+                $q->select('npwpd')->from('simpadu_tax_payers')
+                  ->where('year', $year)->whereIn('kd_kecamatan', $assignedDistrictCodes);
+            })
+            ->distinct()->count(DB::raw('CONCAT(npwpd, nop)'));
 
         return view('field-officer.dashboard', [
             'summary' => [
@@ -65,7 +86,15 @@ class DashboardController extends Controller
                 'persentase' => $percentage,
             ],
             'districts' => $districts,
+            'topDelinquents' => $topDelinquents,
+            'compliance' => [
+                'month' => $complianceMonth,
+                'total' => $totalWp,
+                'reported' => $reportedWp,
+                'percentage' => $totalWp > 0 ? ($reportedWp / $totalWp) * 100 : 0,
+            ],
             'year' => $year,
+            'complianceMonth' => $complianceMonth,
             'availableYears' => $this->getAvailableYears(),
         ]);
     }
@@ -90,6 +119,7 @@ class DashboardController extends Controller
         $query = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->where('status', '1')
+            ->where('month', 0)
             ->whereIn('kd_kecamatan', $assignedDistrictCodes)
             ->where('total_tunggakan', '>', 0);
 
@@ -145,6 +175,7 @@ class DashboardController extends Controller
         $districtStats = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->where('status', '1')
+            ->where('month', 0)
             ->whereIn('kd_kecamatan', $assignedDistrictCodes)
             ->selectRaw('
                 kd_kecamatan,
@@ -186,49 +217,97 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $year = $request->integer('year', (int) date('Y'));
+        $search = $request->query('search');
+        $sortBy = $request->query('sort_by', 'tunggakan');
+        $sortDir = $request->query('sort_dir', 'desc');
+        $statusFilter = $request->query('status_filter', '1');
+        $taxTypeId = $request->query('tax_type_id');
 
-        $assignedDistrictCodes = $user->accessibleDistricts()
-            ->pluck('simpadu_code')
-            ->filter()
-            ->toArray();
+        $assignedDistricts = $user->accessibleDistricts();
+        $assignedDistrictCodes = $assignedDistricts->pluck('simpadu_code')->filter()->toArray();
+
+        // 1. Load Tax Types for filter
+        $taxTypes = \App\Models\TaxType::query()
+            ->whereNull('parent_id')
+            ->whereNotNull('simpadu_code')
+            ->orderBy('name')
+            ->get(['id', 'name', 'simpadu_code']);
+
+        $selectedTaxType = $taxTypeId ? $taxTypes->firstWhere('id', $taxTypeId) : null;
 
         if (empty($assignedDistrictCodes)) {
             return view('field-officer.target-achievement', [
-                'targetData' => collect(),
-                'year' => $year,
-                'availableYears' => $this->getAvailableYears(),
+                'summary' => ['total_ketetapan' => 0, 'total_bayar' => 0, 'total_tunggakan' => 0, 'persentase' => 0],
+                'wpData' => collect(),
+                'year' => $year, 'sortBy' => $sortBy, 'sortDir' => $sortDir,
+                'statusFilter' => $statusFilter, 'availableYears' => $this->getAvailableYears(),
+                'taxTypes' => $taxTypes, 'taxTypeId' => $taxTypeId,
+                'assignedDistricts' => collect(),
             ]);
         }
 
-        $wpStats = DB::table('simpadu_tax_payers')
-            ->where('year', $year)
-            ->where('status', '1')
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
-            ->selectRaw('SUM(total_ketetapan) as total_ketetapan, SUM(total_bayar) as total_bayar')
+        // Summary - apply tax type filter
+        $summaryQuery = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('status', '1')->where('month', 0)
+            ->whereIn('kd_kecamatan', $assignedDistrictCodes);
+
+        if ($selectedTaxType) {
+            $summaryQuery->where('ayat', $selectedTaxType->simpadu_code);
+        }
+
+        $stats = $summaryQuery
+            ->selectRaw('COALESCE(SUM(total_ketetapan),0) as k, COALESCE(SUM(total_bayar),0) as b, COALESCE(SUM(total_tunggakan),0) as t')
             ->first();
 
-        $taxTargets = TaxTarget::where('year', $year)->with('taxType')->get();
+        $pct = $stats->k > 0 ? ($stats->b / $stats->k) * 100 : 0;
 
-        $targetData = $taxTargets->map(function ($target) {
-            return [
-                'jenis_pajak' => $target->taxType?->name ?? 'Unknown',
-                'target' => $target->target_amount,
-                'realisasi' => 0,
-                'persentase' => 0,
-            ];
-        });
+        // WP list — aggregate by npwpd+nop
+        $plainSortCols = ['name' => 'nm_wp', 'sptpd' => 'total_ketetapan', 'bayar' => 'total_bayar', 'tunggakan' => 'total_tunggakan'];
+        $rawSortCols = ['selisih' => '(SUM(stp.total_bayar) - SUM(stp.total_ketetapan))'];
 
-        $totalTarget = $taxTargets->sum('target_amount');
-        $totalRealisasi = $wpStats->total_bayar ?? 0;
-        $totalPersentase = $totalTarget > 0 ? ($totalRealisasi / $totalTarget) * 100 : 0;
+        $query = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)
+            ->where('stp.month', 0)
+            ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
+            ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', $statusFilter))
+            ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
+            ->when($search, fn($q) => $q->where(fn($sq) =>
+                $sq->where('stp.nm_wp', 'like', "%{$search}%")
+                   ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                   ->orWhere('stp.nop', 'like', "%{$search}%")
+            ))
+            ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.nm_op', 'stp.ayat', 'stp.status', 'tax_types.name')
+            ->selectRaw('stp.npwpd, stp.nop, stp.nm_wp, stp.nm_op, stp.ayat, stp.status, tax_types.name as tax_type_name,
+                SUM(stp.total_ketetapan) as total_ketetapan,
+                LEAST(SUM(stp.total_bayar), SUM(stp.total_ketetapan)) as total_bayar,
+                GREATEST(SUM(stp.total_ketetapan) - SUM(stp.total_bayar), 0) as total_tunggakan');
+
+        if (isset($rawSortCols[$sortBy])) {
+            $query->orderByRaw($rawSortCols[$sortBy] . ' ' . ($sortDir === 'asc' ? 'asc' : 'desc'));
+        } else {
+            $query->orderBy($plainSortCols[$sortBy] ?? 'total_tunggakan', $sortDir === 'asc' ? 'asc' : 'desc');
+        }
+
+        $wpData = $query->paginate(15)->through(fn($r) => [
+            'npwpd' => $r->npwpd, 'nop' => $r->nop, 'nm_wp' => $r->nm_wp,
+            'tax_type_name' => $r->tax_type_name,
+            'status_code' => (string) $r->status,
+            'total_sptpd' => (float) $r->total_ketetapan,
+            'total_bayar' => (float) $r->total_bayar,
+            'selisih' => (float) ($r->total_bayar - $r->total_ketetapan),
+            'tunggakan' => (float) max($r->total_tunggakan, 0),
+        ]);
 
         return view('field-officer.target-achievement', [
-            'targetData' => $targetData,
-            'totalTarget' => $totalTarget,
-            'totalRealisasi' => $totalRealisasi,
-            'totalPersentase' => $totalPersentase,
-            'year' => $year,
+            'summary' => ['total_ketetapan' => $stats->k, 'total_bayar' => $stats->b, 'total_tunggakan' => $stats->t, 'persentase' => $pct],
+            'wpData' => $wpData,
+            'year' => $year, 'sortBy' => $sortBy, 'sortDir' => $sortDir,
+            'statusFilter' => $statusFilter, 'search' => $search,
             'availableYears' => $this->getAvailableYears(),
+            'taxTypes' => $taxTypes,
+            'taxTypeId' => $taxTypeId,
+            'assignedDistricts' => $assignedDistricts,
         ]);
     }
 
@@ -392,6 +471,31 @@ class DashboardController extends Controller
             'selectedDistrictId' => $districtId,
             'availableYears' => $this->getAvailableYears(),
         ]);
+    }
+
+    public function wpTunggakan(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $year  = $request->integer('year', (int) date('Y'));
+        $npwpd = $request->query('npwpd');
+        $nop   = $request->query('nop');
+
+        $months = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('npwpd', $npwpd)->where('nop', $nop)
+            ->where('month', '>', 0)
+            ->orderBy('month')
+            ->get(['month', 'total_ketetapan', 'total_bayar', 'total_tunggakan']);
+
+        $bulanIndo = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+        return response()->json(
+            $months->filter(fn($r) => $r->total_ketetapan > 0)
+                   ->map(fn($r) => [
+                       'bulan' => $bulanIndo[(int)$r->month] ?? $r->month,
+                       'total_ketetapan' => (float) $r->total_ketetapan,
+                       'total_bayar' => (float) $r->total_bayar,
+                       'total_tunggakan' => (float) max($r->total_tunggakan, 0),
+                   ])->values()
+        );
     }
 
     public function detailWp(Request $request, string $npwpd): View

@@ -1,6 +1,6 @@
 <x-layouts.field-officer title="Daftar Tunggakan WP" header="Daftar Wajib Pajak yang Memiliki Tunggakan">
     <x-slot:headerActions>
-        <form action="{{ route('pegawai.monitoring.tunggakan') }}" method="GET" class="flex items-center gap-2">
+        <form action="{{ route('field-officer.monitoring.arrears') }}" method="GET" class="flex items-center gap-2">
             <select name="year" onchange="this.form.submit()" class="appearance-none bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 pr-8 hover:bg-slate-50 cursor-pointer">
                 @foreach($availableYears as $y)
                     <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
@@ -46,9 +46,13 @@
                             <td class="px-6 py-4 text-right text-emerald-600 font-medium">Rp {{ number_format($wp->total_bayar, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 text-right text-orange-600 font-bold">Rp {{ number_format($wp->total_tunggakan, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 text-center">
-                                <a href="{{ route('pegawai.monitoring.wp-detail', $wp->npwpd) }}?year={{ $year }}" 
-                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg">
-                                    Detail
+                                <a href="{{ route('field-officer.monitoring.wp-detail', $wp->npwpd) }}?year={{ $year }}" 
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all border border-rose-100">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    Detail WP
                                 </a>
                             </td>
                         </tr>

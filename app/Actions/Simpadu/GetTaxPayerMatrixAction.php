@@ -17,7 +17,7 @@ class GetTaxPayerMatrixAction
         $months = range($startMonth, $endMonth);
 
         // 2. Fetch Base WP/OP data from simpadu_tax_payers
-        // We Use distinct to get unique WP/OP in the selected year across any month
+        // Use month=0 (annual data) to get unique WP/OP without duplicating across months
         $query = DB::table('simpadu_tax_payers as s')
             ->select([
                 's.npwpd', 
@@ -29,6 +29,7 @@ class GetTaxPayerMatrixAction
                 's.status'
             ])
             ->where('s.year', $year)
+            ->where('s.month', 0)
             ->when(!empty($search), function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->where('s.nm_wp', 'like', "%{$search}%")

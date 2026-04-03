@@ -96,8 +96,8 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
 */
 
 Route::middleware(['auth', 'role:pegawai|kepala_upt'])
-    ->prefix('pegawai')
-    ->name('pegawai.')
+    ->prefix('field-officer')
+    ->name('field-officer.')
     ->group(function (): void {
         // Dashboard — field officer monitoring
         Route::get('/dashboard', [FieldOfficerController::class, 'index'])->name('dashboard');
@@ -118,11 +118,12 @@ Route::middleware(['auth', 'role:pegawai|kepala_upt'])
 
         // Monitoring Field Officer
         Route::get('monitoring', [FieldOfficerController::class, 'index'])->name('monitoring.index');
-        Route::get('monitoring/tunggakan', [FieldOfficerController::class, 'tunggakan'])->name('monitoring.tunggakan');
-        Route::get('monitoring/wp-per-kecamatan', [FieldOfficerController::class, 'wpPerKecamatan'])->name('monitoring.wp-per-kecamatan');
-        Route::get('monitoring/pencapaian-target', [FieldOfficerController::class, 'pencapaianTarget'])->name('monitoring.pencapaian-target');
-        Route::get('monitoring/realisasi-bulanan', [FieldOfficerController::class, 'realisasiBulanan'])->name('monitoring.realisasi-bulanan');
-        Route::get('monitoring/status-pembayaran', [FieldOfficerController::class, 'statusPembayaran'])->name('monitoring.status-pembayaran');
-        Route::get('monitoring/pencarian', [FieldOfficerController::class, 'pencarian'])->name('monitoring.pencarian');
+        Route::get('monitoring/arrears', [FieldOfficerController::class, 'tunggakan'])->name('monitoring.arrears');
+        Route::get('monitoring/assigned-districts', [FieldOfficerController::class, 'wpPerKecamatan'])->name('monitoring.assigned-districts');
+        Route::get('monitoring/target-achievement', [FieldOfficerController::class, 'pencapaianTarget'])->name('monitoring.target-achievement');
+        Route::get('monitoring/monthly-realization', [FieldOfficerController::class, 'realisasiBulanan'])->name('monitoring.monthly-realization');
+        Route::get('monitoring/payment-status', [FieldOfficerController::class, 'statusPembayaran'])->name('monitoring.payment-status');
+        Route::get('monitoring/search', [FieldOfficerController::class, 'pencarian'])->name('monitoring.search');
         Route::get('monitoring/wp/{npwpd}', [FieldOfficerController::class, 'detailWp'])->name('monitoring.wp-detail');
+        Route::get('monitoring/wp-tunggakan', [FieldOfficerController::class, 'wpTunggakan'])->name('monitoring.wp-tunggakan');
     });

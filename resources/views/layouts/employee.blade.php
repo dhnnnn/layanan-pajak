@@ -28,16 +28,16 @@
 
             <p class="px-3 pt-1 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menu</p>
 
-            <a href="{{ route('pegawai.dashboard') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('pegawai.dashboard') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+            <a href="{{ route('field-officer.dashboard') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('field-officer.dashboard') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
                 Dashboard
             </a>
 
-            <a href="{{ route('pegawai.realizations.index') }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('pegawai.realizations.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+            <a href="{{ route('field-officer.realizations.index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('field-officer.realizations.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>

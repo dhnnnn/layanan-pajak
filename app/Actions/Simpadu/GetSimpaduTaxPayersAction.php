@@ -13,6 +13,7 @@ class GetSimpaduTaxPayersAction
     {
         return DB::table('simpadu_tax_payers')
             ->where('year', $year)
+            ->where('month', 0)
             ->when($districtCode, fn ($q) => $q->where('kd_kecamatan', $districtCode))
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('nm_wp', 'like', "%{$search}%")

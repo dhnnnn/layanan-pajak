@@ -1,41 +1,388 @@
-Act as a Lead Backend Architect and Clean Code Enforcer.
+# Laravel Massive Refactoring & Security Hardening Guide
 
-Please scan the entire Laravel project directory. We are executing a massive, system-wide architectural refactoring. Proceed carefully and ensure strict SOLID principles and Modern PHP/Laravel standards are applied.
+## 🧠 Overview
 
-Execute the following major architectural changes globally:
+Dokumen ini menjelaskan langkah-langkah refactoring arsitektur Laravel secara menyeluruh dengan fokus pada:
 
-Task 1: Implement Action Pattern (Thin Controllers)
+* Clean Architecture (SOLID)
+* Performance Optimization
+* Security Hardening (XSS, SQL Injection, dll)
 
-Extract all core business logic out of the controller methods. Move this logic into dedicated Action classes (e.g., within app/Actions/).
+---
 
-Controllers must only handle request authorization, validation (using FormRequests), calling the Action class, and returning the response.
+# ✅ TASK 1 — ACTION PATTERN (THIN CONTROLLERS)
 
-Task 2: Global UUID Migration
+## 🎯 Goal
 
-Refactor the database architecture to replace sequential integer IDs with UUIDs across all modules. Update Models (HasUuids, $incrementing = false, $keyType = 'string') and Migrations ($table->uuid('id')->primary()). Ensure all foreign keys are also converted to uuid.
+Controller hanya bertugas:
 
-Task 3: Global N+1 Query Resolution
+* Authorization
+* Validation
+* Call Action
+* Return Response
 
-Inspect all database interactions globally. Fix any N+1 query performance vulnerabilities by implementing appropriate eager loading.
+---
 
-Task 4: Modernize Imperative Logic to Declarative (Laravel Collections)
+## ❌ Before (Fat Controller)
 
-CRITICAL: Do not write repetitive, junior-level imperative loops or use poor variable naming (e.g., $r1, $r2, $m).
+```php
+public function store(Request $request)
+{
+    $user = User::create($request->all());
 
-Refactor all array/data manipulation logic to be highly readable for a Senior Developer.
+    if ($user->role == 'admin') {
+        Mail::to($user)->send(new WelcomeMail());
+    }
 
-Heavily utilize Laravel Collections (map(), filter(), reduce(), sum(), chunk()) instead of traditional for or foreach loops with accumulator variables.
+    return response()->json($user);
+}
+```
 
-Ensure variable names are descriptive and contextual (e.g., $cumulativeQuarterTotals instead of $r1, $r2).
+---
 
-Output Requirement: Provide a structured summary detailing:
+## ✅ After (Clean Controller)
 
-Controllers simplified and the corresponding Action classes updated.
+```php
+public function store(StoreUserRequest $request, CreateUserAction $action)
+{
+    $user = $action->execute($request->validated());
 
-Models and Migrations modified for UUID.
+    return response()->json($user);
+}
+```
 
-N+1 bottlenecks fixed.
+---
 
-Examples of imperative loops successfully refactored into elegant Laravel Collections.
+## 📦 Action Class
 
-Please proceed step-by-step with this extensive refactoring.
+```php
+class CreateUserAction
+{
+    public function execute(array $data): User
+    {
+        $user = User::create($data);
+
+        if ($user->isAdmin()) {
+            Mail::to($user)->send(new WelcomeMail());
+        }
+
+        return $user;
+    }
+}
+```
+
+---
+
+## 📁 Structure
+
+```
+app/
+ ├── Actions/
+ │    └── User/
+ │         └── CreateUserAction.php
+```
+
+---
+
+# ✅ TASK 2 — GLOBAL UUID MIGRATION
+
+## 🔧 Model
+
+```php
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
+class User extends Model
+{
+    use HasUuids;
+
+    public $incrementing = false;
+    protected $keyType = 'string';
+}
+```
+
+---
+
+## 🔧 Migration
+
+```php
+$table->uuid('id')->primary();
+```
+
+---
+
+## 🔗 Foreign Key
+
+```php
+$table->uuid('user_id');
+$table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+```
+
+---
+
+## ⚠️ Notes
+
+* Update route model binding
+* Update factories & seeders
+* Gunakan `Str::uuid()`
+
+---
+
+# ✅ TASK 3 — N+1 QUERY RESOLUTION
+
+## ❌ Before
+
+```php
+$users = User::all();
+
+foreach ($users as $user) {
+    echo $user->posts;
+}
+```
+
+---
+
+## ✅ After
+
+```php
+$users = User::with('posts')->get();
+```
+
+---
+
+## 🔥 Advanced
+
+```php
+User::with([
+    'posts' => fn($query) => $query->latest()
+])->get();
+```
+
+---
+
+## 🔍 Debugging
+
+```bash
+composer require barryvdh/laravel-debugbar --dev
+```
+
+---
+
+# ✅ TASK 4 — DECLARATIVE (COLLECTIONS)
+
+## ❌ Imperative
+
+```php
+$total = 0;
+
+foreach ($orders as $order) {
+    if ($order->status == 'paid') {
+        $total += $order->amount;
+    }
+}
+```
+
+---
+
+## ✅ Declarative
+
+```php
+$totalPaidAmount = collect($orders)
+    ->where('status', 'paid')
+    ->sum('amount');
+```
+
+---
+
+## ❌ Imperative
+
+```php
+$result = [];
+
+foreach ($users as $user) {
+    if ($user->active) {
+        $result[] = $user->email;
+    }
+}
+```
+
+---
+
+## ✅ Declarative
+
+```php
+$activeUserEmails = collect($users)
+    ->filter->active
+    ->pluck('email');
+```
+
+---
+
+## 🧠 Naming Rules
+
+* ❌ `$r1`, `$tmp`
+* ✅ `$monthlyRevenueTotals`, `$activeUserEmails`
+
+---
+
+# 🔐 TASK 5 — SECURITY HARDENING
+
+---
+
+## 🛡️ 1. XSS PREVENTION
+
+### Blade Escaping
+
+```blade
+{{ $data }}   // SAFE
+{!! $data !!} // DANGEROUS
+```
+
+---
+
+### Sanitization
+
+```bash
+composer require mews/purifier
+```
+
+```php
+clean($input);
+```
+
+---
+
+### CSP Header
+
+```php
+return response($content)
+    ->header('Content-Security-Policy', "default-src 'self'");
+```
+
+---
+
+## 🛡️ 2. SQL INJECTION PREVENTION
+
+### ❌ Dangerous
+
+```php
+DB::select("SELECT * FROM users WHERE email = '$email'");
+```
+
+---
+
+### ✅ Safe
+
+```php
+User::where('email', $email)->first();
+```
+
+---
+
+### ✅ Raw Safe
+
+```php
+DB::select("SELECT * FROM users WHERE email = ?", [$email]);
+```
+
+---
+
+## 🛡️ 3. Validation (FormRequest)
+
+```php
+class StoreUserRequest extends FormRequest
+{
+    public function rules()
+    {
+        return [
+            'email' => 'required|email',
+            'name'  => 'required|string|max:255'
+        ];
+    }
+}
+```
+
+---
+
+## 🛡️ 4. Mass Assignment
+
+```php
+protected $fillable = ['name', 'email'];
+```
+
+---
+
+## 🛡️ 5. Rate Limiting
+
+```php
+Route::middleware('throttle:60,1')->group(function () {
+    //
+});
+```
+
+---
+
+## 🛡️ 6. Authorization (Policy)
+
+```bash
+php artisan make:policy UserPolicy
+```
+
+---
+
+## 🛡️ 7. Hide Sensitive Data
+
+```php
+protected $hidden = ['password', 'remember_token'];
+```
+
+---
+
+## 🛡️ 8. Password Hashing
+
+```php
+Hash::make($password);
+```
+
+---
+
+# 📊 FINAL SUMMARY
+
+## ✔ Controllers
+
+* Thin controllers
+* No business logic
+
+## ✔ Actions
+
+* Reusable & testable
+* Business logic centralized
+
+## ✔ UUID Migration
+
+* All PK & FK → UUID
+
+## ✔ Performance
+
+* N+1 eliminated
+* Eager loading applied
+
+## ✔ Code Quality
+
+* Declarative collections
+* Clean variable naming
+
+## ✔ Security
+
+* XSS protected
+* SQL Injection prevented
+* Validation enforced
+* CSP enabled
+
+---
+
+
+## 🧠 Final Note
+
+Refactoring ini bukan sekali jalan. Lakukan bertahap per module untuk menjaga stabilitas sistem production.
+
+---

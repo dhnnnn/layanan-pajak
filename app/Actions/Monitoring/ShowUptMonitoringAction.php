@@ -34,6 +34,7 @@ class ShowUptMonitoringAction
         $districtStats = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->where('status', '1')
+            ->where('month', 0)
             ->whereIn('kd_kecamatan', $uptDistrictCodes)
             ->selectRaw('kd_kecamatan, SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_pay')
             ->groupBy('kd_kecamatan')

@@ -60,7 +60,7 @@ class RealizationController extends Controller
         $storeRealization($request->validated(), $request->user());
 
         return redirect()
-            ->route('pegawai.realizations.index')
+            ->route('field-officer.realizations.index')
             ->with('success', 'Data realisasi pajak berhasil disimpan.');
     }
 
@@ -119,7 +119,7 @@ class RealizationController extends Controller
         $storeRealization($request->validated(), $request->user());
 
         return redirect()
-            ->route('pegawai.realizations.index')
+            ->route('field-officer.realizations.index')
             ->with('success', 'Data realisasi pajak berhasil diperbarui.');
     }
 

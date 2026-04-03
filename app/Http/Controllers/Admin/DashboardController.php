@@ -77,6 +77,7 @@ class DashboardController extends Controller
             $simpaduTotals = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
                 ->where('status', '1')
+                ->where('month', 0)
                 ->whereIn('kd_kecamatan', $filterCodes)
                 ->select([
                     DB::raw('SUM(total_ketetapan) as target'),
@@ -95,6 +96,7 @@ class DashboardController extends Controller
                 ->where('year', $selectedYear)
                 ->whereIn('kd_kecamatan', $districtCodes)
                 ->where('status', '1')
+                ->where('month', 0)
                 ->distinct(['npwpd', 'nop'])
                 ->count(['npwpd', 'nop', 'year']);
 
@@ -137,6 +139,7 @@ class DashboardController extends Controller
                 ])
                 ->where('year', $selectedYear)
                 ->where('status', '1')
+                ->where('month', 0)
                 ->whereIn('kd_kecamatan', $priorityCodes)
                 ->where('total_tunggakan', '>', 0)
                 ->groupBy(['npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan'])
@@ -148,6 +151,7 @@ class DashboardController extends Controller
             $districtStats = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
                 ->where('status', '1')
+                ->where('month', 0)
                 ->whereIn('kd_kecamatan', $districtCodes)
                 ->select([
                     'kd_kecamatan',

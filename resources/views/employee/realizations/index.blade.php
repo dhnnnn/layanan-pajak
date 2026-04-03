@@ -1,6 +1,6 @@
 <x-layouts.employee title="Data Realisasi Saya" header="Riwayat Input Realisasi Pajak">
     <x-slot:headerActions>
-        <a href="{{ route('pegawai.realizations.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+        <a href="{{ route('field-officer.realizations.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
@@ -31,7 +31,7 @@
                     </select>
                 </div>
                 <div class="flex-1"></div>
-                <form method="GET" action="{{ route('pegawai.realizations.index') }}" class="flex gap-2 w-full md:w-auto">
+                <form method="GET" action="{{ route('field-officer.realizations.index') }}" class="flex gap-2 w-full md:w-auto">
                     <input type="hidden" name="year" value="{{ $year }}">
                     <div class="relative flex-1 md:w-64">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,7 +48,7 @@
                         Cari
                     </button>
                     @if($search)
-                        <a href="{{ route('pegawai.realizations.index', ['year' => $year]) }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors">
+                        <a href="{{ route('field-officer.realizations.index', ['year' => $year]) }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors">
                             Reset
                         </a>
                     @endif
@@ -125,7 +125,7 @@
                             </div>
                         </div>
 
-                        <a href="{{ route('pegawai.daily-entries.show', [$district->id, 'year' => $year]) }}"
+                        <a href="{{ route('field-officer.daily-entries.show', [$district->id, 'year' => $year]) }}"
                             class="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -140,7 +140,7 @@
 
     <script>
         document.getElementById('yearFilter').addEventListener('change', function () {
-            window.location.href = '{{ route("pegawai.realizations.index") }}?year=' + this.value;
+            window.location.href = '{{ route("field-officer.realizations.index") }}?year=' + this.value;
         });
     </script>
 </x-layouts.employee>

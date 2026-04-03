@@ -1,6 +1,6 @@
 <x-layouts.employee title="Dashboard Pegawai" header="Dashboard Realisasi Pajak">
     <x-slot:headerActions>
-        <form action="{{ route('pegawai.dashboard') }}" method="GET" id="filterForm" class="flex items-center gap-2">
+        <form action="{{ route('field-officer.dashboard') }}" method="GET" id="filterForm" class="flex items-center gap-2">
             {{-- Wilayah Dropdown --}}
             <span class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</span>
             <div class="relative" id="districtDropdownWrapper">

@@ -81,7 +81,7 @@ class EmployeeController extends Controller
         $year = $request->integer('year', (int) date('Y'));
         $month = $request->integer('month', (int) date('n'));
         $search = $request->query('search');
-        $sortBy = $request->query('sort_by', 'sptpd');
+        $sortBy = $request->query('sort_by', 'tunggakan');
         $sortDir = $request->query('sort_dir', 'desc');
         $taxTypeId = $request->query('tax_type_id');
 
