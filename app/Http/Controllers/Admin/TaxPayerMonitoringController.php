@@ -13,11 +13,11 @@ use Illuminate\View\View;
 
 class TaxPayerMonitoringController extends Controller
 {
-    public function index(Request $request, BuildTaxPayerFilterAction $buildFilter): View
+    public function index(Request $request, BuildTaxPayerFilterAction $buildFilter): View|\Illuminate\Http\Response
     {
         $data = $buildFilter->execute($request, app(GetTaxPayerMatrixAction::class));
         if ($request->ajax()) {
-            return view('admin.monitoring._table', $data)->render();
+            return response(view('admin.monitoring._table', $data)->render());
         }
         return view('admin.monitoring.index', $data);
     }
@@ -25,11 +25,11 @@ class TaxPayerMonitoringController extends Controller
     /**
      * Field officer version — uses field-officer layout with same data but filtered to assigned districts.
      */
-    public function fieldOfficerIndex(Request $request, BuildTaxPayerFilterAction $buildFilter): View
+    public function fieldOfficerIndex(Request $request, BuildTaxPayerFilterAction $buildFilter): View|\Illuminate\Http\Response
     {
         $data = $buildFilter->execute($request, app(GetTaxPayerMatrixAction::class));
         if ($request->ajax()) {
-            return view('admin.monitoring._table', $data)->render();
+            return response(view('admin.monitoring._table', $data)->render());
         }
         return view('field-officer.tax-payers', $data);
     }
