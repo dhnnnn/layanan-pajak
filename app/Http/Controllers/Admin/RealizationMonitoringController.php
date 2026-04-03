@@ -51,8 +51,20 @@ class RealizationMonitoringController extends Controller
         $sortDir = $request->query('sort_dir', 'desc');
         $taxTypeId = $request->query('tax_type_id');
         $statusFilter = $request->query('status_filter', '1'); // default: aktif saja
+        $districtId = $request->query('district_id');
 
-        $result = $showEmployeeMonitoring($upt, $employee, $year, $month, $search, $sortBy, $sortDir, $taxTypeId, $statusFilter);
+        $result = $showEmployeeMonitoring(
+            $upt, 
+            $employee, 
+            $year, 
+            $month, 
+            $search, 
+            $sortBy, 
+            $sortDir, 
+            $taxTypeId, 
+            $statusFilter,
+            $districtId
+        );
 
         return view('admin.realization-monitoring.employee', $result);
     }

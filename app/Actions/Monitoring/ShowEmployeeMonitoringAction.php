@@ -8,26 +8,12 @@ use App\Models\User;
 use App\Models\TaxType;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ShowEmployeeMonitoringAction
 {
     /**
-     * @return array{
-     *     upt: Upt,
-     *     employee: User,
-     *     wpData: LengthAwarePaginator,
-     *     summary: array{
-     *         total_sptpd: float,
-     *         total_bayar: float,
-     *         total_tunggakan: float,
-     *         attainment: float
-     *     },
-     *     availableYears: Collection,
-     *     year: int,
-     *     month: int,
-     *     sortBy: string,
-     *     sortDir: string,
-     * }
+     * @return array
      */
     public function __invoke(
         Upt $upt, 
@@ -38,17 +24,25 @@ class ShowEmployeeMonitoringAction
         ?string $sortBy = 'tunggakan',
         ?string $sortDir = 'desc',
         ?string $taxTypeId = null,
-        string $statusFilter = '1'  // '1' = aktif, '0' = non aktif, 'all' = semua
+        string $statusFilter = '1',
+        ?string $districtId = null
     ): array {
         $employee->load('districts');
 
-        $assignedDistrictCodes = $employee->districts->pluck('simpadu_code')->filter()->toArray();
+        $assignedDistricts = $employee->districts;
+        $allAssignedDistrictCodes = $assignedDistricts->pluck('simpadu_code')->filter()->toArray();
 
-        if (empty($assignedDistrictCodes)) {
+        // Determine which district codes to filter by
+        $selectedDistrict = $districtId ? $assignedDistricts->firstWhere('id', $districtId) : null;
+        $activeDistrictCodes = $selectedDistrict 
+            ? [$selectedDistrict->simpadu_code] 
+            : $allAssignedDistrictCodes;
+
+        if (empty($allAssignedDistrictCodes)) {
             return $this->returnEmpty($upt, $employee, $year, $month);
         }
 
-        // 1. Fetch Primary Tax Types for filter (Level 1 & 2 only)
+        // 1. Fetch Primary Tax Types for filter
         $taxTypes = TaxType::query()
             ->whereNull('parent_id')
             ->whereNotNull('simpadu_code')
@@ -57,14 +51,14 @@ class ShowEmployeeMonitoringAction
 
         $selectedTaxType = $taxTypeId ? $taxTypes->firstWhere('id', $taxTypeId) : null;
 
-        // 2. Calculate Summary (Sensitive to tax type filter)
+        // 2. Calculate Summary Statistics
         $summaryQuery = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->where('month', 0)
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes);
+            ->whereIn('kd_kecamatan', $activeDistrictCodes);
 
         if ($statusFilter !== 'all') {
-            $summaryQuery->where('status', $statusFilter);
+            $summaryQuery->where('status', (string) $statusFilter);
         }
         
         if ($selectedTaxType) {
@@ -72,38 +66,48 @@ class ShowEmployeeMonitoringAction
         }
 
         $summaryResults = $summaryQuery
-            ->selectRaw('SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_bayar, SUM(CASE WHEN total_tunggakan > 0 THEN total_tunggakan ELSE 0 END) as total_tunggakan')
+            ->selectRaw('
+                SUM(total_ketetapan) as total_sptpd, 
+                SUM(total_bayar) as total_bayar, 
+                SUM(CASE WHEN total_tunggakan > 0 THEN total_tunggakan ELSE 0 END) as total_tunggakan
+            ')
             ->first();
 
+        $totalSptpd = (float) ($summaryResults->total_sptpd ?? 0);
+        $totalBayar = (float) ($summaryResults->total_bayar ?? 0);
+        $totalTunggakan = (float) ($summaryResults->total_tunggakan ?? 0);
+
         $summary = [
-            'total_sptpd' => (float) ($summaryResults->total_sptpd ?? 0),
-            'total_bayar' => (float) ($summaryResults->total_bayar ?? 0),
-            'total_tunggakan' => (float) ($summaryResults->total_tunggakan ?? 0),
-            'attainment' => ($summaryResults->total_sptpd ?? 0) > 0 
-                ? ($summaryResults->total_bayar / $summaryResults->total_sptpd) * 100 
-                : 0
+            'total_sptpd' => $totalSptpd,
+            'total_bayar' => $totalBayar,
+            'total_tunggakan' => $totalTunggakan,
+            'attainment' => $totalSptpd > 0 ? ($totalBayar / $totalSptpd) * 100 : 0
         ];
 
-        // 3. Fetch Paginated, Filtered & Sorted WP Data
-        // Aggregate by npwpd+nop (SUM across all months) to avoid duplicate rows per month
-        $orderDir = in_array(strtolower($sortDir), ['asc', 'desc']) ? $sortDir : 'desc';
+        // 3. WP Data Query
+        $orderDir = in_array(strtolower($sortDir ?? ''), ['asc', 'desc']) ? $sortDir : 'desc';
 
-        $rawSortCols = [
-            'selisih' => '(SUM(stp.total_bayar) - SUM(stp.total_ketetapan))',
-        ];
-        $plainSortCols = [
-            'name'     => 'nm_wp',
-            'sptpd'    => 'total_ketetapan',
-            'bayar'    => 'total_bayar',
-            'tunggakan'=> 'total_tunggakan',
-        ];
+        // Map sort columns to database expressions
+        if ($sortBy === 'selisih') {
+            $orderBy = DB::raw('(SUM(stp.total_bayar) - SUM(stp.total_ketetapan)) ' . $orderDir);
+        } elseif ($sortBy === 'name') {
+            $orderBy = 'stp.nm_wp';
+        } elseif ($sortBy === 'sptpd') {
+            $orderBy = 'total_ketetapan';
+        } elseif ($sortBy === 'bayar') {
+            $orderBy = 'total_bayar';
+        } elseif ($sortBy === 'tunggakan') {
+            $orderBy = 'total_tunggakan';
+        } else {
+            $orderBy = 'total_tunggakan'; // Default sort
+        }
 
         $query = DB::table('simpadu_tax_payers as stp')
             ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
             ->where('stp.year', $year)
             ->where('stp.month', 0)
-            ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
-            ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', $statusFilter))
+            ->whereIn('stp.kd_kecamatan', $activeDistrictCodes)
+            ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', (string) $statusFilter))
             ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
@@ -119,36 +123,33 @@ class ShowEmployeeMonitoringAction
                 stp.kd_kecamatan, stp.ayat, stp.status,
                 tax_types.name as tax_type_name,
                 SUM(stp.total_ketetapan) as total_ketetapan,
-                LEAST(SUM(stp.total_bayar), SUM(stp.total_ketetapan)) as total_bayar,
-                GREATEST(SUM(stp.total_ketetapan) - SUM(stp.total_bayar), 0) as total_tunggakan
+                (CASE WHEN SUM(stp.total_bayar) > SUM(stp.total_ketetapan) THEN SUM(stp.total_ketetapan) ELSE SUM(stp.total_bayar) END) as total_bayar,
+                (CASE WHEN SUM(stp.total_ketetapan) > SUM(stp.total_bayar) THEN SUM(stp.total_ketetapan) - SUM(stp.total_bayar) ELSE 0 END) as total_tunggakan
             ');
 
-        if (isset($rawSortCols[$sortBy])) {
-            $query->orderByRaw($rawSortCols[$sortBy] . ' ' . $orderDir);
+        if ($orderBy instanceof \Illuminate\Database\Query\Expression) {
+            $query->orderByRaw($orderBy);
         } else {
-            $col = $plainSortCols[$sortBy] ?? 'total_ketetapan';
-            $query->orderBy($col, $orderDir);
+            $query->orderBy($orderBy, $orderDir);
         }
 
         $wpData = $query->paginate(15)->through(function ($row) {
-            $statusStr = (string) $row->status;
-            $isActive = $statusStr === '1';
-
+            $statusStr = (string) ($row->status ?? '0');
             return [
                 'npwpd' => $row->npwpd,
                 'nop' => $row->nop,
                 'nm_wp' => $row->nm_wp,
                 'tax_type_name' => $row->tax_type_name,
-                'status' => $isActive ? 'AKTIF' : 'NON AKTIF',
+                'status' => $statusStr === '1' ? 'AKTIF' : 'NON AKTIF',
                 'status_code' => $statusStr,
                 'total_sptpd' => (float) $row->total_ketetapan,
                 'total_bayar' => (float) $row->total_bayar,
                 'selisih' => (float) ($row->total_bayar - $row->total_ketetapan),
-                'tunggakan' => (float) ($row->total_tunggakan > 0 ? $row->total_tunggakan : 0),
+                'tunggakan' => (float) $row->total_tunggakan,
             ];
         });
 
-        $availableYears = TaxTarget::query()
+        $availableYears = DB::table('simpadu_tax_payers')
             ->select('year')
             ->distinct()
             ->orderByDesc('year')
@@ -161,12 +162,14 @@ class ShowEmployeeMonitoringAction
             'summary' => $summary,
             'availableYears' => $availableYears,
             'taxTypes' => $taxTypes,
+            'assignedDistricts' => $assignedDistricts,
             'year' => $year,
             'month' => $month,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
             'taxTypeId' => $taxTypeId,
             'statusFilter' => $statusFilter,
+            'districtId' => $districtId,
         ];
     }
 
@@ -175,7 +178,7 @@ class ShowEmployeeMonitoringAction
         return [
             'upt' => $upt,
             'employee' => $employee,
-            'wpData' => collect(),
+            'wpData' => new LengthAwarePaginator([], 0, 15),
             'summary' => [
                 'total_sptpd' => 0,
                 'total_bayar' => 0,
@@ -184,12 +187,14 @@ class ShowEmployeeMonitoringAction
             ],
             'availableYears' => collect([$year]),
             'taxTypes' => collect(),
+            'assignedDistricts' => $employee->districts ?? collect(),
             'year' => $year,
             'month' => $month,
             'sortBy' => 'tunggakan',
             'sortDir' => 'desc',
             'taxTypeId' => null,
             'statusFilter' => '1',
+            'districtId' => null,
         ];
     }
 }

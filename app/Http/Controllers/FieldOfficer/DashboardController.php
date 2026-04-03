@@ -222,9 +222,17 @@ class DashboardController extends Controller
         $sortDir = $request->query('sort_dir', 'desc');
         $statusFilter = $request->query('status_filter', '1');
         $taxTypeId = $request->query('tax_type_id');
+        $districtId = $request->query('district_id');
 
-        $assignedDistricts = $user->accessibleDistricts();
-        $assignedDistrictCodes = $assignedDistricts->pluck('simpadu_code')->filter()->toArray();
+        $assignedDistricts = $user->accessibleDistricts()->orderBy('name')->get();
+        $allAssignedDistrictCodes = $assignedDistricts->pluck('simpadu_code')->filter()->toArray();
+        
+        $selectedDistrict = $districtId ? $assignedDistricts->firstWhere('id', $districtId) : null;
+        // firstWhere returns false if not found — normalize to null
+        if ($selectedDistrict === false) $selectedDistrict = null;
+        $activeDistrictCodes = $selectedDistrict 
+            ? [$selectedDistrict->simpadu_code] 
+            : $allAssignedDistrictCodes;
 
         // 1. Load Tax Types for filter
         $taxTypes = \App\Models\TaxType::query()
@@ -235,7 +243,7 @@ class DashboardController extends Controller
 
         $selectedTaxType = $taxTypeId ? $taxTypes->firstWhere('id', $taxTypeId) : null;
 
-        if (empty($assignedDistrictCodes)) {
+        if (empty($allAssignedDistrictCodes)) {
             return view('field-officer.target-achievement', [
                 'summary' => ['total_ketetapan' => 0, 'total_bayar' => 0, 'total_tunggakan' => 0, 'persentase' => 0],
                 'wpData' => collect(),
@@ -243,13 +251,14 @@ class DashboardController extends Controller
                 'statusFilter' => $statusFilter, 'availableYears' => $this->getAvailableYears(),
                 'taxTypes' => $taxTypes, 'taxTypeId' => $taxTypeId,
                 'assignedDistricts' => collect(),
+                'districtId' => null,
             ]);
         }
 
-        // Summary - apply tax type filter
+        // Summary - apply tax type and district filter
         $summaryQuery = DB::table('simpadu_tax_payers')
             ->where('year', $year)->where('status', '1')->where('month', 0)
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes);
+            ->whereIn('kd_kecamatan', $activeDistrictCodes);
 
         if ($selectedTaxType) {
             $summaryQuery->where('ayat', $selectedTaxType->simpadu_code);
@@ -261,7 +270,7 @@ class DashboardController extends Controller
 
         $pct = $stats->k > 0 ? ($stats->b / $stats->k) * 100 : 0;
 
-        // WP list — aggregate by npwpd+nop
+        // WP list — filter by selected district
         $plainSortCols = ['name' => 'nm_wp', 'sptpd' => 'total_ketetapan', 'bayar' => 'total_bayar', 'tunggakan' => 'total_tunggakan'];
         $rawSortCols = ['selisih' => '(SUM(stp.total_bayar) - SUM(stp.total_ketetapan))'];
 
@@ -269,7 +278,7 @@ class DashboardController extends Controller
             ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
             ->where('stp.year', $year)
             ->where('stp.month', 0)
-            ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
+            ->whereIn('stp.kd_kecamatan', $activeDistrictCodes)
             ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', $statusFilter))
             ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
             ->when($search, fn($q) => $q->where(fn($sq) =>
@@ -300,14 +309,22 @@ class DashboardController extends Controller
         ]);
 
         return view('field-officer.target-achievement', [
-            'summary' => ['total_ketetapan' => $stats->k, 'total_bayar' => $stats->b, 'total_tunggakan' => $stats->t, 'persentase' => $pct],
+            'summary' => [
+                'total_ketetapan' => $stats->k,
+                'total_bayar' => $stats->b,
+                'total_tunggakan' => $stats->t,
+                'persentase' => $pct,
+            ],
             'wpData' => $wpData,
-            'year' => $year, 'sortBy' => $sortBy, 'sortDir' => $sortDir,
-            'statusFilter' => $statusFilter, 'search' => $search,
+            'year' => $year,
+            'sortBy' => $sortBy,
+            'sortDir' => $sortDir,
+            'statusFilter' => $statusFilter,
             'availableYears' => $this->getAvailableYears(),
             'taxTypes' => $taxTypes,
             'taxTypeId' => $taxTypeId,
             'assignedDistricts' => $assignedDistricts,
+            'districtId' => $districtId,
         ]);
     }
 

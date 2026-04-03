@@ -6,6 +6,7 @@
             <input type="hidden" name="search" id="searchHidden" value="{{ $search ?? '' }}">
             <input type="hidden" name="status_filter" id="statusFilterHidden" value="{{ $statusFilter }}">
             <input type="hidden" name="tax_type_id" id="taxTypeIdHidden" value="{{ $taxTypeId }}">
+            <input type="hidden" name="district_id" id="districtIdHidden" value="{{ $districtId }}">
             <div class="relative" id="yearDropdownWrapper">
                 <button type="button" id="yearDropdownBtn"
                     class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
@@ -40,7 +41,7 @@
                     <div>
                         <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Wilayah Tugas Anda</p>
                         <p class="text-white text-lg font-black uppercase tracking-widest">
-                            {{ $assignedDistricts->pluck('name')->implode(', ') }}
+                            {{ $districtId ? $assignedDistricts->firstWhere('id', $districtId)?->name : $assignedDistricts->pluck('name')->implode(', ') }}
                         </p>
                     </div>
                     <span class="text-white text-4xl font-black">{{ number_format($summary['persentase'], 1) }}%</span>
@@ -109,7 +110,66 @@
 
                     {{-- Filters Area --}}
                     <div class="flex flex-col md:flex-row gap-3">
-                        <div class="grid grid-cols-2 md:flex gap-3 flex-1">
+                        <div class="grid grid-cols-1 md:flex gap-3 flex-1">
+                            {{-- District Filter --}}
+                            <div class="relative" x-data='{
+                                open: false,
+                                search: "",
+                                value: "{{ $districtId ?? "" }}",
+                                options: [
+                                    {id:"", name:"Semua Wilayah"},
+                                    @foreach($assignedDistricts as $d)
+                                        {id:"{{ $d->id }}", name:"{{ $d->name }}"},
+                                    @endforeach
+                                ],
+                                get filteredOptions() {
+                                    if (!this.search) return this.options;
+                                    return this.options.filter(o => o.name.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                get label() { 
+                                    let found = this.options.find(o => o.id == this.value);
+                                    return found ? found.name : "Semua Wilayah";
+                                },
+                                select(opt) {
+                                    this.value = opt.id; this.open = false;
+                                    document.getElementById("districtIdHidden").value = opt.id;
+                                    document.getElementById("filterForm").submit();
+                                }
+                            }'>
+                                <button type="button" @click="open = !open" @click.away="open = false; search = &#39;&#39;"
+                                    class="w-full md:w-48 flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 transition-all">
+                                    <span x-text="label" class="font-bold text-slate-900 truncate"></span>
+                                    <svg class="w-4 h-4 text-slate-400 shrink-0 ml-1 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                    class="absolute left-0 right-0 md:w-56 z-50 mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden" style="display:none;">
+                                    <div class="p-2 border-b border-slate-50">
+                                        <div class="relative">
+                                            <input type="text" x-model="search" placeholder="Cari wilayah..." 
+                                                class="w-full pl-8 pr-4 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                                            <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="py-1 max-h-64 overflow-y-auto">
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
+                                            <button type="button" @click="select(opt)"
+                                                class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors"
+                                                :class="value == opt.id ? 'text-blue-600 font-bold bg-blue-50/30' : 'text-slate-600'">
+                                                <div class="flex items-center justify-between">
+                                                    <span x-text="opt.name"></span>
+                                                    <svg x-show="value == opt.id" class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </div>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
                             {{-- Tax Type Filter --}}
                             <div class="relative" x-data='{
                                 open: false,
@@ -136,7 +196,7 @@
                                 }
                             }'>
                                 <button type="button" @click="open = !open" @click.away="open = false; search = &#39;&#39;"
-                                    class="w-full flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 transition-all">
+                                    class="w-full md:w-64 flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 transition-all">
                                     <span x-text="label" class="font-bold text-slate-900 truncate"></span>
                                     <svg class="w-4 h-4 text-slate-400 shrink-0 ml-1 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -186,7 +246,7 @@
                                 }
                             }'>
                                 <button type="button" @click="open = !open" @click.away="open = false"
-                                    class="w-full flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 transition-all">
+                                    class="w-full md:w-36 flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 transition-all">
                                     <span x-text="label" class="font-bold text-slate-900 truncate"></span>
                                     <svg class="w-4 h-4 text-slate-400 shrink-0 ml-1 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>

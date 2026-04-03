@@ -40,6 +40,7 @@
         <input type="hidden" name="sort_dir" id="sortDirValue" value="{{ $sortDir }}">
         <input type="hidden" name="tax_type_id" id="taxTypeHidden" value="{{ $taxTypeId }}">
         <input type="hidden" name="status_filter" id="statusFilterHidden" value="{{ $statusFilter }}">
+        <input type="hidden" name="district_id" id="districtHidden" value="{{ $districtId }}">
 
         {{-- Performance Summary Container --}}
         <div class="mb-8">
@@ -60,7 +61,7 @@
                             <div>
                                 <h3 class="text-white text-lg font-black uppercase tracking-widest leading-none mb-1">{{ $employee->name }}</h3>
                                 <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-                                    Wilayah Tugas: <span class="text-blue-400">{{ $employee->districts->pluck('name')->implode(', ') }}</span>
+                                    Wilayah Tugas: <span class="text-blue-400">{{ $districtId ? ($assignedDistricts->firstWhere('id', $districtId)?->name ?? '') : $assignedDistricts->pluck('name')->implode(', ') }}</span>
                                 </p>
                             </div>
                         </div>
@@ -130,10 +131,20 @@
                 </div>
                 
                 <div class="flex flex-col gap-2 w-full md:w-auto md:flex-row md:items-center md:gap-3">
-                    {{-- Baris 1: Jenis Pajak + Status WP sejajar --}}
-                    <div class="flex gap-2 w-full md:w-auto">
+                    {{-- Filters Row --}}
+                    <div class="flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
+                        {{-- District Filter (Searchable) --}}
+                        <div class="w-full md:w-48">
+                            <x-searchable-select 
+                                target-input-id="districtHidden"
+                                :value="$districtId" 
+                                placeholder="Semua Wilayah"
+                                :options="$assignedDistricts->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->toArray()"
+                            />
+                        </div>
+
                         {{-- Tax Type Filter (Searchable) --}}
-                        <div class="flex-1 min-w-0">
+                        <div class="w-full md:w-56">
                             <x-searchable-select 
                                 target-input-id="taxTypeHidden"
                                 :value="$taxTypeId" 
@@ -143,7 +154,7 @@
                         </div>
 
                         {{-- Status WP Filter --}}
-                        <div class="flex-1 min-w-0 relative" x-data='{
+                        <div class="w-36 relative" x-data='{
                             open: false,
                             value: "{{ $statusFilter }}",
                             options: [
@@ -199,8 +210,8 @@
                         </div>
                     </div>
 
-                    {{-- Baris 2: Search --}}
-                    <div class="relative w-full md:w-80">
+                    {{-- Search Area --}}
+                    <div class="relative w-full md:w-64">
                         <input type="text" id="searchInput" 
                             value="{{ request('search') }}"
                             placeholder="Cari Nama WP atau NPWPD..." 
