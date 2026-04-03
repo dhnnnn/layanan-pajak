@@ -84,7 +84,14 @@
                 {{-- User + Logout --}}
                 <div class="px-4 py-4 border-t border-slate-700">
                     <p class="text-sm text-white font-medium truncate">{{ auth()->user()->name }}</p>
-                    <p class="text-xs text-slate-400 mb-2">Petugas Lapangan</p>
+                    <p class="text-xs text-slate-400 mb-3">Petugas Lapangan</p>
+                    <a href="{{ route('profile.edit') }}"
+                       class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors mb-2 {{ request()->routeIs('profile.*') ? 'text-white' : '' }}">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        Edit Profil
+                    </a>
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
                         <button type="submit" class="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
