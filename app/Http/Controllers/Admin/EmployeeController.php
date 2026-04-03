@@ -17,8 +17,8 @@ use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-
 class EmployeeController extends Controller
 {
     public function index(Request $request, ShowUptMonitoringAction $showUptMonitoring): View
@@ -134,12 +134,43 @@ class EmployeeController extends Controller
             ->with('success', 'Pegawai berhasil dihapus.');
     }
 
+    public function wpTunggakan(Request $request, User $employee): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'year'  => 'nullable|integer|min:2000|max:2099',
+            'npwpd' => 'required|string|max:50',
+            'nop'   => 'required|string|max:50',
+        ]);
+
+        $year  = $validated['year'] ?? (int) date('Y');
+        $npwpd = $validated['npwpd'];
+        $nop   = $validated['nop'];
+
+        $months = DB::table('simpadu_tax_payers')
+            ->where('year', $year)
+            ->where('npwpd', $npwpd)
+            ->where('nop', $nop)
+            ->where('month', '>', 0)
+            ->orderBy('month')
+            ->get(['month', 'total_ketetapan', 'total_bayar', 'total_tunggakan']);
+
+        $bulanIndo = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+        $result = $months->map(fn($r) => [
+            'bulan'           => $bulanIndo[(int) $r->month] ?? $r->month,
+            'total_ketetapan' => (float) $r->total_ketetapan,
+            'total_bayar'     => (float) $r->total_bayar,
+            'total_tunggakan' => (float) max($r->total_tunggakan, 0),
+        ])->filter(fn($r) => $r['total_ketetapan'] > 0);
+
+        return response()->json($result->values());
+    }
+
     public function assignDistricts(
         AssignDistrictRequest $request,
         User $employee,
         AssignEmployeeDistrictAction $assignDistricts,
-    ): RedirectResponse {
-        $assignDistricts($employee, $request->array('district_ids'));
+    ): RedirectResponse {        $assignDistricts($employee, $request->array('district_ids'));
 
         if ($employee->upt_id) {
             return redirect()

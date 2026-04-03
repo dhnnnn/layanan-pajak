@@ -103,9 +103,15 @@ class RealizationMonitoringController extends Controller
      */
     public function wpTunggakan(Request $request, Upt $upt, User $employee): \Illuminate\Http\JsonResponse
     {
-        $year  = $request->integer('year', (int) date('Y'));
-        $npwpd = $request->query('npwpd');
-        $nop   = $request->query('nop');
+        $validated = $request->validate([
+            'year'  => 'nullable|integer|min:2000|max:2099',
+            'npwpd' => 'required|string|max:50',
+            'nop'   => 'required|string|max:50',
+        ]);
+
+        $year  = $validated['year'] ?? (int) date('Y');
+        $npwpd = $validated['npwpd'];
+        $nop   = $validated['nop'];
 
         $months = DB::table('simpadu_tax_payers')
             ->where('year', $year)

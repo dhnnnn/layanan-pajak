@@ -57,6 +57,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         // Pegawai
         Route::resource('employees', EmployeeController::class);
         Route::post('employees/{employee}/districts', [EmployeeController::class, 'assignDistricts'])->name('employees.districts.assign');
+        Route::get('employees/{employee}/wp-tunggakan', [EmployeeController::class, 'wpTunggakan'])->name('employees.wp-tunggakan');
 
         // UPT
         Route::resource('upts', UptController::class);

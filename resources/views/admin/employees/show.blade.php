@@ -263,10 +263,22 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     @forelse($wpData as $wp)
-                                        <tr class="hover:bg-slate-50 transition-colors">
+                                        {{-- Main Row --}}
+                                        <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
+                                            onclick="toggleAccordion('{{ $wp['npwpd'] }}-{{ $wp['nop'] }}')"
+                                            data-npwpd="{{ $wp['npwpd'] }}"
+                                            data-nop="{{ $wp['nop'] }}">
                                             <td class="px-6 py-4">
-                                                <div class="font-bold text-slate-900 leading-tight uppercase">{{ $wp['nm_wp'] }}</div>
-                                                <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ $wp['npwpd'] }}</div>
+                                                <div class="flex items-center gap-2">
+                                                    <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200 accordion-chevron-{{ $wp['npwpd'] }}-{{ $wp['nop'] }}"
+                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                                    </svg>
+                                                    <div>
+                                                        <div class="font-bold text-slate-900 leading-tight uppercase">{{ $wp['nm_wp'] }}</div>
+                                                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ $wp['npwpd'] }} / {{ $wp['tax_type_name'] ?? '-' }}</div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td class="px-6 py-4 text-center">
                                                 @if($wp['status_code'] == '1')
@@ -292,6 +304,25 @@
                                                 @else
                                                     <span class="text-slate-300">-</span>
                                                 @endif
+                                            </td>
+                                        </tr>
+
+                                        {{-- Accordion Row --}}
+                                        <tr id="accordion-{{ $wp['npwpd'] }}-{{ $wp['nop'] }}" class="hidden">
+                                            <td colspan="6" class="px-0 py-0 border-b border-slate-100">
+                                                <div class="bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+                                                    <div class="flex items-center gap-2 mb-4">
+                                                        <div class="w-1 h-4 bg-rose-500 rounded-full"></div>
+                                                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rincian Tunggakan per Bulan — {{ $year }}</span>
+                                                    </div>
+                                                    <div class="accordion-data-{{ $wp['npwpd'] }}-{{ $wp['nop'] }}">
+                                                        <div class="flex gap-2">
+                                                            @for($i = 0; $i < 4; $i++)
+                                                                <div class="flex-1 h-16 bg-slate-100 rounded-xl animate-pulse"></div>
+                                                            @endfor
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                     @empty
@@ -375,6 +406,108 @@
                     });
                 });
             }
+
+            // Accordion tunggakan per bulan
+            const accordionLoaded = {};
+            const tunggakanUrl = "{{ route('admin.employees.wp-tunggakan', $employee) }}";
+
+            window.toggleAccordion = function(key) {
+                const row = document.getElementById('accordion-' + key);
+                const chevron = document.querySelector('.accordion-chevron-' + key);
+                const isHidden = row.classList.contains('hidden');
+
+                row.classList.toggle('hidden');
+                if (chevron) chevron.classList.toggle('rotate-180');
+
+                if (isHidden && !accordionLoaded[key]) {
+                    accordionLoaded[key] = true;
+                    const tr = document.querySelector(`tr[onclick="toggleAccordion('${key}')"]`);
+                    const npwpd = tr.dataset.npwpd;
+                    const nop   = tr.dataset.nop;
+                    const year  = document.getElementById('yearValue').value;
+                    const container = document.querySelector('.accordion-data-' + key);
+
+                    fetch(`${tunggakanUrl}?npwpd=${encodeURIComponent(npwpd)}&nop=${encodeURIComponent(nop)}&year=${year}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.length) {
+                                container.innerHTML = `
+                                    <div class="flex items-center gap-3 py-2 text-slate-400">
+                                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span class="text-xs font-bold text-emerald-600">Lunas — tidak ada tunggakan untuk objek ini.</span>
+                                    </div>`;
+                                return;
+                            }
+
+                            const fmt = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
+                            const totalK = data.reduce((s, r) => s + r.total_ketetapan, 0);
+                            const totalB = data.reduce((s, r) => s + r.total_bayar, 0);
+                            const totalT = data.reduce((s, r) => s + r.total_tunggakan, 0);
+                            const pct = totalK > 0 ? Math.min((totalB / totalK) * 100, 100) : 0;
+
+                            let html = `
+                            <div class="mb-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                <div class="flex flex-wrap gap-4 mb-3">
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Ketetapan</p>
+                                        <p class="text-sm font-black text-slate-700">${fmt(totalK)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Terbayar</p>
+                                        <p class="text-sm font-black text-emerald-600">${fmt(totalB)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sisa Tunggakan</p>
+                                        <p class="text-sm font-black text-rose-600">${fmt(totalT)}</p>
+                                    </div>
+                                    <div class="ml-auto text-right">
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Progress Bayar</p>
+                                        <p class="text-sm font-black ${pct >= 100 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-rose-600'}">${pct.toFixed(1)}%</p>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-2">
+                                    <div class="h-2 rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-emerald-400' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-500'}"
+                                        style="width:${pct}%"></div>
+                                </div>
+                            </div>`;
+
+                            html += '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">';
+                            data.forEach(r => {
+                                const lunas   = !r.total_tunggakan && r.total_bayar > 0;
+                                const partial = r.total_tunggakan > 0 && r.total_bayar > 0;
+                                const cardClass  = lunas ? 'bg-emerald-50 border-emerald-200' : partial ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200';
+                                const badgeClass = lunas ? 'bg-emerald-100 text-emerald-700' : partial ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
+                                const badgeText  = lunas ? 'Lunas' : partial ? 'Sebagian' : 'Belum Bayar';
+                                const mp = r.total_ketetapan > 0 ? Math.min((r.total_bayar / r.total_ketetapan) * 100, 100) : 0;
+
+                                html += `
+                                <div class="rounded-xl border p-3 ${cardClass}">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-[11px] font-black text-slate-700">${r.bulan}</span>
+                                        <span class="text-[8px] font-black px-1.5 py-0.5 rounded-full ${badgeClass}">${badgeText}</span>
+                                    </div>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Ketetapan</p>
+                                    <p class="text-xs font-black text-slate-700 mb-1">${fmt(r.total_ketetapan)}</p>
+                                    ${r.total_tunggakan > 0
+                                        ? `<p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Tunggakan</p><p class="text-xs font-black text-rose-600">${fmt(r.total_tunggakan)}</p>`
+                                        : `<p class="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Terbayar</p><p class="text-xs font-black text-emerald-600">${fmt(r.total_bayar)}</p>`
+                                    }
+                                    <div class="mt-2 w-full bg-white/60 rounded-full h-1">
+                                        <div class="h-1 rounded-full ${lunas ? 'bg-emerald-400' : partial ? 'bg-amber-400' : 'bg-rose-400'}"
+                                            style="width:${mp}%"></div>
+                                    </div>
+                                </div>`;
+                            });
+                            html += '</div>';
+                            container.innerHTML = html;
+                        })
+                        .catch(() => {
+                            container.innerHTML = '<p class="text-xs text-rose-400 italic py-2">Gagal memuat data.</p>';
+                        });
+                }
+            };
         });
     </script>
 </x-layouts.admin>
