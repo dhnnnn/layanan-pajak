@@ -61,7 +61,7 @@
     <button type="button" 
         @click="open = !open"
         @click.away="open = false"
-        class="w-full flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all">
+        class="w-full flex items-center justify-between px-4 py-2 min-h-[38px] bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all">
         <span x-text="label" :class="value ? 'text-slate-900 font-bold' : 'text-slate-400'"></span>
         <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>

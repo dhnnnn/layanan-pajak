@@ -30,6 +30,12 @@ class RealizationMonitoringController extends Controller
 
     public function show(Request $request, Upt $upt, ShowUptMonitoringAction $showUptMonitoring): View
     {
+        // Kepala UPT hanya boleh akses UPT-nya sendiri
+        $user = auth()->user();
+        if ($user->hasRole('kepala_upt') && $user->upt_id !== $upt->id) {
+            abort(403, 'Anda tidak memiliki akses ke UPT ini.');
+        }
+
         $year = $request->integer('year', (int) date('Y'));
         $month = $request->integer('month', (int) date('n'));
 
@@ -44,13 +50,25 @@ class RealizationMonitoringController extends Controller
         User $employee,
         ShowEmployeeMonitoringAction $showEmployeeMonitoring,
     ): View {
+        // Validasi: employee harus benar-benar berada di UPT yang ada di URL
+        // Ini berlaku untuk semua role — mencegah URL manipulation
+        if ($employee->upt_id !== $upt->id) {
+            abort(404, 'Petugas tidak ditemukan di UPT ini.');
+        }
+
+        // Kepala UPT hanya boleh akses UPT-nya sendiri
+        $user = auth()->user();
+        if ($user->hasRole('kepala_upt') && $user->upt_id !== $upt->id) {
+            abort(403, 'Anda tidak memiliki akses ke UPT ini.');
+        }
+
         $year = $request->integer('year', (int) date('Y'));
         $month = $request->integer('month', (int) date('n'));
         $search = $request->query('search');
         $sortBy = $request->query('sort_by', 'tunggakan');
         $sortDir = $request->query('sort_dir', 'desc');
         $taxTypeId = $request->query('tax_type_id');
-        $statusFilter = $request->query('status_filter', '1'); // default: aktif saja
+        $statusFilter = $request->query('status_filter', '1');
         $districtId = $request->query('district_id');
 
         $result = $showEmployeeMonitoring(

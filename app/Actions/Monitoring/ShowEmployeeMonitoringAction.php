@@ -139,6 +139,7 @@ class ShowEmployeeMonitoringAction
                 'npwpd' => $row->npwpd,
                 'nop' => $row->nop,
                 'nm_wp' => $row->nm_wp,
+                'nm_op' => $row->nm_op ?? '',
                 'tax_type_name' => $row->tax_type_name,
                 'status' => $statusStr === '1' ? 'AKTIF' : 'NON AKTIF',
                 'status_code' => $statusStr,

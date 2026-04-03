@@ -19,6 +19,7 @@ class GetTaxPayerMatrixAction
         // 2. Fetch Base WP/OP data from simpadu_tax_payers
         // Use month=0 (annual data) to get unique WP/OP without duplicating across months
         $query = DB::table('simpadu_tax_payers as s')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 's.ayat')
             ->select([
                 's.npwpd', 
                 's.nop', 
@@ -26,7 +27,8 @@ class GetTaxPayerMatrixAction
                 's.nm_op', 
                 's.almt_op', 
                 's.kd_kecamatan',
-                's.status'
+                's.status',
+                'tax_types.name as tax_type_name',
             ])
             ->where('s.year', $year)
             ->where('s.month', 0)
@@ -40,7 +42,7 @@ class GetTaxPayerMatrixAction
             ->when($districtCodes, fn($q) => $q->whereIn('s.kd_kecamatan', $districtCodes))
             ->when($statusFilter !== 'all', fn($q) => $q->where('s.status', $statusFilter))
             ->when($ayat, fn($q) => $q->where('s.ayat', $ayat))
-            ->groupBy(['s.npwpd', 's.nop', 's.nm_wp', 's.nm_op', 's.almt_op', 's.kd_kecamatan', 's.status'])
+            ->groupBy(['s.npwpd', 's.nop', 's.nm_wp', 's.nm_op', 's.almt_op', 's.kd_kecamatan', 's.status', 'tax_types.name'])
             ->orderBy('s.nm_wp');
 
         $paginated = $query->paginate(20)->withQueryString();

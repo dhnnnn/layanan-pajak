@@ -17,6 +17,15 @@ class TaxPayerMonitoringController extends Controller
 {
     public function index(Request $request, GetTaxPayerMatrixAction $getMatrix)
     {
+        $data = $this->buildData($request, $getMatrix);
+        if ($request->ajax()) {
+            return view('admin.monitoring._table', $data)->render();
+        }
+        return view('admin.monitoring.index', $data);
+    }
+
+    private function buildData(Request $request, GetTaxPayerMatrixAction $getMatrix): array
+    {
         $year = $request->integer('year', (int) date('Y'));
         $monthFrom = $request->integer('month_from', 1);
         $monthTo = $request->integer('month_to', (int) date('n'));
@@ -25,25 +34,22 @@ class TaxPayerMonitoringController extends Controller
         $statusFilter = $request->string('status_filter', '1')->toString();
         $selectedAyat = $request->string('ayat')->toString();
 
-        // Determine which district codes to filter by
         $districtCodes = null;
         if (auth()->user()->isKepalaUpt()) {
-            // Limited to UPT's districts
             $uptDistricts = auth()->user()->upt->districts->pluck('simpadu_code')->toArray();
-            
-            if ($selectedDistrict->isNotEmpty()) {
-                // If a specific district is selected, check if it's within UPT's districts
-                if (in_array($selectedDistrict->toString(), $uptDistricts)) {
-                    $districtCodes = [$selectedDistrict->toString()];
-                } else {
-                    // Fallback to all UPT districts if invalid
-                    $districtCodes = $uptDistricts;
-                }
+            if ($selectedDistrict->isNotEmpty() && in_array($selectedDistrict->toString(), $uptDistricts)) {
+                $districtCodes = [$selectedDistrict->toString()];
             } else {
                 $districtCodes = $uptDistricts;
             }
+        } elseif (auth()->user()->hasRole('pegawai')) {
+            $assignedCodes = auth()->user()->accessibleDistricts()->pluck('simpadu_code')->filter()->toArray();
+            if ($selectedDistrict->isNotEmpty() && in_array($selectedDistrict->toString(), $assignedCodes)) {
+                $districtCodes = [$selectedDistrict->toString()];
+            } else {
+                $districtCodes = $assignedCodes;
+            }
         } elseif ($selectedDistrict->isNotEmpty()) {
-            // Admin can filter by any district
             $districtCode = $selectedDistrict->toString();
             if (is_numeric($districtCode) && strlen($districtCode) < 3) {
                 $districtCode = str_pad($districtCode, 3, '0', STR_PAD_LEFT);
@@ -52,13 +58,14 @@ class TaxPayerMonitoringController extends Controller
         }
 
         $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes, $statusFilter, $selectedAyat ?: null);
-        
-        $officers = User::orderBy('name')->get(); 
 
-        // Fetch districts for the filter dropdown
+        $officers = User::orderBy('name')->get();
+
         $districtsQuery = District::orderBy('name');
         if (auth()->user()->isKepalaUpt()) {
             $districtsQuery->whereIn('id', auth()->user()->upt->districts->pluck('id'));
+        } elseif (auth()->user()->hasRole('pegawai')) {
+            $districtsQuery->whereIn('id', auth()->user()->accessibleDistricts()->pluck('id'));
         }
         $districts = $districtsQuery->get();
 
@@ -68,7 +75,7 @@ class TaxPayerMonitoringController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'simpadu_code']);
 
-        $data = [
+        return [
             'taxPayers' => $taxPayers,
             'officers' => $officers,
             'districts' => $districts,
@@ -81,12 +88,18 @@ class TaxPayerMonitoringController extends Controller
             'statusFilter' => $statusFilter,
             'availableYears' => range(date('Y'), date('Y') - 5),
         ];
+    }
 
+    /**
+     * Field officer version — uses field-officer layout with same data but filtered to assigned districts.
+     */
+    public function fieldOfficerIndex(Request $request, GetTaxPayerMatrixAction $getMatrix): View
+    {
+        $data = $this->buildData($request, $getMatrix);
         if ($request->ajax()) {
             return view('admin.monitoring._table', $data)->render();
         }
-
-        return view('admin.monitoring.index', $data);
+        return view('field-officer.tax-payers', $data);
     }
 
     public function storeTask(Request $request): RedirectResponse

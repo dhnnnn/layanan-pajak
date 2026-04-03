@@ -29,8 +29,12 @@
                         <div class="flex items-center gap-2 mt-1">
                             <span class="text-[9px] text-slate-400 font-mono font-bold tracking-tighter">{{ $wp->npwpd }}</span>
                             <span class="text-[9px] text-slate-300">|</span>
-                            <span class="text-[9px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ $wp->nm_op }}</span>
+                            <span class="text-[9px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ $wp->tax_type_name ?? '-' }}</span>
                         </div>
+                        {{-- Tampilkan nm_op sebagai nama objek pembeda --}}
+                        @if(!empty($wp->nm_op))
+                            <div class="text-[9px] text-slate-300 mt-0.5 uppercase truncate max-w-[180px]">{{ $wp->nm_op }}</div>
+                        @endif
                     </td>
                     <td class="px-6 py-4 border-r border-slate-50 text-slate-500 font-medium uppercase text-[9px] leading-relaxed italic">
                         {{ $wp->almt_op }}

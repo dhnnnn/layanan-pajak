@@ -181,14 +181,26 @@
                     @forelse($employeeDashboardData as $data)
                     <div class="space-y-2">
                         <div class="flex justify-between items-end">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-[11px] font-bold text-slate-700 uppercase tracking-tight truncate">{{ $data['employee']->name }}</p>
                                 <p class="text-[10px] text-slate-400">
                                     Rp{{ number_format($data['pay_total'], 0, ',', '.') }} / 
                                     Rp{{ number_format($data['sptpd_total'], 0, ',', '.') }}
                                 </p>
                             </div>
-                            <span class="text-[11px] font-black text-blue-600">{{ number_format($data['attainment_pct'], 1) }}%</span>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="text-[11px] font-black text-blue-600">{{ number_format($data['attainment_pct'], 1) }}%</span>
+                                @if($upt)
+                                <a href="{{ route('admin.realization-monitoring.employee', [$upt, $data['employee'], 'year' => $selectedYear]) }}"
+                                    class="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    Cek
+                                </a>
+                                @endif
+                            </div>
                         </div>
                         <div class="w-full bg-slate-100 rounded-full h-2">
                             <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $data['attainment_pct'] }}%"></div>

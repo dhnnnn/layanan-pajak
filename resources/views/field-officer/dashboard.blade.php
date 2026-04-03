@@ -153,7 +153,7 @@
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-xs font-black text-rose-600">Rp {{ number_format($dp->debt, 0, ',', '.') }}</p>
-                            <a href="{{ route('admin.monitoring.index', ['search' => $dp->npwpd]) }}"
+                            <a href="{{ route('field-officer.monitoring.tax-payers', ['search' => $dp->npwpd]) }}"
                                 class="text-[9px] text-blue-500 hover:underline font-bold">Pantau</a>
                         </div>
                     </div>

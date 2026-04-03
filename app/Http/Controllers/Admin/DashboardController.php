@@ -205,6 +205,7 @@ class DashboardController extends Controller
             'employeeDashboardData' => $employeeDashboardData ?? collect(),
             'priorityDistrictId' => $priorityDistrictId,
             'selectedPriorityDistrict' => $selectedPriorityDistrict ?? null,
+            'upt' => $isKepalaUpt ? $user->upt : null,
         ]);
     }
 }

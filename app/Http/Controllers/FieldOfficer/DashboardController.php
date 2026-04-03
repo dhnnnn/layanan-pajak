@@ -116,29 +116,31 @@ class DashboardController extends Controller
             ->pluck('id')
             ->toArray();
 
-        $query = DB::table('simpadu_tax_payers')
-            ->where('year', $year)
-            ->where('status', '1')
-            ->where('month', 0)
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
-            ->where('total_tunggakan', '>', 0);
+        $query = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)
+            ->where('stp.status', '1')
+            ->where('stp.month', 0)
+            ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
+            ->where('stp.total_tunggakan', '>', 0)
+            ->select('stp.*', 'tax_types.name as tax_type_name');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('nm_wp', 'like', "%{$search}%")
-                  ->orWhere('npwpd', 'like', "%{$search}%")
-                  ->orWhere('nop', 'like', "%{$search}%");
+                $q->where('stp.nm_wp', 'like', "%{$search}%")
+                  ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                  ->orWhere('stp.nop', 'like', "%{$search}%");
             });
         }
 
         if ($districtId && in_array($districtId, $assignedDistrictIds)) {
             $districtCode = District::find($districtId)?->simpadu_code;
             if ($districtCode) {
-                $query->where('kd_kecamatan', $districtCode);
+                $query->where('stp.kd_kecamatan', $districtCode);
             }
         }
 
-        $taxpayers = $query->orderByDesc('total_tunggakan')->paginate(20);
+        $taxpayers = $query->orderByDesc('stp.total_tunggakan')->paginate(20);
 
         $districts = District::whereIn('simpadu_code', $assignedDistrictCodes)
             ->orderBy('name')
@@ -453,28 +455,31 @@ class DashboardController extends Controller
             ->pluck('id')
             ->toArray();
 
-        $query = DB::table('simpadu_tax_payers')
-            ->where('year', $year)
-            ->where('status', '1')
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes);
+        $query = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)
+            ->where('stp.status', '1')
+            ->where('stp.month', 0)
+            ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
+            ->select('stp.*', 'tax_types.name as tax_type_name');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('nm_wp', 'like', "%{$search}%")
-                  ->orWhere('npwpd', 'like', "%{$search}%")
-                  ->orWhere('nop', 'like', "%{$search}%")
-                  ->orWhere('almt_op', 'like', "%{$search}%");
+                $q->where('stp.nm_wp', 'like', "%{$search}%")
+                  ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                  ->orWhere('stp.nop', 'like', "%{$search}%")
+                  ->orWhere('stp.almt_op', 'like', "%{$search}%");
             });
         }
 
         if ($districtId && in_array($districtId, $assignedDistrictIds)) {
             $districtCode = District::find($districtId)?->simpadu_code;
             if ($districtCode) {
-                $query->where('kd_kecamatan', $districtCode);
+                $query->where('stp.kd_kecamatan', $districtCode);
             }
         }
 
-        $taxpayers = $query->orderBy('nm_wp')->paginate(20);
+        $taxpayers = $query->orderBy('stp.nm_wp')->paginate(20);
 
         $districts = District::whereIn('simpadu_code', $assignedDistrictCodes)
             ->orderBy('name')
