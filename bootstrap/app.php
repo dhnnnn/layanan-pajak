@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 return route('admin.dashboard');
             }
 
+            if ($user?->hasRole('pegawai')) {
+                return route('pegawai.monitoring.index');
+            }
+
             return route('pegawai.dashboard');
         });
         $middleware->alias([

@@ -7,6 +7,7 @@ use App\Models\TaxRealization;
 use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxType;
 use App\Models\Upt;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use App\Actions\Simpadu\GetSimpaduRealizationAction;
 
@@ -296,6 +297,27 @@ class GenerateTaxDashboardAction
         $cq3 = $cq2 + $rq3;
         $cq4 = $cq3 + $rq4;
 
+        // Current quarter based on actual calendar months (Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec)
+        $currentMonth = (int) Carbon::now()->month;
+        $currentQuarter = match (true) {
+            $currentMonth >= 1 && $currentMonth <= 3 => 1,
+            $currentMonth >= 4 && $currentMonth <= 6 => 2,
+            $currentMonth >= 7 && $currentMonth <= 9 => 3,
+            default => 4,
+        };
+
+        // Only show realization values up to current quarter (non-cumulative for display)
+        $dq1 = $rq1;
+        $dq2 = $currentQuarter >= 2 ? $rq2 : 0;
+        $dq3 = $currentQuarter >= 3 ? $rq3 : 0;
+        $dq4 = $currentQuarter >= 4 ? $rq4 : 0;
+
+        // Keep cumulative for internal calculations but use non-cumulative for display
+        $cq1 = $rq1;
+        $cq2 = $currentQuarter >= 2 ? $rq1 + $rq2 : 0;
+        $cq3 = $currentQuarter >= 3 ? $rq1 + $rq2 + $rq3 : 0;
+        $cq4 = $currentQuarter >= 4 ? $rq1 + $rq2 + $rq3 + $rq4 : 0;
+
         $totalRealization = $rq1 + $rq2 + $rq3 + $rq4;
 
         return [
@@ -313,16 +335,16 @@ class GenerateTaxDashboardAction
                 'q4' => $tq4,
             ],
             'realizations' => [
-                'q1' => $cq1,
-                'q2' => $cq2,
-                'q3' => $cq3,
-                'q4' => $cq4,
+                'q1' => $dq1,
+                'q2' => $dq2,
+                'q3' => $dq3,
+                'q4' => $dq4,
             ],
             'percentages' => [
-                'q1' => ($this->calculateAchievementPercentage)($cq1, $tq1),
-                'q2' => ($this->calculateAchievementPercentage)($cq2, $tq2),
-                'q3' => ($this->calculateAchievementPercentage)($cq3, $tq3),
-                'q4' => ($this->calculateAchievementPercentage)($cq4, $tq4),
+                'q1' => ($this->calculateAchievementPercentage)($dq1, $tq1),
+                'q2' => ($this->calculateAchievementPercentage)($dq2, $tq2),
+                'q3' => ($this->calculateAchievementPercentage)($dq3, $tq3),
+                'q4' => ($this->calculateAchievementPercentage)($dq4, $tq4),
             ],
             'total_realization' => $totalRealization,
             'simpadu_realization' => $simpaduTotal,

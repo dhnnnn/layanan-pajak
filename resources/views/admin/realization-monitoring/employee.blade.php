@@ -39,6 +39,7 @@
         <input type="hidden" name="sort_by" id="sortByValue" value="{{ $sortBy }}">
         <input type="hidden" name="sort_dir" id="sortDirValue" value="{{ $sortDir }}">
         <input type="hidden" name="tax_type_id" id="taxTypeHidden" value="{{ $taxTypeId }}">
+        <input type="hidden" name="status_filter" id="statusFilterHidden" value="{{ $statusFilter }}">
 
         {{-- Performance Summary Container --}}
         <div class="mb-8">
@@ -69,7 +70,7 @@
                     </div>
                     
                     <div class="w-full bg-slate-800 rounded-full h-4 ring-1 ring-white/10 p-1">
-                        <div class="h-full rounded-full transition-all duration-1000 ease-out {{ $summary['attainment'] >= 90 ? 'bg-emerald-400' : ($summary['attainment'] >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
+                        <div class="h-full rounded-full transition-all duration-1000 ease-out {{ $summary['attainment'] >= 100 ? 'bg-emerald-400' : ($summary['attainment'] >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
                             style="width: {{ min($summary['attainment'], 100) }}%"></div>
                     </div>
                 </div>
@@ -128,15 +129,77 @@
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{{ $wpData->total() }} WP Terdeteksi</p>
                 </div>
                 
-                <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-                    {{-- Tax Type Filter (Searchable) --}}
-                    <x-searchable-select 
-                        target-input-id="taxTypeHidden"
-                        :value="$taxTypeId" 
-                        placeholder="Semua Jenis Pajak"
-                        :options="$taxTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->toArray()"
-                    />
+                <div class="flex flex-col gap-2 w-full md:w-auto md:flex-row md:items-center md:gap-3">
+                    {{-- Baris 1: Jenis Pajak + Status WP sejajar --}}
+                    <div class="flex gap-2 w-full md:w-auto">
+                        {{-- Tax Type Filter (Searchable) --}}
+                        <div class="flex-1 min-w-0">
+                            <x-searchable-select 
+                                target-input-id="taxTypeHidden"
+                                :value="$taxTypeId" 
+                                placeholder="Semua Jenis Pajak"
+                                :options="$taxTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->toArray()"
+                            />
+                        </div>
 
+                        {{-- Status WP Filter --}}
+                        <div class="flex-1 min-w-0 relative" x-data='{
+                            open: false,
+                            value: "{{ $statusFilter }}",
+                            options: [
+                                {id: "1",   name: "WP Aktif"},
+                                {id: "0",   name: "WP Non Aktif"},
+                                {id: "all", name: "Semua Status"}
+                            ],
+                            get label() {
+                                return this.options.find(o => o.id === this.value)?.name ?? "WP Aktif";
+                            },
+                            select(opt) {
+                                this.value = opt.id;
+                                this.open = false;
+                                document.getElementById("statusFilterHidden").value = opt.id;
+                                document.getElementById("filterForm").submit();
+                            }
+                        }'>
+                            <button type="button"
+                                @click="open = !open"
+                                @click.away="open = false"
+                                class="w-full h-full flex items-center justify-between px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all whitespace-nowrap">
+                                <span x-text="label" class="text-slate-900 font-bold"></span>
+                                <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+
+                            <div x-show="open"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute right-0 z-50 mt-2 w-40 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden"
+                                style="display: none;">
+                                <div class="py-1">
+                                    <template x-for="opt in options" :key="opt.id">
+                                        <button type="button"
+                                            @click="select(opt)"
+                                            class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors"
+                                            :class="value === opt.id ? 'text-blue-600 font-bold bg-blue-50/30' : 'text-slate-600'">
+                                            <div class="flex items-center justify-between">
+                                                <span x-text="opt.name" class="uppercase"></span>
+                                                <svg x-show="value === opt.id" class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Baris 2: Search --}}
                     <div class="relative w-full md:w-80">
                         <input type="text" id="searchInput" 
                             value="{{ request('search') }}"
@@ -188,10 +251,22 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse($wpData as $wp)
-                            <tr class="hover:bg-slate-50 transition-colors">
+                            {{-- Main Row --}}
+                            <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
+                                onclick="toggleAccordion('{{ $wp['npwpd'] }}-{{ $wp['nop'] }}')"
+                                data-npwpd="{{ $wp['npwpd'] }}"
+                                data-nop="{{ $wp['nop'] }}">
                                 <td class="px-6 py-4">
-                                    <div class="font-bold text-slate-900 leading-tight uppercase">{{ $wp['nm_wp'] }}</div>
-                                    <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ $wp['npwpd'] }}</div>
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200 accordion-chevron-{{ $wp['npwpd'] }}-{{ $wp['nop'] }}"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                        <div>
+                                            <div class="font-bold text-slate-900 leading-tight uppercase">{{ $wp['nm_wp'] }}</div>
+                                            <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ $wp['npwpd'] }} / {{ $wp['tax_type_name'] ?? '-' }}</div>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     @if($wp['status_code'] == '1')
@@ -217,6 +292,27 @@
                                     @else
                                         <span class="text-slate-300">-</span>
                                     @endif
+                                </td>
+                            </tr>
+
+                            {{-- Accordion Row --}}
+                            <tr id="accordion-{{ $wp['npwpd'] }}-{{ $wp['nop'] }}" class="hidden">
+                                <td colspan="6" class="px-0 py-0 border-b border-slate-100">
+                                    <div class="bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+                                        {{-- Header accordion --}}
+                                        <div class="flex items-center gap-2 mb-4">
+                                            <div class="w-1 h-4 bg-rose-500 rounded-full"></div>
+                                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rincian Tunggakan per Bulan — {{ $year }}</span>
+                                        </div>
+                                        <div class="accordion-data-{{ $wp['npwpd'] }}-{{ $wp['nop'] }}">
+                                            {{-- Loading skeleton --}}
+                                            <div class="flex gap-2">
+                                                @for($i = 0; $i < 4; $i++)
+                                                    <div class="flex-1 h-16 bg-slate-100 rounded-xl animate-pulse"></div>
+                                                @endfor
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -259,6 +355,138 @@
                     form.submit();
                 }, 500);
             });
+
+            // searchable-select dispatches a 'submit' event on the form — intercept and submit
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                form.submit();
+            });
+
+            // Status filter logic — handled by Alpine.js dropdown above
+
+            // Accordion tunggakan per bulan
+            const accordionLoaded = {};
+            const tunggakanUrl = "{{ route('admin.realization-monitoring.wp-tunggakan', [$upt, $employee]) }}";
+
+            window.toggleAccordion = function(key) {
+                const row = document.getElementById('accordion-' + key);
+                const chevron = document.querySelector('.accordion-chevron-' + key);
+                const isHidden = row.classList.contains('hidden');
+
+                row.classList.toggle('hidden');
+                if (chevron) chevron.classList.toggle('rotate-180');
+
+                if (isHidden && !accordionLoaded[key]) {
+                    accordionLoaded[key] = true;
+                    const mainRow = document.querySelector('[data-npwpd]' + '[data-nop]');
+                    const tr = document.querySelector(`tr[onclick="toggleAccordion('${key}')"]`);
+                    const npwpd = tr.dataset.npwpd;
+                    const nop   = tr.dataset.nop;
+                    const year  = document.getElementById('yearValue').value;
+                    const container = document.querySelector('.accordion-data-' + key);
+
+                    fetch(`${tunggakanUrl}?npwpd=${encodeURIComponent(npwpd)}&nop=${encodeURIComponent(nop)}&year=${year}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.length) {
+                                container.innerHTML = `
+                                    <div class="flex items-center gap-3 py-2 text-slate-400">
+                                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span class="text-xs font-bold text-emerald-600">Lunas — tidak ada tunggakan untuk objek ini.</span>
+                                    </div>`;
+                                return;
+                            }
+
+                            const fmt = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
+                            const totalKetetapan = data.reduce((s, r) => s + r.total_ketetapan, 0);
+                            const totalBayar     = data.reduce((s, r) => s + r.total_bayar, 0);
+                            const totalTunggakan = data.reduce((s, r) => s + r.total_tunggakan, 0);
+                            const pct = totalKetetapan > 0 ? Math.min((totalBayar / totalKetetapan) * 100, 100) : 0;
+
+                            // Summary bar
+                            let html = `
+                            <div class="mb-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                <div class="flex flex-wrap gap-4 mb-3">
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Ketetapan</p>
+                                        <p class="text-sm font-black text-slate-700">${fmt(totalKetetapan)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Terbayar</p>
+                                        <p class="text-sm font-black text-emerald-600">${fmt(totalBayar)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sisa Tunggakan</p>
+                                        <p class="text-sm font-black text-rose-600">${fmt(totalTunggakan)}</p>
+                                    </div>
+                                    <div class="ml-auto text-right">
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Progress Bayar</p>
+                                        <p class="text-sm font-black ${pct >= 100 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-rose-600'}">${pct.toFixed(1)}%</p>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-2">
+                                    <div class="h-2 rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-emerald-400' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-500'}"
+                                        style="width:${pct}%"></div>
+                                </div>
+                            </div>`;
+
+                            // Monthly cards
+                            html += '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">';
+                            data.forEach(r => {
+                                const hasTunggakan = r.total_tunggakan > 0;
+                                const lunas = !hasTunggakan && r.total_bayar > 0;
+                                const belumBayar = r.total_bayar === 0;
+
+                                let cardClass, badgeClass, badgeText;
+                                if (lunas) {
+                                    cardClass = 'bg-emerald-50 border-emerald-200';
+                                    badgeClass = 'bg-emerald-100 text-emerald-700';
+                                    badgeText = 'Lunas';
+                                } else if (hasTunggakan && r.total_bayar > 0) {
+                                    cardClass = 'bg-amber-50 border-amber-200';
+                                    badgeClass = 'bg-amber-100 text-amber-700';
+                                    badgeText = 'Sebagian';
+                                } else {
+                                    cardClass = 'bg-rose-50 border-rose-200';
+                                    badgeClass = 'bg-rose-100 text-rose-700';
+                                    badgeText = 'Belum Bayar';
+                                }
+
+                                const monthPct = r.total_ketetapan > 0
+                                    ? Math.min((r.total_bayar / r.total_ketetapan) * 100, 100) : 0;
+
+                                html += `
+                                <div class="rounded-xl border p-3 ${cardClass}">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-[11px] font-black text-slate-700">${r.bulan}</span>
+                                        <span class="text-[8px] font-black px-1.5 py-0.5 rounded-full ${badgeClass}">${badgeText}</span>
+                                    </div>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Ketetapan</p>
+                                    <p class="text-xs font-black text-slate-700 mb-1">${fmt(r.total_ketetapan)}</p>
+                                    ${hasTunggakan ? `
+                                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Tunggakan</p>
+                                        <p class="text-xs font-black text-rose-600">${fmt(r.total_tunggakan)}</p>
+                                    ` : `
+                                        <p class="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Terbayar</p>
+                                        <p class="text-xs font-black text-emerald-600">${fmt(r.total_bayar)}</p>
+                                    `}
+                                    <div class="mt-2 w-full bg-white/60 rounded-full h-1">
+                                        <div class="h-1 rounded-full ${lunas ? 'bg-emerald-400' : hasTunggakan && r.total_bayar > 0 ? 'bg-amber-400' : 'bg-rose-400'}"
+                                            style="width:${monthPct}%"></div>
+                                    </div>
+                                </div>`;
+                            });
+                            html += '</div>';
+
+                            container.innerHTML = html;
+                        })
+                        .catch(() => {
+                            container.innerHTML = '<p class="text-xs text-rose-400 italic py-2">Gagal memuat data.</p>';
+                        });
+                }
+            };
 
             // Sort logic
             document.querySelectorAll('th[data-sort]').forEach(th => {

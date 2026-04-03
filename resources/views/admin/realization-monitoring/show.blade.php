@@ -70,14 +70,15 @@
                             $pct = $data['attainment_pct'];
                             $rank = $index + 1;
                             
-                            $statusLabel = 'Kurang';
-                            $statusColor = 'bg-rose-100 text-rose-700 border-rose-200';
-                            if($pct >= 90) {
+                            if($pct >= 100) {
                                 $statusLabel = 'Tercapai';
                                 $statusColor = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                             } elseif($pct >= 50) {
                                 $statusLabel = 'Hampir Tercapai';
                                 $statusColor = 'bg-amber-100 text-amber-700 border-amber-200';
+                            } else {
+                                $statusLabel = 'Belum Tercapai';
+                                $statusColor = 'bg-rose-100 text-rose-700 border-rose-200';
                             }
                         @endphp
                         <tr class="hover:bg-slate-50 transition-colors group">
@@ -112,7 +113,7 @@
                             <td class="px-6 py-4 min-w-[180px]">
                                 <div class="flex items-center gap-3">
                                     <div class="flex-1 bg-slate-100 rounded-full h-2 ring-1 ring-slate-100">
-                                        <div class="h-full rounded-full transition-all duration-700 {{ $pct >= 90 ? 'bg-emerald-500' : ($pct >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
+                                        <div class="h-full rounded-full transition-all duration-700 {{ $pct >= 100 ? 'bg-emerald-500' : ($pct >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
                                             style="width: {{ min($pct, 100) }}%"></div>
                                     </div>
                                     <span class="text-xs font-black text-slate-600 w-12 text-right">{{ number_format($pct, 1) }}%</span>

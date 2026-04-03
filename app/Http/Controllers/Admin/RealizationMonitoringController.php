@@ -12,6 +12,7 @@ use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -46,11 +47,12 @@ class RealizationMonitoringController extends Controller
         $year = $request->integer('year', (int) date('Y'));
         $month = $request->integer('month', (int) date('n'));
         $search = $request->query('search');
-        $sortBy = $request->query('sort_by', 'sptpd');
+        $sortBy = $request->query('sort_by', 'tunggakan');
         $sortDir = $request->query('sort_dir', 'desc');
         $taxTypeId = $request->query('tax_type_id');
+        $statusFilter = $request->query('status_filter', '1'); // default: aktif saja
 
-        $result = $showEmployeeMonitoring($upt, $employee, $year, $month, $search, $sortBy, $sortDir, $taxTypeId);
+        $result = $showEmployeeMonitoring($upt, $employee, $year, $month, $search, $sortBy, $sortDir, $taxTypeId, $statusFilter);
 
         return view('admin.realization-monitoring.employee', $result);
     }
@@ -64,6 +66,35 @@ class RealizationMonitoringController extends Controller
         $filename = "realisasi-{$upt->code}-{$monthName}-{$year}.xlsx";
 
         return Excel::download(new UptRealizationExport($upt->id, $year, $month), $filename);
+    }
+
+    /**
+     * Return monthly tunggakan breakdown for a specific WP (for accordion).
+     */
+    public function wpTunggakan(Request $request, Upt $upt, User $employee): \Illuminate\Http\JsonResponse
+    {
+        $year  = $request->integer('year', (int) date('Y'));
+        $npwpd = $request->query('npwpd');
+        $nop   = $request->query('nop');
+
+        $months = DB::table('simpadu_tax_payers')
+            ->where('year', $year)
+            ->where('npwpd', $npwpd)
+            ->where('nop', $nop)
+            ->where('month', '>', 0)
+            ->orderBy('month')
+            ->get(['month', 'total_ketetapan', 'total_bayar', 'total_tunggakan']);
+
+        $bulanIndo = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+        $result = $months->map(fn($r) => [
+            'bulan'            => $bulanIndo[(int) $r->month] ?? $r->month,
+            'total_ketetapan'  => (float) $r->total_ketetapan,
+            'total_bayar'      => (float) $r->total_bayar,
+            'total_tunggakan'  => (float) max($r->total_tunggakan, 0),
+        ])->filter(fn($r) => $r['total_ketetapan'] > 0);
+
+        return response()->json($result->values());
     }
 
     /**

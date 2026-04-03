@@ -35,9 +35,10 @@ class ShowEmployeeMonitoringAction
         int $year, 
         int $month, 
         ?string $search = null,
-        ?string $sortBy = 'sptpd',
+        ?string $sortBy = 'tunggakan',
         ?string $sortDir = 'desc',
-        ?string $taxTypeId = null
+        ?string $taxTypeId = null,
+        string $statusFilter = '1'  // '1' = aktif, '0' = non aktif, 'all' = semua
     ): array {
         $employee->load('districts');
 
@@ -49,12 +50,8 @@ class ShowEmployeeMonitoringAction
 
         // 1. Fetch Primary Tax Types for filter (Level 1 & 2 only)
         $taxTypes = TaxType::query()
+            ->whereNull('parent_id')
             ->whereNotNull('simpadu_code')
-            ->where(function($q) {
-                // Main categories: Roots or direct children of roots
-                $q->whereNull('parent_id')
-                  ->orWhereIn('parent_id', TaxType::whereNull('parent_id')->pluck('id'));
-            })
             ->orderBy('name')
             ->get(['id', 'name', 'simpadu_code']);
 
@@ -64,6 +61,10 @@ class ShowEmployeeMonitoringAction
         $summaryQuery = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->whereIn('kd_kecamatan', $assignedDistrictCodes);
+
+        if ($statusFilter !== 'all') {
+            $summaryQuery->where('status', $statusFilter);
+        }
         
         if ($selectedTaxType) {
             $summaryQuery->where('ayat', $selectedTaxType->simpadu_code);
@@ -83,29 +84,49 @@ class ShowEmployeeMonitoringAction
         ];
 
         // 3. Fetch Paginated, Filtered & Sorted WP Data
-        $sortMapping = [
-            'name' => 'nm_wp',
-            'sptpd' => 'total_ketetapan',
-            'bayar' => 'total_bayar',
-            'selisih' => DB::raw('(total_bayar - total_ketetapan)'),
-            'tunggakan' => 'total_tunggakan',
-        ];
-
-        $orderCol = $sortMapping[$sortBy] ?? 'total_ketetapan';
+        // Aggregate by npwpd+nop (SUM across all months) to avoid duplicate rows per month
         $orderDir = in_array(strtolower($sortDir), ['asc', 'desc']) ? $sortDir : 'desc';
 
-        $query = DB::table('simpadu_tax_payers')
-            ->where('year', $year)
-            ->whereIn('kd_kecamatan', $assignedDistrictCodes)
-            ->when($selectedTaxType, fn($q) => $q->where('ayat', $selectedTaxType->simpadu_code))
+        $rawSortCols = [
+            'selisih' => '(SUM(stp.total_bayar) - SUM(stp.total_ketetapan))',
+        ];
+        $plainSortCols = [
+            'name'     => 'nm_wp',
+            'sptpd'    => 'total_ketetapan',
+            'bayar'    => 'total_bayar',
+            'tunggakan'=> 'total_tunggakan',
+        ];
+
+        $query = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)
+            ->whereIn('stp.kd_kecamatan', $assignedDistrictCodes)
+            ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', $statusFilter))
+            ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
-                    $sq->where('nm_wp', 'like', "%{$search}%")
-                      ->orWhere('npwpd', 'like', "%{$search}%")
-                      ->orWhere('nop', 'like', "%{$search}%");
+                    $sq->where('stp.nm_wp', 'like', "%{$search}%")
+                      ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                      ->orWhere('stp.nop', 'like', "%{$search}%");
                 });
             })
-            ->orderBy($orderCol, $orderDir);
+            ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.nm_op', 'stp.almt_op',
+                      'stp.kd_kecamatan', 'stp.ayat', 'stp.status', 'tax_types.name')
+            ->selectRaw('
+                stp.npwpd, stp.nop, stp.nm_wp, stp.nm_op, stp.almt_op,
+                stp.kd_kecamatan, stp.ayat, stp.status,
+                tax_types.name as tax_type_name,
+                SUM(stp.total_ketetapan) as total_ketetapan,
+                LEAST(SUM(stp.total_bayar), SUM(stp.total_ketetapan)) as total_bayar,
+                GREATEST(SUM(stp.total_ketetapan) - SUM(stp.total_bayar), 0) as total_tunggakan
+            ');
+
+        if (isset($rawSortCols[$sortBy])) {
+            $query->orderByRaw($rawSortCols[$sortBy] . ' ' . $orderDir);
+        } else {
+            $col = $plainSortCols[$sortBy] ?? 'total_ketetapan';
+            $query->orderBy($col, $orderDir);
+        }
 
         $wpData = $query->paginate(15)->through(function ($row) {
             $statusStr = (string) $row->status;
@@ -115,6 +136,7 @@ class ShowEmployeeMonitoringAction
                 'npwpd' => $row->npwpd,
                 'nop' => $row->nop,
                 'nm_wp' => $row->nm_wp,
+                'tax_type_name' => $row->tax_type_name,
                 'status' => $isActive ? 'AKTIF' : 'NON AKTIF',
                 'status_code' => $statusStr,
                 'total_sptpd' => (float) $row->total_ketetapan,
@@ -142,6 +164,7 @@ class ShowEmployeeMonitoringAction
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
             'taxTypeId' => $taxTypeId,
+            'statusFilter' => $statusFilter,
         ];
     }
 
@@ -161,9 +184,10 @@ class ShowEmployeeMonitoringAction
             'taxTypes' => collect(),
             'year' => $year,
             'month' => $month,
-            'sortBy' => 'sptpd',
+            'sortBy' => 'tunggakan',
             'sortDir' => 'desc',
             'taxTypeId' => null,
+            'statusFilter' => '1',
         ];
     }
 }

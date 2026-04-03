@@ -1,32 +1,7 @@
 <x-layouts.admin title="Dashboard UPT" header="Ringkasan UPT">
     <x-slot:headerActions>
         <form action="{{ route('admin.dashboard') }}" method="GET" id="filterForm" class="flex items-center gap-2">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Wilayah:</span>
-            <div class="relative" id="districtDropdownWrapper">
-                <button type="button" id="districtDropdownBtn"
-                    class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-                    <span id="districtDropdownLabel">
-                        {{ $isAllDistricts ? 'Semua Wilayah' : ($selectedDistrictId ? $assignedDistricts->firstWhere('id', $selectedDistrictId)?->name : 'Pilih Wilayah') }}
-                    </span>
-                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-                <input type="hidden" name="district_id" id="districtValue" value="{{ $isAllDistricts ? 'all' : $selectedDistrictId }}">
-                <div id="districtDropdownMenu" class="hidden absolute right-0 z-20 mt-1 min-w-max bg-white border border-slate-200 rounded-lg shadow-lg py-1">
-                    <button type="button" data-value="all" data-label="Semua Wilayah"
-                        class="district-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ $isAllDistricts ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
-                        Semua Wilayah
-                    </button>
-                    @foreach($assignedDistricts as $district)
-                        <button type="button" data-value="{{ $district->id }}" data-label="{{ $district->name }}"
-                            class="district-option w-full text-left px-4 py-2 text-sm hover:bg-slate-50 {{ !$isAllDistricts && $selectedDistrictId == $district->id ? 'font-semibold text-blue-600' : 'text-slate-700' }}">
-                            {{ $district->name }}
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-
+            <input type="hidden" name="district_id" value="{{ $isAllDistricts ? 'all' : $selectedDistrictId }}">
             <span class="text-xs font-semibold text-slate-500 uppercase">Tahun:</span>
             <div class="relative" id="yearDropdownWrapper">
                 <button type="button" id="yearDropdownBtn"
@@ -67,10 +42,6 @@
                     <p class="text-sm font-bold text-slate-800">{{ auth()->user()->upt?->name ?? 'UPT' }}</p>
                 </div>
             </div>
-            <div class="text-right text-[10px]">
-                <p class="text-slate-400 font-bold uppercase tracking-wider">Filter Aktif</p>
-                <p class="font-bold text-slate-800">{{ $isAllDistricts ? 'Semua Wilayah' : $assignedDistricts->firstWhere('id', $selectedDistrictId)?->name }} ({{ $selectedYear }})</p>
-            </div>
         </div>
 
         {{-- Statistik Utama Section (REVERTED TO BIG CARDS) --}}
@@ -110,8 +81,74 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {{-- Kepatuhan Pelaporan Section --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30">
-                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Kepatuhan Pelaporan Bulan Ini</h3>
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30 flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Kepatuhan Pelaporan</h3>
+                        @if($compliance)
+                        @php
+                            $bulanIndo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                        @endphp
+                        <p class="text-[10px] text-slate-400 mt-0.5">Bulan: <span class="font-bold text-slate-600">{{ $bulanIndo[$compliance['month']] }} {{ $selectedYear }}</span></p>
+                        @endif
+                    </div>
+                    {{-- Dropdown bulan --}}
+                    <form action="{{ route('admin.dashboard') }}" method="GET" id="complianceMonthForm">
+                        <input type="hidden" name="year" value="{{ $selectedYear }}">
+                        <input type="hidden" name="district_id" value="{{ $isAllDistricts ? 'all' : $selectedDistrictId }}">
+                        <input type="hidden" name="priority_district_id" value="{{ request('priority_district_id') }}">
+                        <input type="hidden" name="compliance_month" id="complianceMonthValue" value="{{ $compliance['month'] ?? date('n') }}">
+                        <div class="w-36 relative" x-data='{
+                            open: false,
+                            value: "{{ $compliance["month"] ?? date("n") }}",
+                            options: [
+                                {id:"1",name:"Januari"},{id:"2",name:"Februari"},{id:"3",name:"Maret"},
+                                {id:"4",name:"April"},{id:"5",name:"Mei"},{id:"6",name:"Juni"},
+                                {id:"7",name:"Juli"},{id:"8",name:"Agustus"},{id:"9",name:"September"},
+                                {id:"10",name:"Oktober"},{id:"11",name:"November"},{id:"12",name:"Desember"}
+                            ],
+                            get label() {
+                                return this.options.find(o => o.id === String(this.value))?.name ?? "Pilih Bulan";
+                            },
+                            select(opt) {
+                                this.value = opt.id;
+                                this.open = false;
+                                document.getElementById("complianceMonthValue").value = opt.id;
+                                document.getElementById("complianceMonthForm").submit();
+                            }
+                        }'>
+                            <button type="button" @click="open = !open" @click.away="open = false"
+                                class="w-full flex items-center justify-between px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 focus:outline-none transition-all">
+                                <span x-text="label" class="font-bold text-slate-900 truncate"></span>
+                                <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="open"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute right-0 z-50 mt-2 w-full bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden"
+                                style="display:none;">
+                                <div class="py-1 max-h-60 overflow-y-auto">
+                                    <template x-for="opt in options" :key="opt.id">
+                                        <button type="button" @click="select(opt)"
+                                            class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors"
+                                            :class="String(value) === opt.id ? 'text-blue-600 font-bold bg-blue-50/30' : 'text-slate-600'">
+                                            <div class="flex items-center justify-between">
+                                                <span x-text="opt.name"></span>
+                                                <svg x-show="String(value) === opt.id" class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
                 <div class="p-6 flex-1 flex flex-col justify-center items-center">
                     @if($compliance)
@@ -170,9 +207,30 @@
 
         {{-- Prioritas Penagihan Section --}}
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30 flex justify-between items-center">
-                <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Prioritas Penagihan (Tunggakan Terbesar)</h3>
-                <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Tindak Lanjut Segera</span>
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/30 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-widest">Prioritas Penagihan (Tunggakan Terbesar)</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5">
+                        Wilayah: <span class="font-bold text-slate-600">{{ $selectedPriorityDistrict ? $selectedPriorityDistrict->name : 'Semua Wilayah' }}</span>
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    {{-- Filter Wilayah khusus prioritas pakai searchable-select --}}
+                    <form action="{{ route('admin.dashboard') }}" method="GET" id="priorityFilterForm">
+                        <input type="hidden" name="year" value="{{ $selectedYear }}">
+                        <input type="hidden" name="district_id" value="{{ $isAllDistricts ? 'all' : $selectedDistrictId }}">
+                        <input type="hidden" name="priority_district_id" id="priorityDistrictHidden" value="{{ $priorityDistrictId ?? '' }}">
+                        <div class="w-48">
+                            <x-searchable-select
+                                target-input-id="priorityDistrictHidden"
+                                :value="$priorityDistrictId ?? ''"
+                                placeholder="Semua Wilayah"
+                                :options="$assignedDistricts->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->toArray()"
+                            />
+                        </div>
+                    </form>
+                    <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Tindak Lanjut Segera</span>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-xs text-left">
@@ -213,32 +271,15 @@
     </div>
 
     <script>
-        // District dropdown
-        document.getElementById('districtDropdownBtn').addEventListener('click', () => {
-            document.getElementById('districtDropdownMenu').classList.toggle('hidden');
-        });
-
         // Year dropdown
         document.getElementById('yearDropdownBtn').addEventListener('click', () => {
             document.getElementById('yearDropdownMenu').classList.toggle('hidden');
         });
 
         document.addEventListener('click', function (e) {
-            if (!document.getElementById('districtDropdownWrapper').contains(e.target)) {
-                document.getElementById('districtDropdownMenu').classList.add('hidden');
-            }
             if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
                 document.getElementById('yearDropdownMenu').classList.add('hidden');
             }
-        });
-
-        document.querySelectorAll('.district-option').forEach(function (opt) {
-            opt.addEventListener('click', function () {
-                document.getElementById('districtValue').value = this.dataset.value;
-                document.getElementById('districtDropdownLabel').textContent = this.dataset.label;
-                document.getElementById('districtDropdownMenu').classList.add('hidden');
-                document.getElementById('filterForm').submit();
-            });
         });
 
         document.querySelectorAll('.year-option').forEach(function (opt) {
@@ -248,6 +289,12 @@
                 document.getElementById('yearDropdownMenu').classList.add('hidden');
                 document.getElementById('filterForm').submit();
             });
+        });
+
+        // searchable-select di prioritas penagihan dispatch submit event ke form
+        document.getElementById('priorityFilterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            this.submit();
         });
     </script>
 </x-layouts.admin>

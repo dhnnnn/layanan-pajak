@@ -11,7 +11,7 @@ class GetTaxPayerMatrixAction
     /**
      * Fetch Tax Payers matrix data from local database.
      */
-    public function __invoke(int $year, int $startMonth, int $endMonth, ?string $search = null, ?array $districtCodes = null)
+    public function __invoke(int $year, int $startMonth, int $endMonth, ?string $search = null, ?array $districtCodes = null, string $statusFilter = '1', ?string $ayat = null)
     {
         // 1. Define months in range
         $months = range($startMonth, $endMonth);
@@ -37,6 +37,8 @@ class GetTaxPayerMatrixAction
                 });
             })
             ->when($districtCodes, fn($q) => $q->whereIn('s.kd_kecamatan', $districtCodes))
+            ->when($statusFilter !== 'all', fn($q) => $q->where('s.status', $statusFilter))
+            ->when($ayat, fn($q) => $q->where('s.ayat', $ayat))
             ->groupBy(['s.npwpd', 's.nop', 's.nm_wp', 's.nm_op', 's.almt_op', 's.kd_kecamatan', 's.status'])
             ->orderBy('s.nm_wp');
 
@@ -66,21 +68,38 @@ class GetTaxPayerMatrixAction
             ->get()
             ->groupBy(fn($r) => "{$r->npwpd}-{$r->nop}");
 
+        // 4b. Fetch monthly bayar from simpadu_tax_payers
+        $payments = DB::table('simpadu_tax_payers')
+            ->where('year', $year)
+            ->whereBetween('month', [$startMonth, $endMonth])
+            ->where(function($q) use ($pairs) {
+                foreach ($pairs as $pair) {
+                    $q->orWhere(function($sq) use ($pair) {
+                        $sq->where('npwpd', $pair['npwpd'])->where('nop', $pair['nop']);
+                    });
+                }
+            })
+            ->get(['npwpd', 'nop', 'month', 'total_bayar'])
+            ->groupBy(fn($r) => "{$r->npwpd}-{$r->nop}");
+
         // 5. Fetch district names for display
         $districts = DB::connection('simpadunew')->table('ref_kecamatan')->pluck('nm_kecamatan', 'kd_kecamatan');
 
         // 6. Map reports into each paginated item
-        $paginated->getCollection()->transform(function ($wp) use ($reports, $months, $districts) {
+        $paginated->getCollection()->transform(function ($wp) use ($reports, $payments, $months, $districts) {
             $key = "{$wp->npwpd}-{$wp->nop}";
-            $wpReports = $reports->get($key, collect());
+            $wpReports  = $reports->get($key, collect());
+            $wpPayments = $payments->get($key, collect());
             
             $wp->monthly_data = [];
             foreach ($months as $m) {
-                $report = $wpReports->firstWhere('month', $m);
+                $report  = $wpReports->firstWhere('month', $m);
+                $payment = $wpPayments->firstWhere('month', $m);
                 $wp->monthly_data[$m] = [
-                    'tgl_lapor'  => $report?->tgl_lapor ? Carbon::parse($report->tgl_lapor)->format('d-m-Y') : '-',
-                    'masa_pajak' => $report?->masa_pajak ?: '-',
-                    'jml_lapor'  => (float) ($report?->jml_lapor ?: 0),
+                    'tgl_lapor'   => $report?->tgl_lapor ? Carbon::parse($report->tgl_lapor)->format('d-m-Y') : '-',
+                    'masa_pajak'  => $report?->masa_pajak ?: '-',
+                    'jml_lapor'   => (float) ($report?->jml_lapor ?: 0),
+                    'total_bayar' => (float) ($payment?->total_bayar ?: 0),
                 ];
             }
 

@@ -13,7 +13,7 @@
     $selectedLabel = $selectedOption ? $selectedOption['name'] : $placeholder;
 @endphp
 
-<div class="relative" x-data='{
+<div class="relative w-full" x-data='{
     open: false,
     search: "",
     value: "{{ $value }}",

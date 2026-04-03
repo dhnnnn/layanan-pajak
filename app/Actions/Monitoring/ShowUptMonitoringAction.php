@@ -30,9 +30,10 @@ class ShowUptMonitoringAction
 
         $uptDistrictCodes = $upt->districts->pluck('simpadu_code')->filter()->toArray();
 
-        // Fetch data from LOCAL simpadu_tax_payers table
+        // Fetch data from LOCAL simpadu_tax_payers table (Filtered by Status: 1/Active)
         $districtStats = DB::table('simpadu_tax_payers')
             ->where('year', $year)
+            ->where('status', '1')
             ->whereIn('kd_kecamatan', $uptDistrictCodes)
             ->selectRaw('kd_kecamatan, SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_pay')
             ->groupBy('kd_kecamatan')

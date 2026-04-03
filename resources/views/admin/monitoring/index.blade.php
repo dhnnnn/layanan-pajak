@@ -28,18 +28,20 @@
         <form id="filterForm" action="{{ route('admin.monitoring.index') }}" method="GET">
             <input type="hidden" name="year" id="yearValue" value="{{ $selectedYear }}">
             <input type="hidden" name="district" id="districtValue" value="{{ $selectedDistrict }}">
+            <input type="hidden" name="status_filter" id="statusFilterValue" value="{{ $statusFilter }}">
+            <input type="hidden" name="ayat" id="ayatValue" value="{{ $selectedAyat }}">
 
             <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                {{-- Table Header / Filter Bar --}}
-                <div class="px-6 py-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white">
+                <div class="px-4 py-4 border-b border-slate-100 bg-white space-y-3">
+                    {{-- Title --}}
                     <div id="wpCountContainer">
                         <h4 class="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">Daftar Wajib Pajak Penanganan</h4>
-                        <p id="totalWpText" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">{{ $taxPayers->total() }} WP Terdeteksi</p>
+                        <p id="totalWpText" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{{ $taxPayers->total() }} WP Terdeteksi</p>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-3">
-                        {{-- District Filter --}}
-                        <div class="w-full md:w-auto">
+                    {{-- Baris 1: Kecamatan + Jenis Pajak --}}
+                    <div class="flex gap-2">
+                        <div class="flex-1 min-w-0">
                             <x-searchable-select 
                                 target-input-id="districtValue"
                                 :value="$selectedDistrict" 
@@ -47,53 +49,113 @@
                                 :options="$districts->map(fn($d) => ['id' => $d->simpadu_code, 'name' => $d->name])->toArray()"
                             />
                         </div>
+                        <div class="flex-1 min-w-0">
+                            <x-searchable-select 
+                                target-input-id="ayatValue"
+                                :value="$selectedAyat" 
+                                placeholder="Semua Jenis Pajak"
+                                :options="$taxTypes->map(fn($t) => ['id' => $t->simpadu_code, 'name' => $t->name])->toArray()"
+                            />
+                        </div>
+                    </div>
 
-                        {{-- Month Range Filters --}}
-                        <div class="flex items-center gap-3">
+                    {{-- Baris 2: Bulan dari + Bulan sampai + Status (1 baris di semua ukuran) --}}
+                    <div class="flex gap-2">
+                        <div class="flex-1 min-w-0">
                             <input type="hidden" name="month_from" id="monthFromValue" value="{{ $selectedMonthFrom }}">
                             <x-searchable-select 
                                 target-input-id="monthFromValue"
                                 :value="$selectedMonthFrom" 
-                                placeholder="Dari Bulan"
+                                placeholder="Dari"
                                 :options="collect(range(1, 12))->map(fn($m) => ['id' => $m, 'name' => \Carbon\Carbon::create()->month($m)->translatedFormat('F')])->toArray()"
                             />
-
+                        </div>
+                        <div class="flex-1 min-w-0">
                             <input type="hidden" name="month_to" id="monthToValue" value="{{ $selectedMonthTo }}">
                             <x-searchable-select 
                                 target-input-id="monthToValue"
                                 :value="$selectedMonthTo" 
-                                placeholder="Sampai Bulan"
+                                placeholder="Sampai"
                                 :options="collect(range(1, 12))->map(fn($m) => ['id' => $m, 'name' => \Carbon\Carbon::create()->month($m)->translatedFormat('F')])->toArray()"
                             />
                         </div>
-
-                        {{-- Search and Reset --}}
-                        <div class="flex items-center gap-2">
-                            <div class="relative w-full md:w-64">
-                                <input type="text" name="search" id="searchInput" 
-                                    value="{{ request('search') }}" 
-                                    placeholder="Cari Nama atau NPWPD..." 
-                                    class="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm">
-                                <div class="absolute left-3 top-2.5">
-                                    <svg id="searchIcon" class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                </div>
-                                <div id="searchSpinner" class="hidden absolute right-3 top-2.5">
-                                    <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
+                        <div class="flex-1 min-w-0 relative" x-data='{
+                            open: false,
+                            value: "{{ $statusFilter }}",
+                            options: [
+                                {id: "1",   name: "WP Aktif"},
+                                {id: "0",   name: "Non Aktif"},
+                                {id: "all", name: "Semua"}
+                            ],
+                            get label() {
+                                return this.options.find(o => o.id === this.value)?.name ?? "WP Aktif";
+                            },
+                            select(opt) {
+                                this.value = opt.id;
+                                this.open = false;
+                                const input = document.getElementById("statusFilterValue");
+                                input.value = opt.id;
+                                input.dispatchEvent(new Event("change", { bubbles: true }));
+                            }
+                        }'>
+                            <button type="button" @click="open = !open" @click.away="open = false"
+                                class="w-full flex items-center justify-between px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 hover:border-blue-400 focus:outline-none transition-all">
+                                <span x-text="label" class="font-bold text-slate-900 truncate"></span>
+                                <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="open"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute right-0 z-50 mt-2 w-36 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden"
+                                style="display:none;">
+                                <div class="py-1">
+                                    <template x-for="opt in options" :key="opt.id">
+                                        <button type="button" @click="select(opt)"
+                                            class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors"
+                                            :class="value === opt.id ? 'text-blue-600 font-bold bg-blue-50/30' : 'text-slate-600'">
+                                            <div class="flex items-center justify-between">
+                                                <span x-text="opt.name"></span>
+                                                <svg x-show="value === opt.id" class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </div>
+                                        </button>
+                                    </template>
                                 </div>
                             </div>
-
-                            <button type="button" id="resetBtn"
-                                class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-500 font-bold py-2 px-4 rounded-xl transition-all text-[11px] uppercase tracking-widest border border-slate-200 shadow-sm active:scale-95 group"
-                                title="Reset Filter">
-                                <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                </svg>
-                                <span>Reset</span>
-                            </button>
                         </div>
+                    </div>
+
+                    {{-- Baris 3: Search + Reset --}}
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" name="search" id="searchInput" 
+                                value="{{ request('search') }}" 
+                                placeholder="Cari Nama atau NPWPD..." 
+                                class="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all outline-none">
+                            <div class="absolute left-3 top-2.5">
+                                <svg id="searchIcon" class="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <div id="searchSpinner" class="hidden absolute right-3 top-2.5">
+                                <svg class="animate-spin h-3.5 w-3.5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <button type="button" id="resetBtn"
+                            class="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-500 font-bold py-2 px-3 rounded-xl transition-all text-xs uppercase tracking-widest border border-slate-200 active:scale-95 group shrink-0">
+                            <svg class="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Reset</span>
+                        </button>
                     </div>
                 </div>
 
@@ -210,7 +272,7 @@
             });
 
             // 2. Listen to hidden input changes (triggered by searchable-select's native 'change' event)
-            $(document).on('change', '#districtValue, #monthFromValue, #monthToValue, #yearValue', function() {
+            $(document).on('change', '#districtValue, #monthFromValue, #monthToValue, #yearValue, #statusFilterValue, #ayatValue', function() {
                 refreshTable();
             });
 

@@ -34,6 +34,7 @@ class DashboardController extends Controller
         $assignedDistricts = collect();
         $selectedDistrictId = $request->query('district_id');
         $isAllDistricts = $selectedDistrictId === 'all';
+        $priorityDistrictId = $request->query('priority_district_id'); // filter khusus prioritas penagihan
 
         if ($isKepalaUpt) {
             $uptId = $user->upt_id;
@@ -50,14 +51,16 @@ class DashboardController extends Controller
 
         $result = $generateDashboard($selectedYear, districtId: $selectedDistrictId, uptId: $uptId);
 
-        $view = $isKepalaUpt ? 'admin.dashboard_kepala_upt' : 'admin.dashboard';
+        $view = $isKepalaUpt ? 'admin.upt-head.dashboard' : 'admin.dashboard';
 
         $compliance = null;
         $topDelinquents = collect();
         $officerStats = collect();
 
         if ($isKepalaUpt && $user->upt) {
-            $currentMonth = date('n');
+            $currentMonth = (int) $request->query('compliance_month', date('n'));
+            // Clamp to valid month range
+            $currentMonth = max(1, min(12, $currentMonth));
             $districtCodes = $user->upt->districts->pluck('simpadu_code')->toArray();
 
             // Find current simpadu_code if district filter is set
@@ -70,8 +73,10 @@ class DashboardController extends Controller
             }
 
             // Calculate global totals from simpadu_tax_payers based on filter
+            // Use status='1' (active only) to match ShowUptMonitoringAction
             $simpaduTotals = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
+                ->where('status', '1')
                 ->whereIn('kd_kecamatan', $filterCodes)
                 ->select([
                     DB::raw('SUM(total_ketetapan) as target'),
@@ -106,12 +111,23 @@ class DashboardController extends Controller
                 ->count(['npwpd', 'nop', 'year', 'month']);
 
             $compliance = [
+                'month' => $currentMonth,
                 'total' => $totalWp,
                 'reported' => $reportedWp,
                 'percentage' => $totalWp > 0 ? ($reportedWp / $totalWp) * 100 : 0,
             ];
 
-            // 2. Prioritas Penagihan (Top 5 Tunggakan)
+            // 2. Prioritas Penagihan (Top 5 Tunggakan) — filter per wilayah terpisah
+            $priorityCodes = $districtCodes; // default semua wilayah UPT
+            $selectedPriorityDistrict = null;
+            if ($priorityDistrictId && $priorityDistrictId !== 'all') {
+                $targetDist = $assignedDistricts->firstWhere('id', $priorityDistrictId);
+                if ($targetDist && $targetDist->simpadu_code) {
+                    $priorityCodes = [$targetDist->simpadu_code];
+                    $selectedPriorityDistrict = $targetDist;
+                }
+            }
+
             $topDelinquents = DB::table('simpadu_tax_payers')
                 ->select([
                     'npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan',
@@ -120,15 +136,18 @@ class DashboardController extends Controller
                     DB::raw('SUM(total_ketetapan - total_bayar) as debt')
                 ])
                 ->where('year', $selectedYear)
-                ->whereIn('kd_kecamatan', $districtCodes)
+                ->where('status', '1')
+                ->whereIn('kd_kecamatan', $priorityCodes)
+                ->where('total_tunggakan', '>', 0)
                 ->groupBy(['npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan'])
                 ->orderByDesc('debt')
-                ->limit(5)
+                ->limit(10)
                 ->get();
 
             // 3. Kinerja Petugas (Top 5 berdasarkan attainment % wilayahnya)
             $districtStats = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
+                ->where('status', '1')
                 ->whereIn('kd_kecamatan', $districtCodes)
                 ->select([
                     'kd_kecamatan',
@@ -180,6 +199,8 @@ class DashboardController extends Controller
             'compliance' => $compliance,
             'topDelinquents' => $topDelinquents,
             'employeeDashboardData' => $employeeDashboardData ?? collect(),
+            'priorityDistrictId' => $priorityDistrictId,
+            'selectedPriorityDistrict' => $selectedPriorityDistrict ?? null,
         ]);
     }
 }

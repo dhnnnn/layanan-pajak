@@ -105,7 +105,7 @@
                                 <td class="px-6 py-4 min-w-[180px]">
                                     <div class="flex items-center gap-3">
                                         <div class="flex-1 bg-slate-100 rounded-full h-2 ring-1 ring-slate-100">
-                                            <div class="h-full rounded-full transition-all duration-700 {{ $pct >= 90 ? 'bg-emerald-500' : ($pct >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
+                                            <div class="h-full rounded-full transition-all duration-700 {{ $pct >= 100 ? 'bg-emerald-500' : ($pct >= 50 ? 'bg-amber-400' : 'bg-rose-500') }}"
                                                 style="width: {{ min($pct, 100) }}%"></div>
                                         </div>
                                         <span class="text-xs font-black text-slate-600 w-12 text-right">{{ number_format($pct, 1) }}%</span>

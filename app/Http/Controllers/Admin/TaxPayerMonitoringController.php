@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Actions\Simpadu\GetTaxPayerMatrixAction;
 use App\Models\District;
 use App\Models\OfficerTask;
+use App\Models\TaxType;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -21,6 +22,8 @@ class TaxPayerMonitoringController extends Controller
         $monthTo = $request->integer('month_to', (int) date('n'));
         $search = $request->string('search')->trim();
         $selectedDistrict = $request->string('district');
+        $statusFilter = $request->string('status_filter', '1')->toString();
+        $selectedAyat = $request->string('ayat')->toString();
 
         // Determine which district codes to filter by
         $districtCodes = null;
@@ -48,7 +51,7 @@ class TaxPayerMonitoringController extends Controller
             $districtCodes = [$districtCode];
         }
 
-        $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes);
+        $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes, $statusFilter, $selectedAyat ?: null);
         
         $officers = User::orderBy('name')->get(); 
 
@@ -59,14 +62,23 @@ class TaxPayerMonitoringController extends Controller
         }
         $districts = $districtsQuery->get();
 
+        $taxTypes = TaxType::query()
+            ->whereNull('parent_id')
+            ->whereNotNull('simpadu_code')
+            ->orderBy('name')
+            ->get(['id', 'name', 'simpadu_code']);
+
         $data = [
             'taxPayers' => $taxPayers,
             'officers' => $officers,
             'districts' => $districts,
+            'taxTypes' => $taxTypes,
             'selectedYear' => $year,
             'selectedMonthFrom' => $monthFrom,
             'selectedMonthTo' => $monthTo,
             'selectedDistrict' => (string) $selectedDistrict,
+            'selectedAyat' => $selectedAyat,
+            'statusFilter' => $statusFilter,
             'availableYears' => range(date('Y'), date('Y') - 5),
         ];
 

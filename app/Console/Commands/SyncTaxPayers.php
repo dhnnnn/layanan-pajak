@@ -67,7 +67,8 @@ class SyncTaxPayers extends Command
             ) x GROUP BY npwpd, nop
         ";
 
-        // 2. Summary Query (Objek Pajak + SPTPD + Payments)
+        // 2. Summary Query (Objek Pajak + SPTPD + Payments — Kohir Basis)
+        // Payments are matched via kohir to masa pajak month, not by tgl_bayar month.
         $sql = "
             SELECT
                 TRIM(s.npwpd) as npwpd,
@@ -81,15 +82,26 @@ class SyncTaxPayers extends Command
                 COALESCE(sptpd.tgl_lapor, NULL) as tgl_lapor,
                 COALESCE(sptpd.masa_pajak, NULL) as masa_pajak,
                 COALESCE(sptpd.total_ketetapan, 0) as total_ketetapan,
-                COALESCE(byr.total_bayar, 0) as total_bayar,
-                (COALESCE(sptpd.total_ketetapan, 0) - COALESCE(byr.total_bayar, 0)) as total_tunggakan
+                LEAST(COALESCE(byr.total_bayar, 0), COALESCE(sptpd.total_ketetapan, 0)) as total_bayar,
+                GREATEST(COALESCE(sptpd.total_ketetapan, 0) - COALESCE(byr.total_bayar, 0), 0) as total_tunggakan
             FROM dat_objek_pajak s
             LEFT JOIN dat_subjek_pajak sj ON sj.npwpd = s.npwpd
             LEFT JOIN ($sptpdSql) sptpd ON TRIM(sptpd.nop) = TRIM(s.nop) AND TRIM(sptpd.npwpd) = TRIM(s.npwpd)
             LEFT JOIN (
-                SELECT nop, npwpd, SUM(jml_byr_pokok + lainlain) AS total_bayar
-                FROM pembayaran WHERE YEAR(tgl_bayar) = :y AND MONTH(tgl_bayar) = :m
-                GROUP BY nop, npwpd
+                SELECT p.nop, p.npwpd, SUM(p.jml_byr_pokok) AS total_bayar
+                FROM pembayaran p
+                INNER JOIN (
+                    SELECT kohir FROM dat_sptpd_at      WHERE DATE_FORMAT(masa_awal, '%Y%m') = :bp1
+                    UNION
+                    SELECT kohir FROM dat_sptpd_reklame WHERE DATE_FORMAT(tgl_awal,  '%Y%m') = :bp2
+                    UNION
+                    SELECT kohir FROM dat_sptpd_minerba WHERE DATE_FORMAT(masa_awal, '%Y%m') = :bp3
+                    UNION
+                    SELECT kohir FROM dat_sptpd_ppj     WHERE DATE_FORMAT(masa_awal, '%Y%m') = :bp4
+                    UNION
+                    SELECT kohir FROM dat_sptpd_self    WHERE DATE_FORMAT(masa,      '%Y%m') = :bp5
+                ) valid_kohir ON valid_kohir.kohir = p.kohir
+                GROUP BY p.nop, p.npwpd
             ) byr ON TRIM(byr.nop) = TRIM(s.nop) AND TRIM(byr.npwpd) = TRIM(s.npwpd)
             WHERE s.STATUS = '1' 
                OR COALESCE(sptpd.total_ketetapan, 0) > 0 
@@ -98,7 +110,7 @@ class SyncTaxPayers extends Command
 
         $results = DB::connection('simpadunew')->select($sql, [
             'p1' => $period, 'p2' => $period, 'p3' => $period, 'p4' => $period, 'p5' => $period,
-            'y' => $year, 'm' => $month
+            'bp1' => $period, 'bp2' => $period, 'bp3' => $period, 'bp4' => $period, 'bp5' => $period,
         ]);
 
         $total = count($results);

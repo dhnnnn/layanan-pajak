@@ -16,8 +16,8 @@
             <tr class="bg-slate-50/50">
                 @for($m = $selectedMonthFrom; $m <= $selectedMonthTo; $m++)
                     <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Tgl SPTPD</th>
-                    <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Masa Pajak</th>
                     <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Jml SPTPD</th>
+                    <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Jml Bayar</th>
                 @endfor
             </tr>
         </thead>
@@ -43,11 +43,11 @@
                         <td class="px-2 py-3 border-r border-slate-50 text-center text-slate-500 font-bold text-[10px]">
                             {{ $data['tgl_lapor'] }}
                         </td>
-                        <td class="px-2 py-3 border-r border-slate-50 text-center text-slate-400 font-medium text-[10px]">
-                            {{ $data['masa_pajak'] }}
-                        </td>
                         <td class="px-2 py-3 border-r border-slate-50 text-right font-black {{ $data['jml_lapor'] > 0 ? 'text-blue-600' : 'text-slate-200' }}">
                             {{ $data['jml_lapor'] > 0 ? number_format($data['jml_lapor'], 0, ',', '.') : '-' }}
+                        </td>
+                        <td class="px-2 py-3 border-r border-slate-50 text-right font-black {{ $data['total_bayar'] > 0 ? 'text-emerald-600' : 'text-slate-200' }}">
+                            {{ $data['total_bayar'] > 0 ? number_format($data['total_bayar'], 0, ',', '.') : '-' }}
                         </td>
                     @endfor
                     <td class="px-6 py-4 text-center">
@@ -60,7 +60,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ 4 + ($selectedMonthTo - $selectedMonthFrom + 1) * 3 }}" class="px-6 py-20 text-center">
+                    <td colspan="{{ 4 + ($selectedMonthTo - $selectedMonthFrom + 1) * 4 }}" class="px-6 py-20 text-center">
                         <div class="flex flex-col items-center justify-center space-y-4">
                             <div class="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center">
                                 <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>

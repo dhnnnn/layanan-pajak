@@ -17,3 +17,16 @@ Schedule::command('simpadu:sync')
 Schedule::command('simpadu:sync-payers')
     ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_payers_sync.log'));
+
+// Monthly tax payer sync - runs daily at 03:00
+// Syncs current month data so accordion tunggakan per bulan is always fresh
+Schedule::call(function () {
+    Artisan::call('sync:tax-payers', [
+        '--year'  => (int) now()->year,
+        '--month' => (int) now()->month,
+    ]);
+})
+    ->dailyAt('03:00')
+    ->appendOutputTo(storage_path('logs/sync_tax_payers.log'))
+    ->name('sync:tax-payers-monthly')
+    ->withoutOverlapping();

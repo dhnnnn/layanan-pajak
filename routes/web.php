@@ -10,8 +10,8 @@ use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Employee\DailyEntryController;
-use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\Employee\RealizationController;
+use App\Http\Controllers\FieldOfficer\DashboardController as FieldOfficerController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
@@ -73,6 +73,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
         Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');
         Route::get('realization-monitoring/{upt}/employee/{employee}', [RealizationMonitoringController::class, 'employeeDetail'])->name('realization-monitoring.employee');
+        Route::get('realization-monitoring/{upt}/employee/{employee}/wp-tunggakan', [RealizationMonitoringController::class, 'wpTunggakan'])->name('realization-monitoring.wp-tunggakan');
 
         // Target Pajak (APBD)
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
@@ -98,8 +99,8 @@ Route::middleware(['auth', 'role:pegawai|kepala_upt'])
     ->prefix('pegawai')
     ->name('pegawai.')
     ->group(function (): void {
-        // Dashboard
-        Route::get('/dashboard', [EmployeeDashboardController::class, 'show'])->name('dashboard');
+        // Dashboard — field officer monitoring
+        Route::get('/dashboard', [FieldOfficerController::class, 'index'])->name('dashboard');
 
         // Realisasi Pajak - Daily Entries
         Route::get('districts/{districtId}/entries', [DailyEntryController::class, 'show'])->name('daily-entries.show');
@@ -114,4 +115,14 @@ Route::middleware(['auth', 'role:pegawai|kepala_upt'])
             'realizations',
             RealizationController::class,
         )->except(['destroy']);
+
+        // Monitoring Field Officer
+        Route::get('monitoring', [FieldOfficerController::class, 'index'])->name('monitoring.index');
+        Route::get('monitoring/tunggakan', [FieldOfficerController::class, 'tunggakan'])->name('monitoring.tunggakan');
+        Route::get('monitoring/wp-per-kecamatan', [FieldOfficerController::class, 'wpPerKecamatan'])->name('monitoring.wp-per-kecamatan');
+        Route::get('monitoring/pencapaian-target', [FieldOfficerController::class, 'pencapaianTarget'])->name('monitoring.pencapaian-target');
+        Route::get('monitoring/realisasi-bulanan', [FieldOfficerController::class, 'realisasiBulanan'])->name('monitoring.realisasi-bulanan');
+        Route::get('monitoring/status-pembayaran', [FieldOfficerController::class, 'statusPembayaran'])->name('monitoring.status-pembayaran');
+        Route::get('monitoring/pencarian', [FieldOfficerController::class, 'pencarian'])->name('monitoring.pencarian');
+        Route::get('monitoring/wp/{npwpd}', [FieldOfficerController::class, 'detailWp'])->name('monitoring.wp-detail');
     });
