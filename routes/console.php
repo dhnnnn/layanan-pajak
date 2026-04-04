@@ -9,7 +9,12 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Synchronization Schedule - every 6 hours
+// Sync realisasi bulanan dashboard — setiap jam (ringan, hanya 48 records)
+Schedule::command('simpadu:sync --skip-wp')
+    ->hourly()
+    ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
+
+// Sync WP lengkap (berat ~25 detik) — setiap 6 jam
 Schedule::command('simpadu:sync')
     ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
@@ -18,20 +23,18 @@ Schedule::command('simpadu:sync-payers')
     ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_payers_sync.log'));
 
-// Sync tax payer data per bulan (untuk accordion tunggakan per bulan)
-// Jalankan setiap hari: sync bulan berjalan + bulan sebelumnya (untuk WP yang telat bayar)
+// Sync tax payer data per bulan — setiap 2 jam
 Schedule::call(function () {
     $year = (int) now()->year;
     $currentMonth = (int) now()->month;
 
     Artisan::call('sync:tax-payers', ['--year' => $year, '--month' => $currentMonth]);
 
-    // Sync bulan sebelumnya juga agar WP yang telat bayar ter-update
     if ($currentMonth > 1) {
         Artisan::call('sync:tax-payers', ['--year' => $year, '--month' => $currentMonth - 1]);
     }
 })
-    ->dailyAt('03:00')
+    ->everyTwoHours()
     ->name('sync:tax-payers-monthly')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/sync_tax_payers.log'));
