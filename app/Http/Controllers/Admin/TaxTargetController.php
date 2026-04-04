@@ -6,7 +6,7 @@ use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Actions\Tax\ShowTaxTargetDetailAction;
 use App\Exports\TaxTargetExport;
 use App\Http\Controllers\Controller;
-use App\Models\TaxTarget;
+use App\Models\SimpaduTarget;
 use App\Models\TaxType;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -19,7 +19,7 @@ class TaxTargetController extends Controller
         Request $request,
         GenerateTaxDashboardAction $generateDashboard,
     ): View {
-        $availableYears = TaxTarget::query()
+        $availableYears = SimpaduTarget::query()
             ->distinct()
             ->orderByDesc('year')
             ->pluck('year');
@@ -45,14 +45,14 @@ class TaxTargetController extends Controller
     }
 
     public function show(
-        TaxType $taxType, 
-        Request $request, 
+        TaxType $taxType,
+        Request $request,
         ShowTaxTargetDetailAction $showDetail
     ): View {
         $year = $request->filled('year') ? (int) $request->year : (int) date('Y');
         $search = $request->query('search');
         $selectedDistrict = $request->query('district');
-        
+
         $result = $showDetail($taxType, $year, $search, $selectedDistrict);
 
         return view('admin.tax-targets.show', [

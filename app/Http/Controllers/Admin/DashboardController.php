@@ -5,10 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DashboardRequest;
-use App\Models\TaxTarget;
-use Illuminate\Support\Facades\DB;
-use App\Models\OfficerTask;
+use App\Models\SimpaduTarget;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -20,7 +19,7 @@ class DashboardController extends Controller
         $user = auth()->user();
         $isKepalaUpt = $user->isKepalaUpt();
 
-        $availableYears = TaxTarget::query()
+        $availableYears = SimpaduTarget::query()
             ->distinct()
             ->orderByDesc('year')
             ->pluck('year');
@@ -49,7 +48,7 @@ class DashboardController extends Controller
             }
         }
 
-        $result = $generateDashboard($selectedYear, districtId: $selectedDistrictId, uptId: $uptId);
+        $result = $generateDashboard($selectedYear, search: $request->query('search'));
 
         $view = $isKepalaUpt ? 'admin.upt-head.dashboard' : 'admin.dashboard';
 
@@ -65,7 +64,7 @@ class DashboardController extends Controller
 
             // Find current simpadu_code if district filter is set
             $filterCodes = $districtCodes;
-            if ($selectedDistrictId && !$isAllDistricts) {
+            if ($selectedDistrictId && ! $isAllDistricts) {
                 $targetDist = $assignedDistricts->firstWhere('id', $selectedDistrictId);
                 if ($targetDist && $targetDist->simpadu_code) {
                     $filterCodes = [$targetDist->simpadu_code];
@@ -81,14 +80,14 @@ class DashboardController extends Controller
                 ->whereIn('kd_kecamatan', $filterCodes)
                 ->select([
                     DB::raw('SUM(total_ketetapan) as target'),
-                    DB::raw('SUM(total_bayar) as realization')
+                    DB::raw('SUM(total_bayar) as realization'),
                 ])
                 ->first();
 
             $result['totals']['target'] = $simpaduTotals->target ?? 0;
             $result['totals']['realization'] = $simpaduTotals->realization ?? 0;
-            $result['totals']['percentage'] = ($result['totals']['target'] > 0) 
-                ? ($result['totals']['realization'] / $result['totals']['target']) * 100 
+            $result['totals']['percentage'] = ($result['totals']['target'] > 0)
+                ? ($result['totals']['realization'] / $result['totals']['target']) * 100
                 : 0;
 
             // 1. Kepatuhan Pelaporan (Bulan Berjalan)
@@ -103,11 +102,11 @@ class DashboardController extends Controller
             $reportedWp = DB::table('simpadu_sptpd_reports')
                 ->where('year', $selectedYear)
                 ->where('month', $currentMonth)
-                ->whereIn('npwpd', function($q) use ($districtCodes, $selectedYear) {
+                ->whereIn('npwpd', function ($q) use ($districtCodes, $selectedYear) {
                     $q->select('npwpd')
-                      ->from('simpadu_tax_payers')
-                      ->where('year', $selectedYear)
-                      ->whereIn('kd_kecamatan', $districtCodes);
+                        ->from('simpadu_tax_payers')
+                        ->where('year', $selectedYear)
+                        ->whereIn('kd_kecamatan', $districtCodes);
                 })
                 ->distinct(['npwpd', 'nop'])
                 ->count(['npwpd', 'nop', 'year', 'month']);
@@ -135,7 +134,7 @@ class DashboardController extends Controller
                     'npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan',
                     DB::raw('SUM(total_ketetapan) as target'),
                     DB::raw('SUM(total_bayar) as realization'),
-                    DB::raw('SUM(total_ketetapan - total_bayar) as debt')
+                    DB::raw('SUM(total_ketetapan - total_bayar) as debt'),
                 ])
                 ->where('year', $selectedYear)
                 ->where('status', '1')
@@ -156,7 +155,7 @@ class DashboardController extends Controller
                 ->select([
                     'kd_kecamatan',
                     DB::raw('SUM(total_ketetapan) as total_target'),
-                    DB::raw('SUM(total_bayar) as total_realization')
+                    DB::raw('SUM(total_bayar) as total_realization'),
                 ])
                 ->groupBy('kd_kecamatan')
                 ->get()
@@ -166,14 +165,14 @@ class DashboardController extends Controller
                 ->where('upt_id', $user->upt_id)
                 ->with('districts')
                 ->get()
-                ->map(function($employee) use ($districtStats) {
+                ->map(function ($employee) use ($districtStats) {
                     $empDistricts = $employee->districts;
                     $totalTarget = 0;
                     $totalRealization = 0;
-                    
-                    foreach($empDistricts as $d) {
+
+                    foreach ($empDistricts as $d) {
                         $stats = $districtStats->get($d->simpadu_code);
-                        if($stats) {
+                        if ($stats) {
                             $totalTarget += $stats->total_target;
                             $totalRealization += $stats->total_realization;
                         }

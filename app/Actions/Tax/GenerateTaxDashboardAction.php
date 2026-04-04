@@ -2,179 +2,111 @@
 
 namespace App\Actions\Tax;
 
+use App\Models\SimpaduMonthlyRealization;
 use App\Models\SimpaduTarget;
-use App\Models\TaxRealization;
-use App\Models\TaxRealizationDailyEntry;
-use App\Models\TaxType;
-use App\Models\Upt;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use App\Actions\Simpadu\GetSimpaduRealizationAction;
 
 class GenerateTaxDashboardAction
 {
+    // Ayat yang masuk ke grup induk "Pajak (PBJT)"
+    private const PBJT_AYAT = ['41101', '41102', '41103', '41105', '41107'];
+
     public function __construct(
-        private readonly CalculateTaxRealizationAction $calculateTaxRealization,
         private readonly CalculateAchievementPercentageAction $calculateAchievementPercentage,
-        private readonly GetSimpaduRealizationAction $getSimpaduRealization,
     ) {}
 
-    /**
-     * @return array{
-     *     data: Collection<int, array{
-     *         tax_type_id: string,
-     *         tax_type_name: string,
-     *         tax_type_code: string,
-     *         tax_type_parent_id: ?string,
-     *         year: int,
-     *         target_total: float,
-     *         targets: array{q1: float, q2: float, q3: float, q4: float},
-     *         realizations: array{q1: float, q2: float, q3: float, q4: float},
-     *         percentages: array{q1: float, q2: float, q3: float, q4: float},
-     *         total_realization: float,
-     *         more_less: float,
-     *         achievement_percentage: float,
-     *         is_parent: bool,
-     *     }>,
-     *     totals: array{
-     *         target: float,
-     *         realization: float,
-     *         more_less: float,
-     *         percentage: float,
-     *         quarters: array<string, array{target: float, realization: float, percentage: float}>
-     *     }
-     * }
-     */
-    public function __invoke(int $year, ?string $districtId = null, ?string $uptId = null, ?string $search = null): array
+    public function __invoke(int $year, ?string $search = null): array
     {
-        $taxTypes = TaxType::query()
-            ->with([
-                'taxTargets' => fn ($query) => $query->where('year', $year),
-                'children' => fn ($query) => $query->with([
-                    'taxTargets' => fn ($q) => $q->where('year', $year),
-                ]),
-            ])
-            ->whereNull('parent_id')
-            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhereHas('children', fn ($q) => $q
-                        ->where('name', 'like', "%{$search}%")
-                        ->orWhere('code', 'like', "%{$search}%")
-                    );
-            }))
-            ->get();
-
-        // 0. Fetch Simpadu realization data
-        $simpaduResults = ($this->getSimpaduRealization)($year);
-        $simpaduRealizations = collect($simpaduResults)->groupBy('ayat');
-
-
-        // Determine relevant district IDs
-        $filterDistrictIds = null;
-        if ($districtId) {
-            $filterDistrictIds = [$districtId];
-        } elseif ($uptId) {
-            $filterDistrictIds = Upt::find($uptId)?->districts->pluck('id')->toArray();
-        }
-
-        // Fetch Simpadu targets for the year to avoid N+1
-        $simpaduTargets = SimpaduTarget::query()
+        // Targets dari lokal (synced dari m_target_anggaran simpadunew)
+        $targets = SimpaduTarget::query()
             ->where('year', $year)
+            ->orderBy('no_ayat')
             ->get()
             ->keyBy('no_ayat');
 
-        // 1. Fetch monthly realizations from TaxRealization (Legacy/Import source)
-        $monthlyRealizations = TaxRealization::query()
+        // Realisasi dari lokal (synced dari pembayaran simpadunew)
+        $realizations = SimpaduMonthlyRealization::query()
             ->where('year', $year)
-            ->when($filterDistrictIds, fn ($q) => $q->whereIn('district_id', $filterDistrictIds))
             ->get()
-            ->groupBy('tax_type_id');
+            ->groupBy('ayat');
 
-        // 2. Fetch all daily entries for the year (Direct officer input source)
-        $monthSql = config('database.default') === 'sqlite'
-            ? "strftime('%m', entry_date)"
-            : 'MONTH(entry_date)';
+        // Cari bulan terakhir yang ada datanya agar Q2 tidak tampil sama dengan Q1
+        $lastMonth = (int) SimpaduMonthlyRealization::query()
+            ->where('year', $year)
+            ->max('month');
 
-        $dailyRealizations = TaxRealizationDailyEntry::query()
-            ->whereYear('entry_date', $year)
-            ->when($filterDistrictIds, fn ($q) => $q->whereIn('district_id', $filterDistrictIds))
-            ->selectRaw("tax_type_id, {$monthSql} as month, SUM(amount) as total")
-            ->groupBy(['tax_type_id', 'month'])
-            ->get()
-            ->groupBy('tax_type_id');
+        $lastDataQuarter = match (true) {
+            $lastMonth <= 3 => 1,
+            $lastMonth <= 6 => 2,
+            $lastMonth <= 9 => 3,
+            default => 4,
+        };
 
-        $result = $taxTypes->flatMap(function (TaxType $parent) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId) {
-            $parentData = $this->processTaxType($parent, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId);
+        // Pass 1: pisahkan PBJT dan non-PBJT
+        $pbjt = $this->emptyPbjt($year);
+        $pbjt['_children'] = [];
+        $nonPbjtItems = collect();
 
-            if ($parent->children->isEmpty()) {
-                $parentData['is_parent'] = false;
-                return [$parentData];
-            }
+        foreach ($targets as $target) {
+            $item = $this->buildItem($target, $realizations, $lastDataQuarter, $year);
 
-            // Process children (Level 2)
-            $childItems = $parent->children->map(function (TaxType $child) use ($year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId) {
-                $childData = $this->processTaxType($child, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId);
-                
-                // CRITICAL: If Level 2 child (e.g. Hotel) has its own children (Level 3, e.g. Bintang Lima),
-                // we must aggregate Level 3 into this Level 2 item, but NOT show Level 3 in the table.
-                if ($child->children->isNotEmpty()) {
-                    $subChildren = $child->children->map(fn($sc) => $this->processTaxType($sc, $year, $monthlyRealizations, $dailyRealizations, $simpaduRealizations, $simpaduTargets, $uptId, $districtId));
-                    
-                    // Sum targets
-                    if ($childData['target_total'] <= 0) {
-                        $childData['target_total'] = $subChildren->sum('target_total');
-                    }
-                    
-                    // Sum realizations
-                    $childData['total_realization'] += $subChildren->sum('total_realization');
-                    $childData['more_less'] = $childData['total_realization'] - $childData['target_total'];
-                    $childData['achievement_percentage'] = ($this->calculateAchievementPercentage)($childData['total_realization'], $childData['target_total']);
-
-                    foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
-                        $childData['targets'][$q] = $childData['targets'][$q] ?: $subChildren->sum(fn($sc) => $sc['targets'][$q]);
-                        $childData['realizations'][$q] += $subChildren->sum(fn($sc) => $sc['realizations'][$q]);
-                        $childData['percentages'][$q] = ($this->calculateAchievementPercentage)($childData['realizations'][$q], $childData['targets'][$q]);
-                    }
+            if (in_array((string) $target->no_ayat, self::PBJT_AYAT)) {
+                $pbjt['target_total'] += $item['target_total'];
+                $pbjt['total_realization'] += $item['total_realization'];
+                foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
+                    $pbjt['targets'][$q] += $item['targets'][$q];
+                    $pbjt['realizations'][$q] += $item['realizations'][$q];
                 }
-                
-                $childData['is_parent'] = false;
-                return $childData;
-            });
+                $item['is_child'] = true;
+                $pbjt['_children'][] = $item;
+            } else {
+                $item['is_child'] = false;
+                $nonPbjtItems->push($item);
+            }
+        }
 
-            // Aggregate Level 2 children into Parent (Level 1, e.g. PBJT)
-            if ($parentData['target_total'] <= 0) {
-                $parentData['target_total'] = $childItems->sum('target_total');
+        // Pass 2: bangun $data — PBJT parent+children dulu, lalu non-PBJT
+        $data = collect();
+        if (! empty($pbjt['_children'])) {
+            $data = $this->flushPbjt($data, $pbjt);
+        }
+        foreach ($nonPbjtItems as $item) {
+            $data->push($item);
+        }
+
+        // Hitung ulang persentase untuk baris induk PBJT
+        $data = $data->map(function (array $item): array {
+            if ($item['is_parent'] ?? false) {
+                foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
+                    $item['percentages'][$q] = ($this->calculateAchievementPercentage)(
+                        $item['realizations'][$q],
+                        $item['targets'][$q]
+                    );
+                }
+                $item['more_less'] = $item['total_realization'] - $item['target_total'];
+                $item['achievement_percentage'] = ($this->calculateAchievementPercentage)(
+                    $item['total_realization'],
+                    $item['target_total']
+                );
             }
 
-            $parentData['total_realization'] += $childItems->sum('total_realization');
-            $parentData['more_less'] = $parentData['total_realization'] - $parentData['target_total'];
-            $parentData['achievement_percentage'] = ($this->calculateAchievementPercentage)($parentData['total_realization'], $parentData['target_total']);
-
-            foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
-                $parentData['targets'][$q] = $parentData['targets'][$q] ?: $childItems->sum(fn($c) => $c['targets'][$q]);
-                $parentData['realizations'][$q] += $childItems->sum(fn($c) => $c['realizations'][$q]);
-                $parentData['percentages'][$q] = ($this->calculateAchievementPercentage)($parentData['realizations'][$q], $parentData['targets'][$q]);
-            }
-
-            $parentData['is_parent'] = true;
-
-            // Return only Level 1 and Level 2 (Hide Level 3)
-            return collect([$parentData])->concat($childItems);
+            return $item;
         });
 
-        // 147. Calculate Grand Totals
-        // To avoid double counting, we sum from the Level 1 root items only
-        $rootItems = $result->where('tax_type_parent_id', null);
+        if ($search) {
+            $data = $data->filter(
+                fn ($i) => str_contains(strtolower($i['tax_type_name']), strtolower($search))
+            )->values();
+        }
 
-        $grandTotalTarget = $rootItems->sum('target_total');
-        $grandTotalRealization = $rootItems->sum('total_realization');
-        $grandTotalMoreLess = $grandTotalRealization - $grandTotalTarget;
-        $grandTotalPercentage = ($this->calculateAchievementPercentage)($grandTotalRealization, $grandTotalTarget);
+        // Grand totals — hanya dari baris top-level (bukan child)
+        $topLevel = $data->where('is_child', false);
+        $grandTotalTarget = $topLevel->sum('target_total');
+        $grandTotalRealization = $topLevel->sum('total_realization');
 
-        $quarterTotals = collect(['q1', 'q2', 'q3', 'q4'])->mapWithKeys(function ($q) use ($rootItems) {
-            $t = $rootItems->sum(fn ($i) => (float) $i['targets'][$q]);
-            $r = $rootItems->sum(fn ($i) => (float) $i['realizations'][$q]);
+        $quarterTotals = collect(['q1', 'q2', 'q3', 'q4'])->mapWithKeys(function ($q) use ($topLevel) {
+            $t = $topLevel->sum(fn ($i) => (float) $i['targets'][$q]);
+            $r = $topLevel->sum(fn ($i) => (float) $i['realizations'][$q]);
 
             return [$q => [
                 'target' => $t,
@@ -183,175 +115,95 @@ class GenerateTaxDashboardAction
             ]];
         })->toArray();
 
-        // 160. Filter out items with 0 target AND 0 realization (User request to hide empty rows)
-        $filteredResult = $result->reject(function ($item) {
-            return $item['target_total'] <= 0 && $item['total_realization'] <= 0;
-        });
-
         return [
-            'data' => $filteredResult,
+            'data' => $data,
             'totals' => [
                 'target' => $grandTotalTarget,
                 'realization' => $grandTotalRealization,
-                'more_less' => $grandTotalMoreLess,
-                'percentage' => $grandTotalPercentage,
+                'more_less' => $grandTotalRealization - $grandTotalTarget,
+                'percentage' => ($this->calculateAchievementPercentage)($grandTotalRealization, $grandTotalTarget),
                 'quarters' => $quarterTotals,
             ],
         ];
     }
 
-    private function processTaxType(TaxType $taxType, int $year, Collection $monthlyRealizations, Collection $dailyRealizations, Collection $simpaduRealizations, Collection $simpaduTargets, ?string $uptId = null, ?string $districtId = null): array
+    private function buildItem(SimpaduTarget $target, Collection $realizations, int $lastDataQuarter, int $year): array
     {
-        // 0. Filter Simpadu data for this tax type and optionally for specific district
-        $simpaduItems = $simpaduRealizations->get($taxType->simpadu_code, collect());
-        
-        if ($districtId) {
-            $district = \App\Models\District::find($districtId);
-            if ($district && $district->simpadu_code) {
-                $simpaduItems = $simpaduItems->where('kd_kecamatan', $district->simpadu_code);
-            }
-        } elseif ($uptId) {
-            $uptDistricts = \App\Models\Upt::find($uptId)?->districts->pluck('simpadu_code')->filter()->toArray();
-            $simpaduItems = $simpaduItems->whereIn('kd_kecamatan', $uptDistricts);
-        }
+        $ayatRealizations = $realizations->get((string) $target->no_ayat, collect());
 
-        $simpaduTotal = (float) $simpaduItems->sum('total_bayar');
-
-        // Group Simpadu data into quarters
-        $quarterlyFromSimpadu = $simpaduItems->groupBy(fn ($item) => match (true) {
-            (int) $item->bulan <= 3 => 'q1',
-            (int) $item->bulan <= 6 => 'q2',
-            (int) $item->bulan <= 9 => 'q3',
+        $byQuarter = $ayatRealizations->groupBy(fn ($r) => match (true) {
+            (int) $r->month <= 3 => 'q1',
+            (int) $r->month <= 6 => 'q2',
+            (int) $r->month <= 9 => 'q3',
             default => 'q4',
-        })->map(fn ($group) => (float) $group->sum('total_bayar'));
+        });
 
-        // Get quarterly sums from TaxRealization table (legacy/import source)
-        $quarterlyFromMonthly = $monthlyRealizations
-            ->get($taxType->id, collect())
-            ->reduce(function (array $carry, $rec): array {
-                $calculated = ($this->calculateTaxRealization)($rec);
-                foreach (['q1', 'q2', 'q3', 'q4'] as $quarter) {
-                    $carry[$quarter] += $calculated[$quarter];
-                }
+        $rq1 = (float) ($byQuarter->get('q1')?->sum('total_bayar') ?? 0);
+        $rq2 = (float) ($byQuarter->get('q2')?->sum('total_bayar') ?? 0);
+        $rq3 = (float) ($byQuarter->get('q3')?->sum('total_bayar') ?? 0);
+        $rq4 = (float) ($byQuarter->get('q4')?->sum('total_bayar') ?? 0);
 
-                return $carry;
-            }, ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0]);
+        $totalTarget = (float) $target->total_target;
+        $tq1 = $totalTarget * ((float) $target->q1_pct / 100);
+        $tq2 = $totalTarget * ((float) $target->q2_pct / 100);
+        $tq3 = $totalTarget * ((float) $target->q3_pct / 100);
+        $tq4 = $totalTarget * ((float) $target->q4_pct / 100);
 
-        // Add daily entry totals, grouped into quarters (direct officer input source)
-        $quarterlyFromDaily = $dailyRealizations
-            ->get($taxType->id, collect())
-            ->groupBy(fn ($daily) => match (true) {
-                (int) $daily->month <= 3 => 'q1',
-                (int) $daily->month <= 6 => 'q2',
-                (int) $daily->month <= 9 => 'q3',
-                default => 'q4',
-            })
-            ->map(fn ($group) => (float) $group->sum('total'));
-
-        // Combine all sources (Simpadu + Local Monthly + Local Daily)
-        $rq1 = (float) ($quarterlyFromSimpadu['q1'] ?? 0) + $quarterlyFromMonthly['q1'] + (float) ($quarterlyFromDaily['q1'] ?? 0);
-        $rq2 = (float) ($quarterlyFromSimpadu['q2'] ?? 0) + $quarterlyFromMonthly['q2'] + (float) ($quarterlyFromDaily['q2'] ?? 0);
-        $rq3 = (float) ($quarterlyFromSimpadu['q3'] ?? 0) + $quarterlyFromMonthly['q3'] + (float) ($quarterlyFromDaily['q3'] ?? 0);
-        $rq4 = (float) ($quarterlyFromSimpadu['q4'] ?? 0) + $quarterlyFromMonthly['q4'] + (float) ($quarterlyFromDaily['q4'] ?? 0);
-
-        $target = $taxType->taxTargets->first();
-        
-        // 1. Try to get Simpadu target from pre-fetched collection
-        $sTarget = $simpaduTargets->get($taxType->simpadu_code);
-
-        $targetTotal = 0.0;
-        if ($target) {
-            $targetTotal = (float) $target->target_amount;
-        } elseif ($sTarget) {
-            $targetTotal = (float) $sTarget->total_target;
-        }
-
-        $tq1 = 0.0;
-        $tq2 = 0.0;
-        $tq3 = 0.0;
-        $tq4 = 0.0;
-
-        if ($target) {
-            // Use cumulative targets from local DB directly (Manual Override)
-            $tq1 = (float) $target->q1_target ?: $targetTotal * 0.25;
-            $tq2 = (float) $target->q2_target ?: $targetTotal * 0.50;
-            $tq3 = (float) $target->q3_target ?: $targetTotal * 0.75;
-            $tq4 = (float) $target->q4_target ?: $targetTotal;
-        } elseif ($sTarget) {
-            // Use percentages from Simpadu baseline
-            $tq1 = $targetTotal * ($sTarget->q1_pct / 100);
-            $tq2 = $targetTotal * ($sTarget->q2_pct / 100);
-            $tq3 = $targetTotal * ($sTarget->q3_pct / 100);
-            $tq4 = $targetTotal * ($sTarget->q4_pct / 100);
-        } else {
-            // No target record, use default distribution
-            $tq1 = $targetTotal * 0.25;
-            $tq2 = $targetTotal * 0.50;
-            $tq3 = $targetTotal * 0.75;
-            $tq4 = $targetTotal;
-        }
-
-        // Calculate cumulative realizations
+        // Kumulatif, dibatasi sampai quarter terakhir yang ada datanya
         $cq1 = $rq1;
-        $cq2 = $cq1 + $rq2;
-        $cq3 = $cq2 + $rq3;
-        $cq4 = $cq3 + $rq4;
-
-        // Current quarter based on actual calendar months (Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec)
-        $currentMonth = (int) Carbon::now()->month;
-        $currentQuarter = match (true) {
-            $currentMonth >= 1 && $currentMonth <= 3 => 1,
-            $currentMonth >= 4 && $currentMonth <= 6 => 2,
-            $currentMonth >= 7 && $currentMonth <= 9 => 3,
-            default => 4,
-        };
-
-        // Only show realization values up to current quarter (non-cumulative for display)
-        $dq1 = $rq1;
-        $dq2 = $currentQuarter >= 2 ? $rq2 : 0;
-        $dq3 = $currentQuarter >= 3 ? $rq3 : 0;
-        $dq4 = $currentQuarter >= 4 ? $rq4 : 0;
-
-        // Keep cumulative for internal calculations but use non-cumulative for display
-        $cq1 = $rq1;
-        $cq2 = $currentQuarter >= 2 ? $rq1 + $rq2 : 0;
-        $cq3 = $currentQuarter >= 3 ? $rq1 + $rq2 + $rq3 : 0;
-        $cq4 = $currentQuarter >= 4 ? $rq1 + $rq2 + $rq3 + $rq4 : 0;
+        $cq2 = $lastDataQuarter >= 2 ? $rq1 + $rq2 : 0;
+        $cq3 = $lastDataQuarter >= 3 ? $rq1 + $rq2 + $rq3 : 0;
+        $cq4 = $lastDataQuarter >= 4 ? $rq1 + $rq2 + $rq3 + $rq4 : 0;
 
         $totalRealization = $rq1 + $rq2 + $rq3 + $rq4;
 
         return [
-            'tax_type_id' => $taxType->id,
-            'tax_target_id' => $target?->id, // Add this for management links
-            'tax_type_name' => $taxType->name,
-            'tax_type_code' => $taxType->code,
-            'tax_type_parent_id' => $taxType->parent_id,
+            'no_ayat' => $target->no_ayat,
+            'tax_type_name' => $target->keterangan,
             'year' => $year,
-            'target_total' => $targetTotal,
-            'targets' => [
-                'q1' => $tq1,
-                'q2' => $tq2,
-                'q3' => $tq3,
-                'q4' => $tq4,
-            ],
-            'realizations' => [
-                'q1' => $dq1,
-                'q2' => $dq2,
-                'q3' => $dq3,
-                'q4' => $dq4,
-            ],
+            'is_parent' => false,
+            'target_total' => $totalTarget,
+            'targets' => ['q1' => $tq1, 'q2' => $tq2, 'q3' => $tq3, 'q4' => $tq4],
+            'realizations' => ['q1' => $cq1, 'q2' => $cq2, 'q3' => $cq3, 'q4' => $cq4],
             'percentages' => [
-                'q1' => ($this->calculateAchievementPercentage)($dq1, $tq1),
-                'q2' => ($this->calculateAchievementPercentage)($dq2, $tq2),
-                'q3' => ($this->calculateAchievementPercentage)($dq3, $tq3),
-                'q4' => ($this->calculateAchievementPercentage)($dq4, $tq4),
+                'q1' => ($this->calculateAchievementPercentage)($cq1, $tq1),
+                'q2' => ($this->calculateAchievementPercentage)($cq2, $tq2),
+                'q3' => ($this->calculateAchievementPercentage)($cq3, $tq3),
+                'q4' => ($this->calculateAchievementPercentage)($cq4, $tq4),
             ],
             'total_realization' => $totalRealization,
-            'simpadu_realization' => $simpaduTotal,
-            'more_less' => $totalRealization - $targetTotal,
-            'achievement_percentage' => ($this->calculateAchievementPercentage)($totalRealization, $targetTotal),
-            'simpadu_achievement_percentage' => ($this->calculateAchievementPercentage)($simpaduTotal, $targetTotal),
+            'more_less' => $totalRealization - $totalTarget,
+            'achievement_percentage' => ($this->calculateAchievementPercentage)($totalRealization, $totalTarget),
         ];
     }
 
+    private function emptyPbjt(int $year): array
+    {
+        return [
+            'no_ayat' => '41100',
+            'tax_type_name' => 'Pajak (PBJT)',
+            'year' => $year,
+            'is_parent' => true,
+            'is_child' => false,
+            'target_total' => 0.0,
+            'targets' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
+            'realizations' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
+            'percentages' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
+            'total_realization' => 0.0,
+            'more_less' => 0.0,
+            'achievement_percentage' => 0.0,
+        ];
+    }
+
+    private function flushPbjt(Collection $data, array $pbjt): Collection
+    {
+        $children = $pbjt['_children'];
+        unset($pbjt['_children']);
+        $data->push($pbjt);
+        foreach ($children as $child) {
+            $data->push($child);
+        }
+
+        return $data;
+    }
 }

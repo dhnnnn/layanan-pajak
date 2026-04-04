@@ -18,7 +18,25 @@ Schedule::command('simpadu:sync-payers')
     ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_payers_sync.log'));
 
-// Monthly tax payer sync - runs daily at 03:00
+// Clean up log files daily at midnight to prevent storage bloat
+Schedule::call(function () {
+    $logs = [
+        storage_path('logs/scheduler.log'),
+        storage_path('logs/simpadu_sync.log'),
+        storage_path('logs/simpadu_payers_sync.log'),
+    ];
+
+    foreach ($logs as $path) {
+        if (file_exists($path)) {
+            file_put_contents($path, '');
+        }
+    }
+
+    \Illuminate\Support\Facades\Log::info('Log files cleared by scheduler.');
+})
+    ->dailyAt('00:00')
+    ->name('clear-log-files')
+    ->withoutOverlapping();
 // Syncs current month data so accordion tunggakan per bulan is always fresh
 Schedule::call(function () {
     Artisan::call('sync:tax-payers', [

@@ -27,7 +27,7 @@ class ShowTaxTargetDetailAction
     {
         // Get summarized data for the header (Consistency with dashboard)
         $dashboard = ($this->generateDashboard)(year: $year);
-        $summary = collect($dashboard['data'])->firstWhere('tax_type_id', $taxType->id);
+        $summary = collect($dashboard['data'])->firstWhere('no_ayat', $taxType->simpadu_code);
 
         // Get all descendant IDs recursively to aggregate WP data
         $allTaxTypeIds = $this->getAllDescendantIds($taxType);
@@ -39,9 +39,9 @@ class ShowTaxTargetDetailAction
 
         // Search Filter
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nm_wp', 'like', "%{$search}%")
-                  ->orWhere('npwpd', 'like', "%{$search}%");
+                    ->orWhere('npwpd', 'like', "%{$search}%");
             });
         }
 

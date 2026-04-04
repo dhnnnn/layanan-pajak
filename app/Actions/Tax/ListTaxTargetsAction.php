@@ -2,11 +2,7 @@
 
 namespace App\Actions\Tax;
 
-use App\Models\TaxTarget;
-use App\Models\TaxType;
-use App\Actions\Tax\GenerateTaxDashboardAction;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
+use App\Models\SimpaduTarget;
 
 class ListTaxTargetsAction
 {
@@ -18,7 +14,7 @@ class ListTaxTargetsAction
         $generateDashboard = app(GenerateTaxDashboardAction::class);
         $result = $generateDashboard(year: $year, search: $search);
 
-        $availableYears = TaxTarget::query()
+        $availableYears = SimpaduTarget::query()
             ->select('year')
             ->distinct()
             ->orderByDesc('year')
@@ -29,7 +25,7 @@ class ListTaxTargetsAction
         }
 
         return [
-            'taxTypes' => $result['data'], 
+            'taxTypes' => $result['data'],
             'availableYears' => $availableYears,
             'year' => $year,
         ];
