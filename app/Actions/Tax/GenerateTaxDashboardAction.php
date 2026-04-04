@@ -30,10 +30,17 @@ class GenerateTaxDashboardAction
             ->get()
             ->groupBy('ayat');
 
-        // Cari bulan terakhir yang ada datanya agar Q2 tidak tampil sama dengan Q1
-        $lastMonth = (int) SimpaduMonthlyRealization::query()
+        // Cari bulan terakhir yang ada datanya, dibatasi maksimal bulan LALU
+        // (bulan berjalan belum selesai, jadi tidak ditampilkan sebagai quarter penuh)
+        $currentMonth = (int) now()->month;
+        $lastCompletedMonth = max(1, $currentMonth - 1); // bulan yang sudah selesai
+
+        $lastSyncedMonth = (int) SimpaduMonthlyRealization::query()
             ->where('year', $year)
             ->max('month');
+
+        // Gunakan yang lebih kecil: bulan terakhir yang sudah selesai vs bulan terakhir yang ada datanya
+        $lastMonth = min($lastSyncedMonth, $lastCompletedMonth);
 
         $lastDataQuarter = match (true) {
             $lastMonth <= 3 => 1,

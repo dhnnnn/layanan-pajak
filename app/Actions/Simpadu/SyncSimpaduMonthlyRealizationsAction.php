@@ -47,7 +47,7 @@ class SyncSimpaduMonthlyRealizationsAction
                     'ayat' => (string) $row->ayat,
                     'kd_kecamatan' => null,
                     'month' => (int) $row->bulan,
-                    'total_bayar' => floor((float) $row->total_bayar),
+                    'total_bayar' => round((float) $row->total_bayar),
                     'synced_at' => $syncTime,
                     'created_at' => $syncTime,
                     'updated_at' => $syncTime,
