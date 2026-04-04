@@ -42,7 +42,7 @@
         </form>
     </x-slot:headerActions>
 
-    <div class="space-y-6">
+    <div class="space-y-6 min-w-0">
         {{-- Progress Banner --}}
         <div class="bg-slate-900 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 right-0 p-8 opacity-10">
@@ -111,7 +111,7 @@
         </div>
 
         {{-- WP Table --}}
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm w-full" style="max-width:100%">
             <div class="px-6 py-5 border-b border-slate-100">
                 <div class="flex flex-col gap-4">
                     {{-- Title Area --}}
@@ -298,9 +298,8 @@
                     </div>
                 </div>
             </div>
-            </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-w-full">
                 <table class="w-full text-sm text-left text-slate-600 whitespace-nowrap">
                     <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
                         <tr>

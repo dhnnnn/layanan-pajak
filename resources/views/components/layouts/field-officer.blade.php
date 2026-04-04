@@ -106,7 +106,7 @@
     </aside>
 
     {{-- Main Content --}}
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
         <header class="bg-white border-b border-slate-200 px-4 py-3 shrink-0">
             <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -123,7 +123,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-0 min-w-0">
             @if(session('success'))
                 <div class="mb-5 flex items-start gap-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
                     <svg class="w-4 h-4 mt-0.5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -142,6 +142,10 @@
             @endif
 
             {{ $slot }}
+
+            <footer class="mt-8 py-4 border-t border-slate-200 text-center">
+                <p class="text-[11px] text-slate-400">© {{ date('Y') }} Dinas Komunikasi dan Informatika Kabupaten Pasuruan.</p>
+            </footer>
         </main>
 
     </div>

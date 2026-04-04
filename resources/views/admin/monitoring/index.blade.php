@@ -1,6 +1,14 @@
 <x-layouts.admin title="Pemantauan Wajib Pajak" header="Pemantau Wajib Pajak">
     <x-slot:headerActions>
         <div class="flex items-center gap-3">
+            <a id="exportExcelBtn"
+                href="{{ route('admin.monitoring.export-excel', array_filter(['year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'district' => $selectedDistrict, 'ayat' => $selectedAyat, 'status_filter' => $statusFilter])) }}"
+                class="inline-flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                </svg>
+                Export Excel
+            </a>
             {{-- Year Dropdown --}}
             <div class="relative" id="yearDropdownWrapper">
                 <button type="button" id="yearDropdownBtn"
@@ -238,6 +246,10 @@
 
             container.addClass('opacity-50 pointer-events-none');
             $('#searchSpinner').removeClass('hidden');
+
+            // Update export button URL
+            const exportBase = "{{ route('admin.monitoring.export-excel') }}";
+            $('#exportExcelBtn').attr('href', exportBase + '?' + form.serialize());
 
             $.ajax({
                 url: url,

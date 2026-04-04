@@ -96,6 +96,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
             ->group(function (): void {
                 Route::get('/', [TaxPayerMonitoringController::class, 'index'])->name('index');
                 Route::post('/assign', [TaxPayerMonitoringController::class, 'storeTask'])->name('assign');
+                Route::get('/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('export-excel');
             });
     });
 
@@ -136,4 +137,5 @@ Route::middleware(['auth', 'role:pegawai'])
 
         // Pemantau WP — reuse admin controller, filtered by assigned districts
         Route::get('monitoring/tax-payers', [TaxPayerMonitoringController::class, 'fieldOfficerIndex'])->name('monitoring.tax-payers');
+        Route::get('monitoring/tax-payers/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('monitoring.tax-payers.export-excel');
     });
