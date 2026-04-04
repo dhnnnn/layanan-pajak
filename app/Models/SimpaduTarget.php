@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class SimpaduTarget extends Model
 {
+    protected $primaryKey = null;
+
+    public $incrementing = false;
+
     protected $fillable = [
         'no_ayat',
         'year',

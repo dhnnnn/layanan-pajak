@@ -30,24 +30,30 @@ class GenerateTaxDashboardAction
             ->get()
             ->groupBy('ayat');
 
-        // Cari bulan terakhir yang ada datanya, dibatasi maksimal bulan LALU
-        // (bulan berjalan belum selesai, jadi tidak ditampilkan sebagai quarter penuh)
+        // Tentukan quarter terakhir yang boleh ditampilkan:
+        // Tampilkan quarter jika sudah ada data pembayaran di quarter tersebut,
+        // ATAU jika quarter tersebut sudah selesai secara kalender.
         $currentMonth = (int) now()->month;
-        $lastCompletedMonth = max(1, $currentMonth - 1); // bulan yang sudah selesai
+        $currentQuarter = match (true) {
+            $currentMonth <= 3 => 1,
+            $currentMonth <= 6 => 2,
+            $currentMonth <= 9 => 3,
+            default => 4,
+        };
 
         $lastSyncedMonth = (int) SimpaduMonthlyRealization::query()
             ->where('year', $year)
             ->max('month');
 
-        // Gunakan yang lebih kecil: bulan terakhir yang sudah selesai vs bulan terakhir yang ada datanya
-        $lastMonth = min($lastSyncedMonth, $lastCompletedMonth);
-
-        $lastDataQuarter = match (true) {
-            $lastMonth <= 3 => 1,
-            $lastMonth <= 6 => 2,
-            $lastMonth <= 9 => 3,
+        $lastSyncedQuarter = match (true) {
+            $lastSyncedMonth <= 3 => 1,
+            $lastSyncedMonth <= 6 => 2,
+            $lastSyncedMonth <= 9 => 3,
             default => 4,
         };
+
+        // Tampilkan sampai quarter yang ada datanya (tidak melebihi quarter berjalan)
+        $lastDataQuarter = min($lastSyncedQuarter, $currentQuarter);
 
         // Pass 1: pisahkan PBJT dan non-PBJT
         $pbjt = $this->emptyPbjt($year);
@@ -156,11 +162,11 @@ class GenerateTaxDashboardAction
         $tq3 = $totalTarget * ((float) $target->q3_pct / 100);
         $tq4 = $totalTarget * ((float) $target->q4_pct / 100);
 
-        // Kumulatif, dibatasi sampai quarter terakhir yang ada datanya
+        // Per-quarter, hanya tampilkan jika quarter tersebut sudah ada datanya
         $cq1 = $rq1;
-        $cq2 = $lastDataQuarter >= 2 ? $rq1 + $rq2 : 0;
-        $cq3 = $lastDataQuarter >= 3 ? $rq1 + $rq2 + $rq3 : 0;
-        $cq4 = $lastDataQuarter >= 4 ? $rq1 + $rq2 + $rq3 + $rq4 : 0;
+        $cq2 = $lastDataQuarter >= 2 ? $rq2 : 0;
+        $cq3 = $lastDataQuarter >= 3 ? $rq3 : 0;
+        $cq4 = $lastDataQuarter >= 4 ? $rq4 : 0;
 
         $totalRealization = $rq1 + $rq2 + $rq3 + $rq4;
 
