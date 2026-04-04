@@ -141,7 +141,6 @@
         {{-- User + Logout --}}
         <div class="px-4 py-4 border-t border-slate-700">
             <p class="text-sm text-white font-medium truncate">{{ auth()->user()->name }}</p>
-            <p class="text-[10px] text-red-400">DEBUG: {{ auth()->user()->getRoleNames()->implode(',') }}</p>
             <p class="text-xs text-slate-400 mb-3">
                 @if(auth()->user()->isKepalaUpt())
                     Kepala {{ auth()->user()->upt?->name ?? 'UPT' }}
@@ -210,18 +209,42 @@
             @yield('content')
 
         </main>
+
+        {{-- Footer --}}
+        <footer class="shrink-0 border-t border-slate-200 bg-white px-6 py-3 text-center text-[11px] text-slate-400">
+            &copy; {{ date('Y') }} Diskominfo Kabupaten Pasuruan
+        </footer>
     </div>
 
 </div>
 
 <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        sidebar.classList.toggle('-translate-x-full');
-        overlay.classList.toggle('hidden');
+    let sidebarOpen = false;
+
+    function openSidebar() {
+        sidebarOpen = true;
+        document.getElementById('sidebar').classList.remove('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
     }
+
+    function closeSidebar() {
+        sidebarOpen = false;
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function toggleSidebar() {
+        sidebarOpen ? closeSidebar() : openSidebar();
+    }
+
+    // Close sidebar when resizing to desktop
+    window.addEventListener('resize', function () {
+        if (window.innerWidth >= 1024) {
+            closeSidebar();
+        }
+    });
 </script>
 
 </body>

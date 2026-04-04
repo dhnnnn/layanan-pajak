@@ -1,53 +1,44 @@
 <x-layouts.app :title="$title" :header="$header">
     <x-slot:sidebar>
-        {{-- Mobile Overlay --}}
-        <div class="lg:contents">
-            
-            {{-- Overlay for mobile --}}
-            <div x-show="sidebarOpen" 
-                 x-transition:enter="transition-opacity ease-linear duration-300"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="transition-opacity ease-linear duration-300"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"
-                 @click="sidebarOpen = false"
-                 class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-40 lg:hidden"
-                 style="display: none;">
+        {{-- Overlay mobile --}}
+        <div x-show="sidebarOpen"
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="sidebarOpen = false"
+             class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-40 lg:hidden"
+             style="display: none;">
+        </div>
+
+        {{-- Sidebar --}}
+        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+               class="fixed lg:relative inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transform transition-transform duration-300 ease-in-out">
+
+            {{-- Tombol close mobile --}}
+            <button @click="sidebarOpen = false"
+                    class="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors z-10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            {{-- Logo --}}
+            <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700">
+                <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">LP</div>
+                <div class="min-w-0">
+                    <p class="font-semibold text-sm leading-tight">Layanan Pajak</p>
+                    <p class="text-slate-400 text-xs">Kab. Pasuruan</p>
+                </div>
             </div>
 
-            {{-- Sidebar --}}
-            <aside x-show="sidebarOpen || window.innerWidth >= 1024"
-                   class="fixed lg:relative inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col flex-shrink-0">
-                
-                {{-- Close button for mobile --}}
-                <button @click="sidebarOpen = false" 
-                        class="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-                
-                {{-- Close button for mobile --}}
-                <button @click="sidebarOpen = false" 
-                        class="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+            {{-- Navigation --}}
+            <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto text-sm scrollbar-hide">
 
-                {{-- Logo --}}
-                <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700">
-                    <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">LP</div>
-                    <div class="min-w-0">
-                        <p class="font-semibold text-sm leading-tight">Layanan Pajak</p>
-                        <p class="text-slate-400 text-xs">Kab. Pasuruan</p>
-                    </div>
-                </div>
-
-                {{-- Navigation --}}
-                <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto text-sm scrollbar-hide">
                 <p class="px-3 pt-1 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menu Utama</p>
+
                 <x-layouts.sidebar-item route="admin.dashboard" :active="request()->routeIs('admin.dashboard')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
@@ -57,6 +48,7 @@
 
                 @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kelola Data</p>
+
                 <x-layouts.sidebar-item route="admin.tax-types.index" :active="request()->routeIs('admin.tax-types.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -89,6 +81,7 @@
 
                 @if(auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">UPT Anda</p>
+
                 <x-layouts.sidebar-item route="admin.upts.show" :params="['upt' => auth()->user()->upt_id]" :active="request()->routeIs('admin.upts.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -114,16 +107,13 @@
 
                 @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan & Pantauan</p>
-                
-                @if(auth()->user()->isAdmin())
+
                 <x-layouts.sidebar-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
                     Laporan Anggaran
                 </x-layouts.sidebar-item>
-                @endif
-
 
                 <x-layouts.sidebar-item route="admin.realization-monitoring.index" :active="request()->routeIs('admin.realization-monitoring.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,8 +128,8 @@
                     </svg>
                     Pemantau Wajib Pajak
                 </x-layouts.sidebar-item>
-
                 @endif
+
             </nav>
 
             {{-- User + Logout --}}
@@ -171,8 +161,8 @@
                     </button>
                 </form>
             </div>
-            </aside>
-        </div>
+
+        </aside>
     </x-slot:sidebar>
 
     <x-slot:headerActions>

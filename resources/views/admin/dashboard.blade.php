@@ -148,9 +148,6 @@
                     @endif
                 </table>
             </div>
-            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-400 italic">
-                * Angka Tribulan bersifat kumulatif (Tribulan 2 = T1 + T2)
-            </div>
         </div>
 
 

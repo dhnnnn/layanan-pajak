@@ -159,33 +159,33 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse($dashboard as $item)
                             @php
-                                $isParent = $item['is_parent'];
-                                $hasParent = $item['tax_type_parent_id'] !== null;
+                                $isParent = $item['is_parent'] ?? false;
+                                $isChild  = $item['is_child'] ?? false;
                             @endphp
-                            <tr class="{{ $isParent ? 'bg-slate-100 font-extrabold' : 'hover:bg-slate-50' }} transition-colors group">
-                                <td class="px-4 py-3 border-x border-slate-200 sticky left-0 {{ $isParent ? 'bg-slate-100' : 'bg-white group-hover:bg-slate-50' }} z-10 transition-colors shadow-[1px_0_0_rgba(0,0,0,0.05)]">
-                                    <div class="{{ $hasParent ? 'pl-6 text-slate-600 font-medium' : 'text-slate-900 font-black' }} whitespace-nowrap">
-                                        {{ $hasParent ? '- ' : '' }}{{ $item['tax_type_name'] }}
+                            <tr class="{{ $isParent ? 'bg-blue-50 font-extrabold' : 'hover:bg-slate-50' }} transition-colors group">
+                                <td class="px-4 py-3 border-x border-slate-200 sticky left-0 {{ $isParent ? 'bg-blue-50' : 'bg-white group-hover:bg-slate-50' }} z-10 transition-colors shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                                    <div class="{{ $isChild ? 'pl-6 text-slate-600 font-medium' : 'text-slate-900 font-black' }} whitespace-nowrap">
+                                        {{ $isChild ? '– ' : '' }}{{ $item['tax_type_name'] }}
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-slate-900 bg-slate-100' : 'text-slate-700' }} font-bold">
+                                <td class="px-4 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-blue-900 bg-blue-50' : 'text-slate-700' }} font-bold">
                                     {{ number_format($item['target_total'], 0, ',', '.') }}
                                 </td>
                                 
-                                {{-- Quarters --}}
                                 @foreach(['q1', 'q2', 'q3', 'q4'] as $q)
-                                    <td class="px-3 py-3 border-r border-slate-200 text-right text-slate-600 {{ $isParent ? 'bg-slate-100' : '' }}">
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right text-slate-600 {{ $isParent ? 'bg-blue-50' : '' }}">
                                         {{ number_format($item['targets'][$q], 0, ',', '.') }}
                                     </td>
-                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-slate-900 bg-slate-100' : 'text-slate-900 font-bold' }}">
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-blue-900 bg-blue-50' : 'text-slate-900 font-bold' }}">
                                         {{ number_format($item['realizations'][$q], 0, ',', '.') }}
                                     </td>
-                                    <td class="px-3 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-slate-100' : '' }} text-slate-800">
-                                        {{ number_format($item['percentages'][$q], 0, ',', '.') }}%
+                                    <td class="px-3 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-blue-50' : '' }}
+                                        {{ $item['percentages'][$q] >= 100 ? 'text-emerald-600' : ($item['percentages'][$q] >= 50 ? 'text-amber-500' : 'text-slate-800') }}">
+                                        {{ number_format($item['percentages'][$q], 1, ',', '.') }}%
                                     </td>
                                 @endforeach
 
-                                <td class="px-4 py-3 border-r border-slate-200 text-right font-black {{ $isParent ? 'bg-slate-100' : '' }} {{ $item['more_less'] >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">
+                                <td class="px-4 py-3 border-r border-slate-200 text-right font-black {{ $isParent ? 'bg-blue-50' : '' }} {{ $item['more_less'] >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">
                                     {{ number_format($item['more_less'], 0, ',', '.') }}
                                 </td>
                             </tr>

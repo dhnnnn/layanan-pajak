@@ -2,47 +2,37 @@
 
 namespace App\Exports;
 
-use App\Models\TaxRealizationDailyEntry;
-use App\Models\TaxType;
 use App\Models\Upt;
-use App\Models\User;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class UptRealizationExport implements FromArray, WithColumnWidths, WithStyles, WithTitle
+class UptRealizationExport implements FromArray, WithColumnWidths, WithEvents, WithStyles, WithTitle
 {
     private Upt $upt;
 
-    private string $monthName;
-
-    /** @var array<int, string> */
-    private array $monthNames = [
-        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
-    ];
-
-    /** @var Collection<int, User> */
-    private Collection $employees;
-
-    /** @var Collection<int, TaxType> */
-    private Collection $taxTypes;
-
-    /**
-     * districtAmounts[employeeId][districtId][taxTypeId] = total amount
-     *
-     * @var array<string, array<string, array<string, float>>>
-     */
-    private array $districtAmounts = [];
-
     private array $data = [];
+
+    // Jenis pajak yang bisa dipecah per kecamatan (punya kd_kecamatan di simpadu_tax_payers)
+    private const TAX_ITEMS = [
+        ['label' => 'Pajak Reklame',                    'ayat' => '41104', 'indent' => false],
+        ['label' => 'Pajak Mineral Bukan Logam dan Batuan', 'ayat' => '41111', 'indent' => false],
+        ['label' => 'Pajak Air Tanah',                  'ayat' => '41108', 'indent' => false],
+        ['label' => 'Pajak Barang dan Jasa Tertentu (PBJT)', 'ayat' => null, 'indent' => false, 'group' => true],
+        ['label' => 'PBJT Makanan dan/atau Minuman',    'ayat' => '41102', 'indent' => true],
+        ['label' => 'PBJT Tenaga Listrik',              'ayat' => '41105', 'indent' => true],
+        ['label' => 'PBJT Jasa Perhotelan',             'ayat' => '41101', 'indent' => true],
+        ['label' => 'PBJT Jasa Parkir',                 'ayat' => '41107', 'indent' => true],
+        ['label' => 'PBJT Jasa Kesenian dan Hiburan',   'ayat' => '41103', 'indent' => true],
+    ];
 
     public function __construct(
         private readonly string $uptId,
@@ -50,194 +40,263 @@ class UptRealizationExport implements FromArray, WithColumnWidths, WithStyles, W
         private readonly int $month,
     ) {
         $this->upt = Upt::query()
-            ->with(['users' => fn ($q) => $q->role('pegawai')->with('districts')])
+            ->with(['districts', 'users' => fn ($q) => $q->role('pegawai')->with('districts')])
             ->findOrFail($uptId);
-
-        $this->monthName = $this->monthNames[$month];
-        $this->employees = $this->upt->users;
-        $this->taxTypes = TaxType::query()->orderBy('code')->get();
-
-        $this->loadAmounts();
-    }
-
-    private function loadAmounts(): void
-    {
-        $userIds = $this->employees->pluck('id');
-
-        $entries = TaxRealizationDailyEntry::query()
-            ->whereIn('user_id', $userIds)
-            ->whereYear('entry_date', $this->year)
-            ->whereMonth('entry_date', $this->month)
-            ->selectRaw('user_id, district_id, tax_type_id, SUM(amount) as total')
-            ->groupBy('user_id', 'district_id', 'tax_type_id')
-            ->get();
-
-        foreach ($entries as $entry) {
-            $this->districtAmounts[$entry->user_id][$entry->district_id][$entry->tax_type_id]
-                = (float) $entry->total;
-        }
     }
 
     public function title(): string
     {
-        return "{$this->upt->name} {$this->monthName} {$this->year}";
+        return "Realisasi {$this->upt->name} {$this->year}";
     }
 
-    /** @return array<int, array<int, mixed>> */
     public function array(): array
     {
         $rows = [];
+        $employees = $this->upt->users;
 
-        // Build header columns:
-        // Col 0: URAIAN
-        // Then for each employee: one col per district
-        // Last col: TOTAL
-
-        // Row 1: title + employee names (spanning their districts)
-        // Row 2: sub-header (district names + TOTAL)
-
-        $headerRow1 = ['URAIAN'];
-        $headerRow2 = [''];
-
-        /** @var array<int, array{employee: User, district_id: string, district_name: string}> $columns */
+        // Kumpulkan semua kecamatan yang ditangani per pegawai
+        // columns = [{employee, district}]
         $columns = [];
-
-        foreach ($this->employees as $employee) {
-            $districts = $employee->districts;
-            if ($districts->isEmpty()) {
-                continue;
-            }
-            foreach ($districts as $district) {
-                $headerRow1[] = strtoupper($employee->name);
-                $headerRow2[] = strtoupper($district->name);
-                $columns[] = ['employee' => $employee, 'district_id' => $district->id, 'district_name' => $district->name];
+        foreach ($employees as $employee) {
+            foreach ($employee->districts as $district) {
+                $columns[] = ['employee' => $employee, 'district' => $district];
             }
         }
 
-        $headerRow1[] = 'TOTAL';
-        $headerRow2[] = '';
+        // Ambil data ketetapan & realisasi per ayat per kecamatan dari lokal
+        $allDistrictCodes = collect($columns)->pluck('district.simpadu_code')->filter()->unique()->values()->toArray();
 
-        $rows[] = $headerRow1;
-        $rows[] = $headerRow2;
+        $stats = DB::table('simpadu_tax_payers')
+            ->where('year', $this->year)
+            ->where('status', '1')
+            ->where('month', 0)
+            ->whereIn('kd_kecamatan', $allDistrictCodes)
+            ->selectRaw('ayat, kd_kecamatan, SUM(total_ketetapan) as ket, SUM(total_bayar) as byr')
+            ->groupBy('ayat', 'kd_kecamatan')
+            ->get()
+            ->groupBy('ayat')
+            ->map(fn ($g) => $g->keyBy('kd_kecamatan'));
 
-        // Column totals (for grand total row at bottom)
-        $colTotals = array_fill(0, count($columns), 0.0);
+        // Header baris 1: URAIAN | [nama pegawai spanning kecamatannya x2 (target+real)] | TOTAL
+        $header1 = ['URAIAN'];
+        $header2 = [''];
 
-        // Data rows: one per tax type
-        foreach ($this->taxTypes as $taxType) {
-            $row = [$taxType->name];
-            $rowTotal = 0.0;
+        foreach ($employees as $employee) {
+            $distCount = $employee->districts->count();
+            if ($distCount === 0) {
+                continue;
+            }
+            // Setiap kecamatan punya 2 kolom: TARGET & REALISASI
+            for ($i = 0; $i < $distCount * 2; $i++) {
+                $header1[] = strtoupper($employee->name);
+            }
+            foreach ($employee->districts as $district) {
+                $header2[] = strtoupper($district->name);
+                $header2[] = '';
+            }
+        }
 
-            foreach ($columns as $i => $col) {
-                $amount = $this->districtAmounts[$col['employee']->id][$col['district_id']][$taxType->id] ?? 0.0;
-                $row[] = $amount > 0 ? $amount : null;
-                $rowTotal += $amount;
-                $colTotals[$i] += $amount;
+        $header1[] = 'TOTAL';
+        $header1[] = '';
+        $header2[] = 'TARGET';
+        $header2[] = 'REALISASI';
+
+        $rows[] = $header1;
+        $rows[] = $header2;
+
+        // Sub-header baris 3: TARGET / REALISASI per kolom
+        $subHeader = [''];
+        foreach ($columns as $col) {
+            $subHeader[] = 'TARGET';
+            $subHeader[] = 'REALISASI';
+        }
+        $subHeader[] = 'TARGET';
+        $subHeader[] = 'REALISASI';
+        $rows[] = $subHeader;
+
+        // Data rows
+        $grandTotKet = 0;
+        $grandTotByr = 0;
+        $colTotKet = array_fill(0, count($columns), 0.0);
+        $colTotByr = array_fill(0, count($columns), 0.0);
+
+        foreach (self::TAX_ITEMS as $item) {
+            $row = [($item['indent'] ? '  - ' : '').$item['label']];
+            $rowKet = 0;
+            $rowByr = 0;
+
+            if ($item['ayat'] === null) {
+                // Baris grup PBJT — kosong, akan dihitung dari children
+                foreach ($columns as $i => $col) {
+                    $row[] = null;
+                    $row[] = null;
+                }
+                $row[] = null;
+                $row[] = null;
+                $rows[] = $row;
+
+                continue;
             }
 
-            $row[] = $rowTotal > 0 ? $rowTotal : null;
+            $ayatStats = $stats->get($item['ayat'], collect());
+
+            foreach ($columns as $i => $col) {
+                $code = $col['district']->simpadu_code;
+                $distData = $ayatStats->get($code);
+                $ket = $distData ? (float) $distData->ket : 0;
+                $byr = $distData ? (float) $distData->byr : 0;
+
+                $row[] = $ket > 0 ? $ket : null;
+                $row[] = $byr > 0 ? $byr : null;
+
+                $rowKet += $ket;
+                $rowByr += $byr;
+                $colTotKet[$i] += $ket;
+                $colTotByr[$i] += $byr;
+            }
+
+            $row[] = $rowKet > 0 ? $rowKet : null;
+            $row[] = $rowByr > 0 ? $rowByr : null;
+
+            $grandTotKet += $rowKet;
+            $grandTotByr += $rowByr;
+
             $rows[] = $row;
         }
 
-        // Grand total row
+        // Total row — query langsung per kecamatan unik agar tidak double count
+        // jika satu kecamatan ditangani lebih dari satu pegawai
         $totalRow = ['TOTAL'];
-        $grandTotal = 0.0;
-        foreach ($colTotals as $t) {
-            $totalRow[] = $t;
-            $grandTotal += $t;
+        foreach ($columns as $i => $col) {
+            $totalRow[] = $colTotKet[$i];
+            $totalRow[] = $colTotByr[$i];
         }
-        $totalRow[] = $grandTotal;
+
+        // Grand total dari DB langsung (kecamatan unik, tidak double count)
+        $grandStats = DB::table('simpadu_tax_payers')
+            ->where('year', $this->year)
+            ->where('status', '1')
+            ->where('month', 0)
+            ->whereIn('kd_kecamatan', $allDistrictCodes)
+            ->selectRaw('SUM(total_ketetapan) as ket, SUM(total_bayar) as byr')
+            ->first();
+
+        $totalRow[] = (float) ($grandStats->ket ?? 0);
+        $totalRow[] = (float) ($grandStats->byr ?? 0);
         $rows[] = $totalRow;
 
-        $this->data = $rows;
+        // Filter baris yang semua nilai numeriknya null/0 (kecuali header dan total)
+        $dataRows = array_slice($rows, 3, -1); // baris data saja
+        $filteredData = array_filter($dataRows, function ($row) {
+            $values = array_slice($row, 1); // skip kolom uraian
 
-        return $rows;
+            return collect($values)->filter(fn ($v) => $v !== null && $v > 0)->isNotEmpty();
+        });
+
+        $this->data = array_merge(
+            array_slice($rows, 0, 3),
+            array_values($filteredData),
+            [end($rows)]
+        );
+
+        return $this->data;
     }
 
-    /** @return array<string, int|float> */
     public function columnWidths(): array
     {
-        $widths = ['A' => 42];
-        $cols = range('B', 'Z');
-
+        $employees = $this->upt->users;
         $colCount = 0;
-        foreach ($this->employees as $employee) {
-            $colCount += max(1, $employee->districts->count());
+        foreach ($employees as $e) {
+            $colCount += $e->districts->count() * 2;
         }
 
-        for ($i = 0; $i <= $colCount; $i++) {
-            $widths[$cols[$i]] = 22;
+        $widths = ['A' => 40];
+        for ($i = 2; $i <= $colCount + 3; $i++) {
+            $widths[Coordinate::stringFromColumnIndex($i)] = 18;
         }
 
         return $widths;
     }
 
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event): void {
+                $sheet = $event->sheet->getDelegate();
+                $employees = $this->upt->users;
+
+                // Merge URAIAN across 3 header rows
+                $sheet->mergeCells('A1:A3');
+                $sheet->getStyle('A1')->getAlignment()
+                    ->setVertical(Alignment::VERTICAL_CENTER)
+                    ->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+                // Merge employee name cells across their district*2 columns in row 1
+                $colIndex = 2;
+                foreach ($employees as $employee) {
+                    $distCount = $employee->districts->count();
+                    if ($distCount === 0) {
+                        continue;
+                    }
+                    $span = $distCount * 2;
+                    $startCol = Coordinate::stringFromColumnIndex($colIndex);
+                    $endCol = Coordinate::stringFromColumnIndex($colIndex + $span - 1);
+                    if ($span > 1) {
+                        $sheet->mergeCells("{$startCol}1:{$endCol}1");
+                    }
+                    // Merge district name across TARGET+REALISASI in row 2
+                    for ($d = 0; $d < $distCount; $d++) {
+                        $dc = Coordinate::stringFromColumnIndex($colIndex + $d * 2);
+                        $dc2 = Coordinate::stringFromColumnIndex($colIndex + $d * 2 + 1);
+                        $sheet->mergeCells("{$dc}2:{$dc2}2");
+                    }
+                    $colIndex += $span;
+                }
+
+                // Merge TOTAL header
+                $totalStart = Coordinate::stringFromColumnIndex($colIndex);
+                $totalEnd = Coordinate::stringFromColumnIndex($colIndex + 1);
+                $sheet->mergeCells("{$totalStart}1:{$totalEnd}1");
+                $sheet->mergeCells("{$totalStart}2:{$totalEnd}2");
+            },
+        ];
+    }
+
     public function styles(Worksheet $sheet): void
     {
-        $data = $this->data;
-        if (empty($data)) {
-            $data = $this->array();
-        }
+        $data = $this->data ?: $this->array();
         $totalRows = count($data);
         $lastCol = $sheet->getHighestColumn();
 
-        $borderThin = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
+        $thin = ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']];
 
-        // --- Header row 1: employee names ---
-        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
+        // Header rows 1-3
+        $sheet->getStyle("A1:{$lastCol}3")->applyFromArray([
             'font' => ['bold' => true],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders' => ['allBorders' => $borderThin],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders' => ['allBorders' => $thin],
         ]);
 
-        // --- Header row 2: district names ---
-        $sheet->getStyle("A2:{$lastCol}2")->applyFromArray([
-            'font' => ['bold' => true],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders' => ['allBorders' => $borderThin],
+        // Data rows
+        $sheet->getStyle("A4:{$lastCol}{$totalRows}")->applyFromArray([
+            'borders' => ['allBorders' => $thin],
         ]);
 
-        // Merge employee name cells across their districts in row 1
-        $colIndex = 2; // B = 2
-        foreach ($this->employees as $employee) {
-            $distCount = $employee->districts->count();
-            if ($distCount <= 0) {
-                continue;
-            }
-            if ($distCount > 1) {
-                $startCol = Coordinate::stringFromColumnIndex($colIndex);
-                $endCol = Coordinate::stringFromColumnIndex($colIndex + $distCount - 1);
-                $sheet->mergeCells("{$startCol}1:{$endCol}1");
-            }
-            $colIndex += $distCount;
+        // Number format for data + total row
+        $sheet->getStyle("B4:{$lastCol}{$totalRows}")
+            ->getNumberFormat()->setFormatCode('"Rp" #,##0');
+
+        $sheet->getStyle("A4:A{$totalRows}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+        // Total row bold
+        $sheet->getStyle("A{$totalRows}:{$lastCol}{$totalRows}")->applyFromArray([
+            'font' => ['bold' => true],
+        ]);
+
+        foreach ([1, 2, 3] as $r) {
+            $sheet->getRowDimension($r)->setRowHeight(22);
         }
 
-        // Merge URAIAN cell across both header rows
-        $sheet->mergeCells('A1:A2');
-        $sheet->getStyle('A1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-
-        // Merge TOTAL cell across both header rows
-        $totalColLetter = Coordinate::stringFromColumnIndex($colIndex);
-        $sheet->mergeCells("{$totalColLetter}1:{$totalColLetter}2");
-
-        // --- Data rows ---
-        if ($totalRows > 2) {
-            $sheet->getStyle("A3:{$lastCol}{$totalRows}")->applyFromArray([
-                'borders' => ['allBorders' => $borderThin],
-            ]);
-
-            $sheet->getStyle("B3:{$lastCol}{$totalRows}")
-                ->getNumberFormat()
-                ->setFormatCode('"Rp" #,##0.00');
-
-            $sheet->getStyle("A3:A{$totalRows}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        }
-
-        // --- Grand total row: bold only ---
-        $sheet->getStyle("A{$totalRows}:{$lastCol}{$totalRows}")->getFont()->setBold(true);
-
-        $sheet->getRowDimension(1)->setRowHeight(22);
-        $sheet->getRowDimension(2)->setRowHeight(20);
-        $sheet->freezePane('B3');
+        $sheet->freezePane('B4');
     }
 }

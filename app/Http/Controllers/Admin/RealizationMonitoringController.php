@@ -10,8 +10,8 @@ use App\Exports\UptRealizationExport;
 use App\Http\Controllers\Controller;
 use App\Models\Upt;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -72,14 +72,14 @@ class RealizationMonitoringController extends Controller
         $districtId = $request->query('district_id');
 
         $result = $showEmployeeMonitoring(
-            $upt, 
-            $employee, 
-            $year, 
-            $month, 
-            $search, 
-            $sortBy, 
-            $sortDir, 
-            $taxTypeId, 
+            $upt,
+            $employee,
+            $year,
+            $month,
+            $search,
+            $sortBy,
+            $sortDir,
+            $taxTypeId,
             $statusFilter,
             $districtId
         );
@@ -90,28 +90,25 @@ class RealizationMonitoringController extends Controller
     public function export(Request $request, Upt $upt): BinaryFileResponse
     {
         $year = $request->integer('year', (int) date('Y'));
-        $month = $request->integer('month', (int) date('n'));
+        $filename = "realisasi-{$upt->code}-{$year}.xlsx";
 
-        $monthName = strtolower(Carbon::createFromDate($year, $month, 1)->translatedFormat('F'));
-        $filename = "realisasi-{$upt->code}-{$monthName}-{$year}.xlsx";
-
-        return Excel::download(new UptRealizationExport($upt->id, $year, $month), $filename);
+        return Excel::download(new UptRealizationExport($upt->id, $year, 0), $filename);
     }
 
     /**
      * Return monthly tunggakan breakdown for a specific WP (for accordion).
      */
-    public function wpTunggakan(Request $request, Upt $upt, User $employee): \Illuminate\Http\JsonResponse
+    public function wpTunggakan(Request $request, Upt $upt, User $employee): JsonResponse
     {
         $validated = $request->validate([
-            'year'  => 'nullable|integer|min:2000|max:2099',
+            'year' => 'nullable|integer|min:2000|max:2099',
             'npwpd' => 'required|string|max:50',
-            'nop'   => 'required|string|max:50',
+            'nop' => 'required|string|max:50',
         ]);
 
-        $year  = $validated['year'] ?? (int) date('Y');
+        $year = $validated['year'] ?? (int) date('Y');
         $npwpd = $validated['npwpd'];
-        $nop   = $validated['nop'];
+        $nop = $validated['nop'];
 
         $months = DB::table('simpadu_tax_payers')
             ->where('year', $year)
@@ -123,12 +120,12 @@ class RealizationMonitoringController extends Controller
 
         $bulanIndo = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-        $result = $months->map(fn($r) => [
-            'bulan'            => $bulanIndo[(int) $r->month] ?? $r->month,
-            'total_ketetapan'  => (float) $r->total_ketetapan,
-            'total_bayar'      => (float) $r->total_bayar,
-            'total_tunggakan'  => (float) max($r->total_tunggakan, 0),
-        ])->filter(fn($r) => $r['total_ketetapan'] > 0);
+        $result = $months->map(fn ($r) => [
+            'bulan' => $bulanIndo[(int) $r->month] ?? $r->month,
+            'total_ketetapan' => (float) $r->total_ketetapan,
+            'total_bayar' => (float) $r->total_bayar,
+            'total_tunggakan' => (float) max($r->total_tunggakan, 0),
+        ])->filter(fn ($r) => $r['total_ketetapan'] > 0);
 
         return response()->json($result->values());
     }
