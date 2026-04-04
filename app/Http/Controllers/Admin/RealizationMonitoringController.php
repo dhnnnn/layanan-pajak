@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Monitoring\ListUptMonitoringAction;
 use App\Actions\Monitoring\ShowEmployeeMonitoringAction;
 use App\Actions\Monitoring\ShowUptMonitoringAction;
+use App\Exports\EmployeeMonitoringExport;
 use App\Exports\RealizationMonitoringExport;
 use App\Exports\UptRealizationExport;
 use App\Http\Controllers\Controller;
 use App\Models\Upt;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -93,6 +96,119 @@ class RealizationMonitoringController extends Controller
         $filename = "realisasi-{$upt->code}-{$year}.xlsx";
 
         return Excel::download(new UptRealizationExport($upt->id, $year, 0), $filename);
+    }
+
+    /**
+     * Export UPT WP tunggakan to PDF (untuk kepala UPT).
+     */
+    public function exportUptPdf(Request $request, Upt $upt): Response
+    {
+        $year = $request->integer('year', (int) date('Y'));
+        $upt->load('districts');
+        $districtCodes = $upt->districts->pluck('simpadu_code')->filter()->toArray();
+
+        $summaryRaw = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('month', 0)->where('status', '1')
+            ->whereIn('kd_kecamatan', $districtCodes)
+            ->selectRaw('SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_bayar, SUM(CASE WHEN total_tunggakan > 0 THEN total_tunggakan ELSE 0 END) as total_tunggakan')
+            ->first();
+
+        $summary = [
+            'total_sptpd' => (float) ($summaryRaw->total_sptpd ?? 0),
+            'total_bayar' => (float) ($summaryRaw->total_bayar ?? 0),
+            'total_tunggakan' => (float) ($summaryRaw->total_tunggakan ?? 0),
+        ];
+
+        $wpList = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)->where('stp.month', 0)->where('stp.status', '1')
+            ->whereIn('stp.kd_kecamatan', $districtCodes)
+            ->where('stp.total_tunggakan', '>', 0)
+            ->selectRaw('stp.npwpd, stp.nop, stp.nm_wp, stp.kd_kecamatan, stp.ayat, tax_types.name as jenis_pajak, SUM(stp.total_ketetapan) as total_ketetapan, SUM(stp.total_bayar) as total_bayar, SUM(stp.total_tunggakan) as total_tunggakan')
+            ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.kd_kecamatan', 'stp.ayat', 'tax_types.name')
+            ->orderByDesc('total_tunggakan')
+            ->get();
+
+        $monthlyData = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('month', '>', 0)->where('status', '1')
+            ->whereIn('kd_kecamatan', $districtCodes)
+            ->where('total_ketetapan', '>', 0)
+            ->get()
+            ->groupBy(fn ($r) => $r->npwpd.'|'.$r->nop);
+
+        // Gunakan employee sebagai placeholder untuk nama UPT
+        $employee = (object) ['name' => $upt->name, 'districts' => $upt->districts];
+
+        $pdf = Pdf::loadView('admin.realization-monitoring.employee-pdf', compact(
+            'upt', 'employee', 'year', 'summary', 'wpList', 'monthlyData'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->download("monitoring-realisasi-{$upt->code}-{$year}.pdf");
+    }
+
+    /**
+     * Export employee WP tunggakan to Excel.
+     */
+    public function exportEmployee(Request $request, Upt $upt, User $employee): BinaryFileResponse
+    {
+        $year = $request->integer('year', (int) date('Y'));
+        $filename = "tunggakan-{$employee->name}-{$year}.xlsx";
+
+        return Excel::download(
+            new EmployeeMonitoringExport($upt, $employee, $year),
+            $filename
+        );
+    }
+
+    /**
+     * Export employee WP tunggakan to PDF (download).
+     */
+    public function exportEmployeePdf(Request $request, Upt $upt, User $employee): Response
+    {
+        if ($employee->upt_id !== $upt->id) {
+            abort(404);
+        }
+
+        $year = $request->integer('year', (int) date('Y'));
+        $employee->load('districts');
+        $districtCodes = $employee->districts->pluck('simpadu_code')->filter()->toArray();
+
+        $summaryRaw = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('month', 0)->where('status', '1')
+            ->whereIn('kd_kecamatan', $districtCodes)
+            ->selectRaw('SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_bayar, SUM(CASE WHEN total_tunggakan > 0 THEN total_tunggakan ELSE 0 END) as total_tunggakan')
+            ->first();
+
+        $summary = [
+            'total_sptpd' => (float) ($summaryRaw->total_sptpd ?? 0),
+            'total_bayar' => (float) ($summaryRaw->total_bayar ?? 0),
+            'total_tunggakan' => (float) ($summaryRaw->total_tunggakan ?? 0),
+        ];
+
+        $wpList = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)->where('stp.month', 0)->where('stp.status', '1')
+            ->whereIn('stp.kd_kecamatan', $districtCodes)
+            ->where('stp.total_tunggakan', '>', 0)
+            ->selectRaw('stp.npwpd, stp.nop, stp.nm_wp, stp.kd_kecamatan, stp.ayat, tax_types.name as jenis_pajak, SUM(stp.total_ketetapan) as total_ketetapan, SUM(stp.total_bayar) as total_bayar, SUM(stp.total_tunggakan) as total_tunggakan')
+            ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.kd_kecamatan', 'stp.ayat', 'tax_types.name')
+            ->orderByDesc('total_tunggakan')
+            ->get();
+
+        $monthlyData = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('month', '>', 0)->where('status', '1')
+            ->whereIn('kd_kecamatan', $districtCodes)
+            ->where('total_ketetapan', '>', 0)
+            ->get()
+            ->groupBy(fn ($r) => $r->npwpd.'|'.$r->nop);
+
+        $pdf = Pdf::loadView('admin.realization-monitoring.employee-pdf', compact(
+            'upt', 'employee', 'year', 'summary', 'wpList', 'monthlyData'
+        ))->setPaper('a4', 'portrait');
+
+        $filename = 'monitoring-realisasi-'.str_replace(' ', '-', strtolower($employee->name))."-{$year}.pdf";
+
+        return $pdf->download($filename);
     }
 
     /**

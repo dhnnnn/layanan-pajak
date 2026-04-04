@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers\FieldOfficer;
 
+use App\Exports\FieldOfficerTargetExport;
 use App\Http\Controllers\Controller;
 use App\Models\District;
 use App\Models\TaxTarget;
+use App\Models\TaxType;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DashboardController extends Controller
 {
@@ -73,7 +80,7 @@ class DashboardController extends Controller
             ->where('year', $year)->where('month', $complianceMonth)
             ->whereIn('npwpd', function ($q) use ($assignedDistrictCodes, $year) {
                 $q->select('npwpd')->from('simpadu_tax_payers')
-                  ->where('year', $year)->whereIn('kd_kecamatan', $assignedDistrictCodes);
+                    ->where('year', $year)->whereIn('kd_kecamatan', $assignedDistrictCodes);
             })
             ->distinct()->count(DB::raw('CONCAT(npwpd, nop)'));
 
@@ -128,8 +135,8 @@ class DashboardController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('stp.nm_wp', 'like', "%{$search}%")
-                  ->orWhere('stp.npwpd', 'like', "%{$search}%")
-                  ->orWhere('stp.nop', 'like', "%{$search}%");
+                    ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                    ->orWhere('stp.nop', 'like', "%{$search}%");
             });
         }
 
@@ -194,6 +201,7 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($district) use ($districtStats) {
                 $stat = $districtStats->firstWhere('kd_kecamatan', $district->simpadu_code);
+
                 return [
                     'id' => $district->id,
                     'name' => $district->name,
@@ -228,16 +236,18 @@ class DashboardController extends Controller
 
         $assignedDistricts = $user->accessibleDistricts()->orderBy('name')->get();
         $allAssignedDistrictCodes = $assignedDistricts->pluck('simpadu_code')->filter()->toArray();
-        
+
         $selectedDistrict = $districtId ? $assignedDistricts->firstWhere('id', $districtId) : null;
         // firstWhere returns false if not found — normalize to null
-        if ($selectedDistrict === false) $selectedDistrict = null;
-        $activeDistrictCodes = $selectedDistrict 
-            ? [$selectedDistrict->simpadu_code] 
+        if ($selectedDistrict === false) {
+            $selectedDistrict = null;
+        }
+        $activeDistrictCodes = $selectedDistrict
+            ? [$selectedDistrict->simpadu_code]
             : $allAssignedDistrictCodes;
 
         // 1. Load Tax Types for filter
-        $taxTypes = \App\Models\TaxType::query()
+        $taxTypes = TaxType::query()
             ->whereNull('parent_id')
             ->whereNotNull('simpadu_code')
             ->orderBy('name')
@@ -281,12 +291,11 @@ class DashboardController extends Controller
             ->where('stp.year', $year)
             ->where('stp.month', 0)
             ->whereIn('stp.kd_kecamatan', $activeDistrictCodes)
-            ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', $statusFilter))
-            ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
-            ->when($search, fn($q) => $q->where(fn($sq) =>
-                $sq->where('stp.nm_wp', 'like', "%{$search}%")
-                   ->orWhere('stp.npwpd', 'like', "%{$search}%")
-                   ->orWhere('stp.nop', 'like', "%{$search}%")
+            ->when($statusFilter !== 'all', fn ($q) => $q->where('stp.status', $statusFilter))
+            ->when($selectedTaxType, fn ($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
+            ->when($search, fn ($q) => $q->where(fn ($sq) => $sq->where('stp.nm_wp', 'like', "%{$search}%")
+                ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                ->orWhere('stp.nop', 'like', "%{$search}%")
             ))
             ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.nm_op', 'stp.ayat', 'stp.status', 'tax_types.name')
             ->selectRaw('stp.npwpd, stp.nop, stp.nm_wp, stp.nm_op, stp.ayat, stp.status, tax_types.name as tax_type_name,
@@ -295,12 +304,12 @@ class DashboardController extends Controller
                 GREATEST(SUM(stp.total_ketetapan) - SUM(stp.total_bayar), 0) as total_tunggakan');
 
         if (isset($rawSortCols[$sortBy])) {
-            $query->orderByRaw($rawSortCols[$sortBy] . ' ' . ($sortDir === 'asc' ? 'asc' : 'desc'));
+            $query->orderByRaw($rawSortCols[$sortBy].' '.($sortDir === 'asc' ? 'asc' : 'desc'));
         } else {
             $query->orderBy($plainSortCols[$sortBy] ?? 'total_tunggakan', $sortDir === 'asc' ? 'asc' : 'desc');
         }
 
-        $wpData = $query->paginate(15)->through(fn($r) => [
+        $wpData = $query->paginate(15)->through(fn ($r) => [
             'npwpd' => $r->npwpd, 'nop' => $r->nop, 'nm_wp' => $r->nm_wp,
             'tax_type_name' => $r->tax_type_name,
             'status_code' => (string) $r->status,
@@ -364,6 +373,7 @@ class DashboardController extends Controller
 
         $monthlyData = collect(range(1, 12))->map(function ($month) use ($monthlyStats, $months) {
             $stat = $monthlyStats->firstWhere('month', $month);
+
             return [
                 'bulan' => $months[$month],
                 'nomor' => $month,
@@ -409,8 +419,8 @@ class DashboardController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nm_wp', 'like', "%{$search}%")
-                  ->orWhere('npwpd', 'like', "%{$search}%")
-                  ->orWhere('nop', 'like', "%{$search}%");
+                    ->orWhere('npwpd', 'like', "%{$search}%")
+                    ->orWhere('nop', 'like', "%{$search}%");
             });
         }
 
@@ -466,9 +476,9 @@ class DashboardController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('stp.nm_wp', 'like', "%{$search}%")
-                  ->orWhere('stp.npwpd', 'like', "%{$search}%")
-                  ->orWhere('stp.nop', 'like', "%{$search}%")
-                  ->orWhere('stp.almt_op', 'like', "%{$search}%");
+                    ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                    ->orWhere('stp.nop', 'like', "%{$search}%")
+                    ->orWhere('stp.almt_op', 'like', "%{$search}%");
             });
         }
 
@@ -495,11 +505,122 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function wpTunggakan(Request $request): \Illuminate\Http\JsonResponse
+    public function exportPdf(Request $request): Response
     {
-        $year  = $request->integer('year', (int) date('Y'));
+        $user = $request->user();
+        $year = $request->integer('year', (int) date('Y'));
+
+        $districtCodes = $user->accessibleDistricts()->pluck('simpadu_code')->filter()->toArray();
+
+        $summaryRaw = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('month', 0)->where('status', '1')
+            ->whereIn('kd_kecamatan', $districtCodes)
+            ->selectRaw('SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_bayar, SUM(CASE WHEN total_tunggakan > 0 THEN total_tunggakan ELSE 0 END) as total_tunggakan')
+            ->first();
+
+        $summary = [
+            'total_sptpd' => (float) ($summaryRaw->total_sptpd ?? 0),
+            'total_bayar' => (float) ($summaryRaw->total_bayar ?? 0),
+            'total_tunggakan' => (float) ($summaryRaw->total_tunggakan ?? 0),
+        ];
+
+        $wpList = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)->where('stp.month', 0)->where('stp.status', '1')
+            ->whereIn('stp.kd_kecamatan', $districtCodes)
+            ->where('stp.total_tunggakan', '>', 0)
+            ->selectRaw('stp.npwpd, stp.nop, stp.nm_wp, stp.kd_kecamatan, stp.ayat, tax_types.name as jenis_pajak, SUM(stp.total_ketetapan) as total_ketetapan, SUM(stp.total_bayar) as total_bayar, SUM(stp.total_tunggakan) as total_tunggakan')
+            ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.kd_kecamatan', 'stp.ayat', 'tax_types.name')
+            ->orderByDesc('total_tunggakan')
+            ->get();
+
+        $monthlyData = DB::table('simpadu_tax_payers')
+            ->where('year', $year)->where('month', '>', 0)->where('status', '1')
+            ->whereIn('kd_kecamatan', $districtCodes)
+            ->where('total_ketetapan', '>', 0)
+            ->get()
+            ->groupBy(fn ($r) => $r->npwpd.'|'.$r->nop);
+
+        // Buat objek employee & upt dari user yang login
+        $employee = $user;
+        $employee->load('districts');
+        $upt = $user->upt;
+
+        $pdf = Pdf::loadView('admin.realization-monitoring.employee-pdf', compact(
+            'upt', 'employee', 'year', 'summary', 'wpList', 'monthlyData'
+        ))->setPaper('a4', 'portrait');
+
+        $filename = 'monitoring-realisasi-'.str_replace(' ', '-', strtolower($user->name))."-{$year}.pdf";
+
+        return $pdf->download($filename);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+        $year = $request->integer('year', (int) date('Y'));
+        $search = $request->query('search');
+        $statusFilter = $request->query('status_filter', '1');
+        $taxTypeId = $request->query('tax_type_id');
+        $districtId = $request->query('district_id');
+
+        $assignedDistricts = $user->accessibleDistricts()->orderBy('name')->get();
+        $allAssignedDistrictCodes = $assignedDistricts->pluck('simpadu_code')->filter()->toArray();
+
+        $selectedDistrict = $districtId ? $assignedDistricts->firstWhere('id', $districtId) : null;
+        $activeDistrictCodes = $selectedDistrict
+            ? [$selectedDistrict->simpadu_code]
+            : $allAssignedDistrictCodes;
+
+        $taxTypes = TaxType::query()->whereNull('parent_id')->whereNotNull('simpadu_code')->get(['id', 'simpadu_code']);
+        $selectedTaxType = $taxTypeId ? $taxTypes->firstWhere('id', $taxTypeId) : null;
+
+        $query = DB::table('simpadu_tax_payers as stp')
+            ->leftJoin('tax_types', 'tax_types.simpadu_code', '=', 'stp.ayat')
+            ->where('stp.year', $year)
+            ->where('stp.month', 0)
+            ->whereIn('stp.kd_kecamatan', $activeDistrictCodes)
+            ->when($statusFilter !== 'all', fn ($q) => $q->where('stp.status', $statusFilter))
+            ->when($selectedTaxType, fn ($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
+            ->when($search, fn ($q) => $q->where(fn ($sq) => $sq->where('stp.nm_wp', 'like', "%{$search}%")
+                ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                ->orWhere('stp.nop', 'like', "%{$search}%")
+            ))
+            ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.ayat', 'stp.status', 'tax_types.name')
+            ->selectRaw('stp.npwpd, stp.nop, stp.nm_wp, stp.ayat, stp.status, tax_types.name as tax_type_name,
+                SUM(stp.total_ketetapan) as total_ketetapan,
+                LEAST(SUM(stp.total_bayar), SUM(stp.total_ketetapan)) as total_bayar,
+                GREATEST(SUM(stp.total_ketetapan) - SUM(stp.total_bayar), 0) as total_tunggakan')
+            ->orderByDesc('total_tunggakan')
+            ->get()
+            ->map(fn ($r) => [
+                'npwpd' => $r->npwpd,
+                'nop' => $r->nop,
+                'nm_wp' => $r->nm_wp,
+                'tax_type_name' => $r->tax_type_name,
+                'status_code' => (string) $r->status,
+                'total_sptpd' => (float) $r->total_ketetapan,
+                'total_bayar' => (float) $r->total_bayar,
+                'tunggakan' => (float) max($r->total_tunggakan, 0),
+            ]);
+
+        $districtName = $selectedDistrict
+            ? $selectedDistrict->name
+            : $assignedDistricts->pluck('name')->implode(', ');
+
+        $filename = 'pencapaian-target-'.str_replace(' ', '-', strtolower($user->name))."-{$year}.xlsx";
+
+        return Excel::download(
+            new FieldOfficerTargetExport(collect($query), $year, $user->name, $districtName),
+            $filename
+        );
+    }
+
+    public function wpTunggakan(Request $request): JsonResponse
+    {
+        $year = $request->integer('year', (int) date('Y'));
         $npwpd = $request->query('npwpd');
-        $nop   = $request->query('nop');
+        $nop = $request->query('nop');
 
         $months = DB::table('simpadu_tax_payers')
             ->where('year', $year)->where('npwpd', $npwpd)->where('nop', $nop)
@@ -507,16 +628,16 @@ class DashboardController extends Controller
             ->orderBy('month')
             ->get(['month', 'total_ketetapan', 'total_bayar', 'total_tunggakan']);
 
-        $bulanIndo = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        $bulanIndo = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
         return response()->json(
-            $months->filter(fn($r) => $r->total_ketetapan > 0)
-                   ->map(fn($r) => [
-                       'bulan' => $bulanIndo[(int)$r->month] ?? $r->month,
-                       'total_ketetapan' => (float) $r->total_ketetapan,
-                       'total_bayar' => (float) $r->total_bayar,
-                       'total_tunggakan' => (float) max($r->total_tunggakan, 0),
-                   ])->values()
+            $months->filter(fn ($r) => $r->total_ketetapan > 0)
+                ->map(fn ($r) => [
+                    'bulan' => $bulanIndo[(int) $r->month] ?? $r->month,
+                    'total_ketetapan' => (float) $r->total_ketetapan,
+                    'total_bayar' => (float) $r->total_bayar,
+                    'total_tunggakan' => (float) max($r->total_tunggakan, 0),
+                ])->values()
         );
     }
 
@@ -536,7 +657,7 @@ class DashboardController extends Controller
             ->whereIn('kd_kecamatan', $assignedDistrictCodes)
             ->first();
 
-        if (!$wp) {
+        if (! $wp) {
             abort(404, 'Data WP tidak ditemukan');
         }
 

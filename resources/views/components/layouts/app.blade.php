@@ -123,10 +123,6 @@
             {{ $slot }}
 
         </main>
-
-        <footer class="shrink-0 border-t border-slate-200 bg-white px-6 py-3 text-center text-[11px] text-slate-400">
-            &copy; {{ date('Y') }} Diskominfo Kabupaten Pasuruan
-        </footer>
     </div>
 
 </div>

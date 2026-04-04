@@ -4,9 +4,9 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\RealizationMonitoringController;
+use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
-use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Employee\DailyEntryController;
@@ -74,14 +74,16 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::post('upts/{upt}/employees', [UptController::class, 'storeEmployees'])->name('upts.employees.store');
         Route::get('upts/{upt}/employees/{employee}/districts', [UptController::class, 'assignEmployeeDistricts'])->name('upts.employees.districts');
 
-
         // Monitoring Realisasi
-        Route::get('realization-monitoring/export', [RealizationMonitoringController::class, 'exportAll'])->name('realization-monitoring.export-all');
+        Route::get('realization-monitoring/export', [RealizationMonitoringController::class, 'exportAll'])->name('realization-monitoring.export-all')->middleware('role:admin');
         Route::get('realization-monitoring', [RealizationMonitoringController::class, 'index'])->name('realization-monitoring.index');
         Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
         Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');
+        Route::get('realization-monitoring/{upt}/export-pdf', [RealizationMonitoringController::class, 'exportUptPdf'])->name('realization-monitoring.export-pdf');
         Route::get('realization-monitoring/{upt}/employee/{employee}', [RealizationMonitoringController::class, 'employeeDetail'])->name('realization-monitoring.employee');
         Route::get('realization-monitoring/{upt}/employee/{employee}/wp-tunggakan', [RealizationMonitoringController::class, 'wpTunggakan'])->name('realization-monitoring.wp-tunggakan');
+        Route::get('realization-monitoring/{upt}/employee/{employee}/export-excel', [RealizationMonitoringController::class, 'exportEmployee'])->name('realization-monitoring.employee.export-excel');
+        Route::get('realization-monitoring/{upt}/employee/{employee}/export-pdf', [RealizationMonitoringController::class, 'exportEmployeePdf'])->name('realization-monitoring.employee.export-pdf');
 
         // Target Pajak (APBD)
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
@@ -128,6 +130,8 @@ Route::middleware(['auth', 'role:pegawai'])
         Route::get('monitoring', [FieldOfficerController::class, 'index'])->name('monitoring.index');
         Route::get('monitoring/assigned-districts', [FieldOfficerController::class, 'wpPerKecamatan'])->name('monitoring.assigned-districts');
         Route::get('monitoring/target-achievement', [FieldOfficerController::class, 'pencapaianTarget'])->name('monitoring.target-achievement');
+        Route::get('monitoring/target-achievement/export-pdf', [FieldOfficerController::class, 'exportPdf'])->name('monitoring.export-pdf');
+        Route::get('monitoring/target-achievement/export-excel', [FieldOfficerController::class, 'exportExcel'])->name('monitoring.export-excel');
         Route::get('monitoring/wp-tunggakan', [FieldOfficerController::class, 'wpTunggakan'])->name('monitoring.wp-tunggakan');
 
         // Pemantau WP — reuse admin controller, filtered by assigned districts
