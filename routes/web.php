@@ -32,6 +32,11 @@ Route::post('/logout', [LoginController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+// GET logout — untuk handle sesi expired (CSRF tidak valid)
+Route::get('/logout', [LoginController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout.get');
+
 // Profile — semua role yang sudah login
 Route::middleware('auth')->group(function (): void {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
