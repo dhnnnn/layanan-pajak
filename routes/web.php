@@ -11,7 +11,9 @@ use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Employee\DailyEntryController;
 use App\Http\Controllers\Employee\RealizationController;
-use App\Http\Controllers\FieldOfficer\DashboardController as FieldOfficerController;
+use App\Http\Controllers\FieldOfficer\DashboardController as FieldOfficerDashboardController;
+use App\Http\Controllers\FieldOfficer\ExportController as FieldOfficerExportController;
+use App\Http\Controllers\FieldOfficer\MonitoringController as FieldOfficerMonitoringController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -115,8 +117,28 @@ Route::middleware(['auth', 'role:pegawai'])
     ->prefix('field-officer')
     ->name('field-officer.')
     ->group(function (): void {
-        // Dashboard — field officer monitoring
-        Route::get('/dashboard', [FieldOfficerController::class, 'index'])->name('dashboard');
+        // Dashboard
+        Route::get('/dashboard', [FieldOfficerDashboardController::class, 'index'])->name('dashboard');
+
+        // Monitoring Specialized
+        Route::prefix('monitoring')
+            ->name('monitoring.')
+            ->group(function (): void {
+                Route::get('/', [FieldOfficerDashboardController::class, 'index'])->name('index');
+                Route::get('/assigned-districts', [FieldOfficerMonitoringController::class, 'assignedDistricts'])->name('assigned-districts');
+                Route::get('/target-achievement', [FieldOfficerMonitoringController::class, 'targetAchievement'])->name('target-achievement');
+                Route::get('/monthly-realization', [FieldOfficerMonitoringController::class, 'monthlyRealization'])->name('monthly-realization');
+                Route::get('/arrears', [FieldOfficerMonitoringController::class, 'arrears'])->name('arrears');
+                Route::get('/search', [FieldOfficerMonitoringController::class, 'search'])->name('search');
+                Route::get('/wp/{npwpd}', [FieldOfficerMonitoringController::class, 'taxpayerDetail'])->name('taxpayer-detail');
+                Route::get('/tax-payers', [FieldOfficerMonitoringController::class, 'taxpayers'])->name('tax-payers');
+                Route::get('/wp-tunggakan', [FieldOfficerMonitoringController::class, 'wpTunggakan'])->name('wp-tunggakan');
+
+                // Exports
+                Route::get('/target-achievement/export-pdf', [FieldOfficerExportController::class, 'exportPdf'])->name('export-pdf');
+                Route::get('/target-achievement/export-excel', [FieldOfficerExportController::class, 'exportExcel'])->name('export-excel');
+                Route::get('/tax-payers/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('tax-payers.export-excel');
+            });
 
         // Realisasi Pajak - Daily Entries
         Route::get('districts/{districtId}/entries', [DailyEntryController::class, 'show'])->name('daily-entries.show');
@@ -127,20 +149,5 @@ Route::middleware(['auth', 'role:pegawai'])
 
         // Realisasi Pajak
         Route::get('realizations/district/{districtId}/tax-types', [RealizationController::class, 'getTaxTypesByDistrict'])->name('realizations.district.tax-types');
-        Route::resource(
-            'realizations',
-            RealizationController::class,
-        )->except(['destroy']);
-
-        // Monitoring Field Officer
-        Route::get('monitoring', [FieldOfficerController::class, 'index'])->name('monitoring.index');
-        Route::get('monitoring/assigned-districts', [FieldOfficerController::class, 'wpPerKecamatan'])->name('monitoring.assigned-districts');
-        Route::get('monitoring/target-achievement', [FieldOfficerController::class, 'pencapaianTarget'])->name('monitoring.target-achievement');
-        Route::get('monitoring/target-achievement/export-pdf', [FieldOfficerController::class, 'exportPdf'])->name('monitoring.export-pdf');
-        Route::get('monitoring/target-achievement/export-excel', [FieldOfficerController::class, 'exportExcel'])->name('monitoring.export-excel');
-        Route::get('monitoring/wp-tunggakan', [FieldOfficerController::class, 'wpTunggakan'])->name('monitoring.wp-tunggakan');
-
-        // Pemantau WP — reuse admin controller, filtered by assigned districts
-        Route::get('monitoring/tax-payers', [TaxPayerMonitoringController::class, 'fieldOfficerIndex'])->name('monitoring.tax-payers');
-        Route::get('monitoring/tax-payers/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('monitoring.tax-payers.export-excel');
+        Route::resource('realizations', RealizationController::class)->except(['destroy']);
     });
