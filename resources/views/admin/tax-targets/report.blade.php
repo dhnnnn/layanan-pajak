@@ -17,7 +17,7 @@
         <form method="GET" action="{{ route('admin.tax-targets.report') }}" class="p-6" id="filterForm">
             <div class="flex flex-col md:flex-row gap-4 items-end">
                 <!-- Search Input -->
-                <div class="flex-1">
+                <div class="flex-1 w-full md:w-52">
                     <label for="search" class="block text-sm font-medium text-slate-700 mb-2">Cari Jenis Pajak</label>
                     <div class="relative">
                         <input
@@ -46,7 +46,7 @@
                         </button>
                         <input type="hidden" name="year" id="yearValue" value="{{ request('year', $selectedYear) }}">
 
-                        <div id="yearDropdownMenu" class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                        <div id="yearDropdownMenu" class="hidden absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                             <ul id="yearList" class="max-h-48 overflow-y-auto py-1">
                                 @forelse($availableYears as $availableYear)
                                     <li>
@@ -74,47 +74,6 @@
             </div>
         </form>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('filterForm');
-            const searchInput = document.getElementById('search');
-
-            // Debounced search
-            let searchTimeout;
-            searchInput.addEventListener('input', function () {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => form.submit(), 700);
-            });
-
-            // Year dropdown logic
-            const btn = document.getElementById('yearDropdownBtn');
-            const menu = document.getElementById('yearDropdownMenu');
-            const yearValueInput = document.getElementById('yearValue');
-            const yearLabel = document.getElementById('yearDropdownLabel');
-
-            if (btn && menu) {
-                btn.addEventListener('click', function () {
-                    menu.classList.toggle('hidden');
-                });
-
-                document.addEventListener('click', function (e) {
-                    if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
-                        menu.classList.add('hidden');
-                    }
-                });
-
-                document.querySelectorAll('.year-option').forEach(function (opt) {
-                    opt.addEventListener('click', function () {
-                        yearValueInput.value = this.dataset.value;
-                        yearLabel.textContent = this.textContent.trim();
-                        menu.classList.add('hidden');
-                        form.submit();
-                    });
-                });
-            }
-        });
-    </script>
 
     @php
         $totalTarget = $totals['target'];
@@ -246,4 +205,43 @@
             border-radius: 4px;
         }
     </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('filterForm');
+            const searchInput = document.getElementById('search');
+
+            let searchTimeout;
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => form.submit(), 700);
+            });
+
+            const btn = document.getElementById('yearDropdownBtn');
+            const menu = document.getElementById('yearDropdownMenu');
+            const yearValueInput = document.getElementById('yearValue');
+            const yearLabel = document.getElementById('yearDropdownLabel');
+
+            if (btn && menu) {
+                btn.addEventListener('click', function () {
+                    menu.classList.toggle('hidden');
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (!document.getElementById('yearDropdownWrapper').contains(e.target)) {
+                        menu.classList.add('hidden');
+                    }
+                });
+
+                document.querySelectorAll('.year-option').forEach(function (opt) {
+                    opt.addEventListener('click', function () {
+                        yearValueInput.value = this.dataset.value;
+                        yearLabel.textContent = this.textContent.trim();
+                        menu.classList.add('hidden');
+                        form.submit();
+                    });
+                });
+            }
+        });
+    </script>
 </x-layouts.admin>

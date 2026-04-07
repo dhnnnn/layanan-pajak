@@ -7,6 +7,7 @@ use App\Actions\Tax\ShowTaxTargetDetailAction;
 use App\Exports\TaxTargetExport;
 use App\Http\Controllers\Controller;
 use App\Models\SimpaduTarget;
+use App\Models\SimpaduMonthlyRealization;
 use App\Models\TaxType;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,12 +23,17 @@ class TaxTargetController extends Controller
         $availableYears = SimpaduTarget::query()
             ->distinct()
             ->orderByDesc('year')
-            ->pluck('year');
+            ->pluck('year')
+            ->merge(
+                \App\Models\SimpaduMonthlyRealization::query()
+                    ->distinct()
+                    ->pluck('year')
+            )
+            ->unique()
+            ->sortDesc()
+            ->values();
 
-        $selectedYear = (int) $request->query(
-            'year',
-            $availableYears->first() ?? date('Y'),
-        );
+        $selectedYear = (int) $request->query('year', date('Y'));
 
         $search = $request->query('search');
 

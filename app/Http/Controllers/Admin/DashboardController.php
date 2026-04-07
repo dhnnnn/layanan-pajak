@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DashboardRequest;
+use App\Models\SimpaduMonthlyRealization;
 use App\Models\SimpaduTarget;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -19,15 +20,24 @@ class DashboardController extends Controller
         $user = auth()->user();
         $isKepalaUpt = $user->isKepalaUpt();
 
-        $availableYears = SimpaduTarget::query()
+        // Gabungkan tahun dari simpadu_targets + simpadu_monthly_realizations
+        // agar dropdown mencakup semua tahun yang ada datanya
+        $yearsFromTargets = SimpaduTarget::query()
             ->distinct()
-            ->orderByDesc('year')
             ->pluck('year');
 
-        $selectedYear = (int) $request->query(
-            'year',
-            $availableYears->first() ?? date('Y'),
-        );
+        $yearsFromRealizations = \App\Models\SimpaduMonthlyRealization::query()
+            ->distinct()
+            ->pluck('year');
+
+        $availableYears = $yearsFromTargets
+            ->merge($yearsFromRealizations)
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        // Default ke tahun ini, bukan tahun pertama di list
+        $selectedYear = (int) $request->query('year', date('Y'));
 
         $uptId = null;
         $assignedDistricts = collect();

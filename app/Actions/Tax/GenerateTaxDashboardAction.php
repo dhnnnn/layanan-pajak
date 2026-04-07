@@ -53,7 +53,9 @@ class GenerateTaxDashboardAction
         };
 
         // Tampilkan sampai quarter yang ada datanya (tidak melebihi quarter berjalan)
-        $lastDataQuarter = min($lastSyncedQuarter, $currentQuarter);
+        // Untuk tahun historis (sudah lewat), tampilkan semua 4 quarter
+        $isPastYear = $year < (int) now()->year;
+        $lastDataQuarter = $isPastYear ? 4 : min($lastSyncedQuarter, $currentQuarter);
 
         // Pass 1: pisahkan PBJT dan non-PBJT
         $pbjt = $this->emptyPbjt($year);

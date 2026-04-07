@@ -9,9 +9,12 @@ use Illuminate\Support\Facades\Log;
 class SyncSimpaduMonthlyRealizationsAction
 {
     /**
-     * Sync realization data per ayat per kecamatan per month from simpadunew.
-     * Uses direct cash-basis query from pembayaran table (covers ALL tax types
-     * including PBB, BPHTB, PKB, BBNKB that are not in dat_sptpd_* tables).
+     * Sync realization data per ayat per month from simpadunew.
+     * Uses pembayaran table (cash-basis) — konsisten dengan prod dan smartreport.
+     *
+     * Formula: jml_byr_pokok + lainlain
+     * - lainlain di-clamp ke range wajar (-1000 s/d 1000) untuk hindari anomali data kotor
+     * - Minerba (41111) dikali 0.8 karena bagi hasil 80%
      */
     public function __invoke(int $year): array
     {
@@ -43,14 +46,14 @@ class SyncSimpaduMonthlyRealizationsAction
             $rows = [];
             foreach ($chunk as $row) {
                 $rows[] = [
-                    'year' => $year,
-                    'ayat' => (string) $row->ayat,
+                    'year'         => $year,
+                    'ayat'         => (string) $row->ayat,
                     'kd_kecamatan' => null,
-                    'month' => (int) $row->bulan,
-                    'total_bayar' => round((float) $row->total_bayar),
-                    'synced_at' => $syncTime,
-                    'created_at' => $syncTime,
-                    'updated_at' => $syncTime,
+                    'month'        => (int) $row->bulan,
+                    'total_bayar'  => round((float) $row->total_bayar),
+                    'synced_at'    => $syncTime,
+                    'created_at'   => $syncTime,
+                    'updated_at'   => $syncTime,
                 ];
             }
 
