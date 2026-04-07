@@ -1,6 +1,12 @@
 @php
-    $isAdmin = auth()->user()->hasRole('admin') || auth()->user()->isKepalaUpt();
-    $layout  = $isAdmin ? 'layouts.admin' : 'layouts.employee';
+    $user = auth()->user();
+    if ($user->hasRole('admin') || $user->isKepalaUpt()) {
+        $layout = 'layouts.admin';
+    } elseif ($user->hasRole('pegawai')) {
+        $layout = 'layouts.field-officer';
+    } else {
+        $layout = 'layouts.employee';
+    }
 @endphp
 
 <x-dynamic-component :component="$layout" title="Edit Profil" header="Edit Profil">

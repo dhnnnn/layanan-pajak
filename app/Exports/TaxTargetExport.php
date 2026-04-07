@@ -70,7 +70,7 @@ class TaxTargetExport implements FromArray, WithColumnWidths, WithStyles, WithTi
         $rows[] = $header2;
 
         foreach ($dashboardData as $item) {
-            $name = $item['is_parent'] ? $item['tax_type_name'] : " - " . $item['tax_type_name'];
+            $name = ($item['is_child'] ?? false) ? " - " . $item['tax_type_name'] : $item['tax_type_name'];
             
             if ($item['is_parent']) {
                 $this->parentRows[] = count($rows) + 1;

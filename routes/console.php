@@ -33,7 +33,7 @@ Schedule::call(function () {
 // Lewati jam yang sudah disync oleh jadwal 6 jam
 Schedule::command('simpadu:sync --skip-wp')
     ->hourly()
-    ->unless(fn () => (int) now()->hour % 6 === 0)
+    ->when(fn () => (int) now()->hour % 6 !== 0)
     ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
 
 // Sync WP lengkap (berat ~25 detik) — setiap 6 jam (00, 06, 12, 18)

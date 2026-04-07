@@ -9,8 +9,6 @@ use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
 use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Employee\DailyEntryController;
-use App\Http\Controllers\Employee\RealizationController;
 use App\Http\Controllers\FieldOfficer\DashboardController as FieldOfficerDashboardController;
 use App\Http\Controllers\FieldOfficer\ExportController as FieldOfficerExportController;
 use App\Http\Controllers\FieldOfficer\MonitoringController as FieldOfficerMonitoringController;
@@ -139,15 +137,4 @@ Route::middleware(['auth', 'role:pegawai'])
                 Route::get('/target-achievement/export-excel', [FieldOfficerExportController::class, 'exportExcel'])->name('export-excel');
                 Route::get('/tax-payers/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('tax-payers.export-excel');
             });
-
-        // Realisasi Pajak - Daily Entries
-        Route::get('districts/{districtId}/entries', [DailyEntryController::class, 'show'])->name('daily-entries.show');
-        Route::get('daily-entries', [DailyEntryController::class, 'index'])->name('daily-entries.index');
-        Route::post('daily-entries', [DailyEntryController::class, 'store'])->name('daily-entries.store');
-        Route::post('daily-entries/batch', [DailyEntryController::class, 'storeBatch'])->name('daily-entries.batch');
-        Route::delete('daily-entries/{dailyEntry}', [DailyEntryController::class, 'destroy'])->name('daily-entries.destroy');
-
-        // Realisasi Pajak
-        Route::get('realizations/district/{districtId}/tax-types', [RealizationController::class, 'getTaxTypesByDistrict'])->name('realizations.district.tax-types');
-        Route::resource('realizations', RealizationController::class)->except(['destroy']);
     });
