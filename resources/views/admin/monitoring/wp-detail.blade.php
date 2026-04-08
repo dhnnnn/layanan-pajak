@@ -13,7 +13,7 @@
 @endphp
 <x-layouts.admin :title="'Detail WP — ' . $nm" :header="'Detail Wajib Pajak'">
     <x-slot:headerActions>
-        <a href="{{ route('admin.monitoring.index', array_filter(['year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo])) }}"
+        <a href="{{ $backRoute }}"
             class="inline-flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-slate-900 text-xs font-bold transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -22,7 +22,9 @@
         </a>
 
         {{-- Export Excel --}}
-        <a href="{{ route('admin.monitoring.wp-detail.export-excel', [$npwpd, $nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'multi_year' => $multiYear]) }}"
+        <a href="{{ $isFieldOfficer
+            ? route('field-officer.monitoring.wp-detail.export-excel', [$npwpd, $nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'multi_year' => $multiYear])
+            : route('admin.monitoring.wp-detail.export-excel', [$npwpd, $nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'multi_year' => $multiYear]) }}"
             class="inline-flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -31,7 +33,9 @@
         </a>
 
         {{-- Export PDF --}}
-        <a href="{{ route('admin.monitoring.wp-detail.export-pdf', [$npwpd, $nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'multi_year' => $multiYear]) }}"
+        <a href="{{ $isFieldOfficer
+            ? route('field-officer.monitoring.wp-detail.export-pdf', [$npwpd, $nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'multi_year' => $multiYear])
+            : route('admin.monitoring.wp-detail.export-pdf', [$npwpd, $nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo, 'multi_year' => $multiYear]) }}"
             target="_blank"
             class="inline-flex items-center gap-2 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +67,9 @@
         </div>
     </x-slot:headerActions>
 
-    <form method="GET" action="{{ route('admin.monitoring.wp-detail', [$npwpd, $nop]) }}" id="filterForm">
+    <form method="GET" action="{{ $isFieldOfficer
+        ? route('field-officer.monitoring.wp-detail', [$npwpd, $nop])
+        : route('admin.monitoring.wp-detail', [$npwpd, $nop]) }}" id="filterForm">
         <input type="hidden" name="year" id="yearValue" value="{{ $selectedYear }}">
         <input type="hidden" name="month_from" id="monthFromValue" value="{{ $selectedMonthFrom }}">
         <input type="hidden" name="month_to" id="monthToValue" value="{{ $selectedMonthTo }}">

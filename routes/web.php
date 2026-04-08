@@ -140,5 +140,8 @@ Route::middleware(['auth', 'role:pegawai'])
                 Route::get('/target-achievement/export-pdf', [FieldOfficerExportController::class, 'exportPdf'])->name('export-pdf');
                 Route::get('/target-achievement/export-excel', [FieldOfficerExportController::class, 'exportExcel'])->name('export-excel');
                 Route::get('/tax-payers/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('tax-payers.export-excel');
+                Route::get('/wp-detail/{npwpd}/{nop}', [TaxPayerMonitoringController::class, 'wpDetail'])->name('wp-detail');
+                Route::get('/wp-detail/{npwpd}/{nop}/export-excel', [TaxPayerMonitoringController::class, 'wpDetailExportExcel'])->name('wp-detail.export-excel');
+                Route::get('/wp-detail/{npwpd}/{nop}/export-pdf', [TaxPayerMonitoringController::class, 'wpDetailExportPdf'])->name('wp-detail.export-pdf');
             });
     });

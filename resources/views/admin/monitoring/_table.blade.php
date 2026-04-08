@@ -46,7 +46,9 @@
                 <tr class="hover:bg-slate-50/80 transition-colors group">
                     <td class="px-6 py-4 border-r border-slate-50">
                         <div class="flex items-center gap-3">
-                            <a href="{{ route('admin.monitoring.wp-detail', [$wp->npwpd, $wp->nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo]) }}"
+                            <a href="{{ auth()->user()->hasRole('pegawai')
+                                    ? route('field-officer.monitoring.wp-detail', [$wp->npwpd, $wp->nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo])
+                                    : route('admin.monitoring.wp-detail', [$wp->npwpd, $wp->nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo]) }}"
                                 title="Lihat Detail & Grafik"
                                 class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-blue-600 text-slate-400 hover:text-white transition-all active:scale-95 shadow-sm">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

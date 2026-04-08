@@ -153,14 +153,29 @@ class TaxPayerMonitoringController extends Controller
     public function wpDetail(Request $request, string $npwpd, string $nop, GetWpDetailAction $getDetail): View
     {
         $year = $request->integer('year', (int) date('Y'));
-        $monthFrom = $request->integer('month_from', 1);
-        $monthTo = $request->integer('month_to', (int) date('n'));
+        $monthFrom = max(1, min(12, $request->integer('month_from', 1)));
+        $monthTo = max($monthFrom, min(12, $request->integer('month_to', (int) date('n'))));
         $multiYear = max(1, min(5, $request->integer('multi_year', 1)));
 
-        $monthFrom = max(1, min(12, $monthFrom));
-        $monthTo = max($monthFrom, min(12, $monthTo));
+        // Validasi akses kecamatan untuk pegawai
+        $user = auth()->user();
+        if ($user->hasRole('pegawai')) {
+            $assignedCodes = $user->accessibleDistricts()->pluck('simpadu_code')->filter()->toArray();
+            $wpKecamatan = DB::table('simpadu_tax_payers')
+                ->where('npwpd', $npwpd)->where('nop', $nop)->where('month', 0)
+                ->value('kd_kecamatan');
+
+            if ($wpKecamatan && ! in_array($wpKecamatan, $assignedCodes)) {
+                abort(403, 'WP ini tidak berada di wilayah Anda.');
+            }
+        }
 
         $data = $getDetail($npwpd, $nop, $year, $monthFrom, $monthTo, $multiYear);
+
+        $isFieldOfficer = $user->hasRole('pegawai');
+        $backRoute = $isFieldOfficer
+            ? route('field-officer.monitoring.tax-payers', array_filter(['year' => $year, 'month_from' => $monthFrom, 'month_to' => $monthTo]))
+            : route('admin.monitoring.index', array_filter(['year' => $year, 'month_from' => $monthFrom, 'month_to' => $monthTo]));
 
         return view('admin.monitoring.wp-detail', array_merge($data, [
             'selectedYear' => $year,
@@ -169,6 +184,8 @@ class TaxPayerMonitoringController extends Controller
             'multiYear' => $multiYear,
             'npwpd' => $npwpd,
             'nop' => $nop,
+            'backRoute' => $backRoute,
+            'isFieldOfficer' => $isFieldOfficer,
         ]));
     }
 
