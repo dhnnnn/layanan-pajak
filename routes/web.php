@@ -102,6 +102,10 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
                 Route::get('/', [TaxPayerMonitoringController::class, 'index'])->name('index');
                 Route::post('/assign', [TaxPayerMonitoringController::class, 'storeTask'])->name('assign');
                 Route::get('/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('export-excel');
+                Route::get('/wp-chart', [TaxPayerMonitoringController::class, 'wpChart'])->name('wp-chart');
+                Route::get('/wp/{npwpd}/{nop}', [TaxPayerMonitoringController::class, 'wpDetail'])->name('wp-detail');
+                Route::get('/wp/{npwpd}/{nop}/export-excel', [TaxPayerMonitoringController::class, 'wpDetailExportExcel'])->name('wp-detail.export-excel');
+                Route::get('/wp/{npwpd}/{nop}/export-pdf', [TaxPayerMonitoringController::class, 'wpDetailExportPdf'])->name('wp-detail.export-pdf');
             });
     });
 

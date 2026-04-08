@@ -15,26 +15,57 @@
             </tr>
             <tr class="bg-slate-50/50">
                 @for($m = $selectedMonthFrom; $m <= $selectedMonthTo; $m++)
+                    @php
+                        $colSptpd = 'sptpd_' . $m;
+                        $colBayar = 'bayar_' . $m;
+                        $activeSortBy = request('sort_by', '');
+                        $activeSortDir = request('sort_dir', 'desc');
+                    @endphp
                     <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Tgl SPTPD</th>
-                    <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Jml SPTPD</th>
-                    <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400">Jml Bayar</th>
+                    <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400 cursor-pointer hover:text-blue-600 transition-colors group select-none"
+                        data-sort-col="{{ $colSptpd }}">
+                        <div class="flex items-center justify-center gap-1">
+                            Jml SPTPD
+                            <x-sort-icon :column="$colSptpd" :active-col="$activeSortBy" :active-dir="$activeSortDir" />
+                        </div>
+                    </th>
+                    <th class="px-2 py-2 text-center border-r border-slate-100 text-[8px] font-black text-slate-400 cursor-pointer hover:text-blue-600 transition-colors group select-none"
+                        data-sort-col="{{ $colBayar }}">
+                        <div class="flex items-center justify-center gap-1">
+                            Jml Bayar
+                            <x-sort-icon :column="$colBayar" :active-col="$activeSortBy" :active-dir="$activeSortDir" />
+                        </div>
+                    </th>
                 @endfor
             </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 text-[11px]">
             @forelse($taxPayers as $wp)
-                <tr class="hover:bg-slate-50 transition-colors group">
+                @php $wpKey = $wp->npwpd . '-' . $wp->nop; @endphp
+                {{-- Main Row --}}
+                <tr class="hover:bg-slate-50/80 transition-colors group">
                     <td class="px-6 py-4 border-r border-slate-50">
-                        <div class="font-black text-slate-900 leading-tight uppercase group-hover:text-blue-600 transition-colors">{{ $wp->nm_wp }}</div>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[9px] text-slate-400 font-mono font-bold tracking-tighter">{{ $wp->npwpd }}</span>
-                            <span class="text-[9px] text-slate-300">|</span>
-                            <span class="text-[9px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ $wp->tax_type_name ?? '-' }}</span>
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('admin.monitoring.wp-detail', [$wp->npwpd, $wp->nop, 'year' => $selectedYear, 'month_from' => $selectedMonthFrom, 'month_to' => $selectedMonthTo]) }}"
+                                title="Lihat Detail & Grafik"
+                                class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-blue-600 text-slate-400 hover:text-white transition-all active:scale-95 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </a>
+                            <div>
+                                <div class="font-black text-slate-900 leading-tight uppercase group-hover:text-blue-600 transition-colors">{{ $wp->nm_wp }}</div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[9px] text-slate-400 font-mono font-bold tracking-tighter">{{ $wp->npwpd }}</span>
+                                    <span class="text-[9px] text-slate-300">|</span>
+                                    <span class="text-[9px] text-slate-400 font-bold uppercase truncate max-w-[120px]">{{ $wp->tax_type_name ?? '-' }}</span>
+                                </div>
+                                @if(!empty($wp->nm_op))
+                                    <div class="text-[9px] text-slate-300 mt-0.5 uppercase truncate max-w-[180px]">{{ $wp->nm_op }}</div>
+                                @endif
+                            </div>
                         </div>
-                        {{-- Tampilkan nm_op sebagai nama objek pembeda --}}
-                        @if(!empty($wp->nm_op))
-                            <div class="text-[9px] text-slate-300 mt-0.5 uppercase truncate max-w-[180px]">{{ $wp->nm_op }}</div>
-                        @endif
                     </td>
                     <td class="px-6 py-4 border-r border-slate-50 text-slate-500 font-medium uppercase text-[9px] leading-relaxed italic">
                         {{ $wp->almt_op }}

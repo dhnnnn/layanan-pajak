@@ -15,17 +15,21 @@ class BuildTaxPayerFilterAction
 {
     public function execute(Request $request, GetTaxPayerMatrixAction $getMatrix): array
     {
-        $year           = $request->integer('year', (int) date('Y'));
-        $monthFrom      = $request->integer('month_from', 1);
-        $monthTo        = $request->integer('month_to', (int) date('n'));
-        $search         = $request->string('search')->trim();
+        $year = $request->integer('year', (int) date('Y'));
+        $monthFrom = $request->integer('month_from', 1);
+        $monthTo = $request->integer('month_to', (int) date('n'));
+        $search = $request->string('search')->trim();
         $selectedDistrict = $request->string('district');
-        $statusFilter   = $request->string('status_filter', '1')->toString();
-        $selectedAyat   = $request->string('ayat')->toString();
+        $statusFilter = $request->string('status_filter', '1')->toString();
+        $selectedAyat = $request->string('ayat')->toString();
+        $sortBy = $request->string('sort_by')->toString() ?: null;
+        $sortDir = in_array($request->string('sort_dir')->toString(), ['asc', 'desc'])
+                            ? $request->string('sort_dir')->toString()
+                            : 'desc';
 
         $districtCodes = $this->resolveDistrictCodes($selectedDistrict->toString());
 
-        $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes, $statusFilter, $selectedAyat ?: null);
+        $taxPayers = $getMatrix($year, $monthFrom, $monthTo, (string) $search, $districtCodes, $statusFilter, $selectedAyat ?: null, $sortBy, $sortDir);
 
         $officers = User::orderBy('name')->get();
         $districts = $this->resolveDistrictsQuery()->get();
@@ -37,17 +41,17 @@ class BuildTaxPayerFilterAction
             ->get(['id', 'name', 'simpadu_code']);
 
         return [
-            'taxPayers'        => $taxPayers,
-            'officers'         => $officers,
-            'districts'        => $districts,
-            'taxTypes'         => $taxTypes,
-            'selectedYear'     => $year,
+            'taxPayers' => $taxPayers,
+            'officers' => $officers,
+            'districts' => $districts,
+            'taxTypes' => $taxTypes,
+            'selectedYear' => $year,
             'selectedMonthFrom' => $monthFrom,
-            'selectedMonthTo'  => $monthTo,
+            'selectedMonthTo' => $monthTo,
             'selectedDistrict' => (string) $selectedDistrict,
-            'selectedAyat'     => $selectedAyat,
-            'statusFilter'     => $statusFilter,
-            'availableYears'   => range(date('Y'), date('Y') - 5),
+            'selectedAyat' => $selectedAyat,
+            'statusFilter' => $statusFilter,
+            'availableYears' => range((int) date('Y'), (int) date('Y') - 5),
         ];
     }
 
@@ -57,6 +61,7 @@ class BuildTaxPayerFilterAction
 
         if ($user->isKepalaUpt()) {
             $uptCodes = $user->upt->districts->pluck('simpadu_code')->toArray();
+
             return ($selectedDistrict !== '' && in_array($selectedDistrict, $uptCodes))
                 ? [$selectedDistrict]
                 : $uptCodes;
@@ -64,6 +69,7 @@ class BuildTaxPayerFilterAction
 
         if ($user->hasRole('pegawai')) {
             $assignedCodes = $user->accessibleDistricts()->pluck('simpadu_code')->filter()->toArray();
+
             return ($selectedDistrict !== '' && in_array($selectedDistrict, $assignedCodes))
                 ? [$selectedDistrict]
                 : $assignedCodes;
@@ -73,6 +79,7 @@ class BuildTaxPayerFilterAction
             $code = (is_numeric($selectedDistrict) && strlen($selectedDistrict) < 3)
                 ? str_pad($selectedDistrict, 3, '0', STR_PAD_LEFT)
                 : $selectedDistrict;
+
             return [$code];
         }
 
@@ -81,7 +88,7 @@ class BuildTaxPayerFilterAction
 
     private function resolveDistrictsQuery()
     {
-        $user  = auth()->user();
+        $user = auth()->user();
         $query = District::orderBy('name');
 
         if ($user->isKepalaUpt()) {
