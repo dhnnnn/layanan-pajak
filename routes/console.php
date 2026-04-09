@@ -41,6 +41,22 @@ Schedule::command('simpadu:sync')
     ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
 
+// Sync data historis 3 tahun ke belakang untuk keperluan forecasting ARIMA.
+// Dijadwalkan sekali di awal tahun (1 Januari jam 03:00) agar data historis
+// selalu tersedia tanpa perlu sync manual.
+Schedule::call(function () {
+    $currentYear = (int) now()->year;
+    foreach (range(1, 3) as $offset) {
+        $year = $currentYear - $offset;
+        Artisan::call('simpadu:sync', ['--year' => $year, '--skip-wp' => true]);
+        Log::info("Historical sync completed for year {$year}.");
+    }
+})
+    ->yearlyOn(1, 1, '03:00')
+    ->name('sync-historical-realizations')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
+
 Schedule::command('simpadu:sync-payers')
     ->everySixHours()
     ->appendOutputTo(storage_path('logs/simpadu_payers_sync.log'));

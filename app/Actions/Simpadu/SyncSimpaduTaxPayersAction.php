@@ -102,7 +102,7 @@ class SyncSimpaduTaxPayersAction
                 GROUP BY p.npwpd, p.nop
             ) pay ON pay.npwpd = o.npwpd AND pay.nop = o.nop
         ";
- 
+
         $results = DB::connection('simpadunew')->select($query, [
             'y1' => $year, 'y2' => $year, 'y3' => $year, 'y4' => $year, 'y5' => $year,
             'yp1' => $year, 'yp2' => $year, 'yp3' => $year, 'yp4' => $year, 'yp5' => $year,
@@ -134,11 +134,11 @@ class SyncSimpaduTaxPayersAction
                 ];
             }
 
-            // Using upsert for performance
+            // Using upsert for performance — unique key harus cocok dengan PK tabel
             SimpaduTaxPayer::upsert(
-                $dataToUpsert, 
-                ['npwpd', 'nop', 'year'], 
-                ['nm_wp', 'nm_op', 'almt_op', 'kd_kecamatan', 'total_ketetapan', 'total_bayar', 'total_tunggakan', 'ayat', 'month', 'status', 'updated_at']
+                $dataToUpsert,
+                ['npwpd', 'nop', 'year', 'month', 'ayat'],
+                ['nm_wp', 'nm_op', 'almt_op', 'kd_kecamatan', 'total_ketetapan', 'total_bayar', 'total_tunggakan', 'status', 'updated_at']
             );
             $count += count($chunk);
         }
@@ -148,7 +148,7 @@ class SyncSimpaduTaxPayersAction
 
         return [
             'count' => $count,
-            'duration' => $duration
+            'duration' => $duration,
         ];
     }
 }
