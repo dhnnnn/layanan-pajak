@@ -16,7 +16,14 @@ class GetTaxPayerMatrixAction
         $months = range($startMonth, $endMonth);
 
         // 2. Fetch Base WP/OP data from simpadu_tax_payers
-        // Use month=0 (annual data) to get unique WP/OP without duplicating across months
+        // Prefer month=0 (annual summary). If not available (e.g. historical years synced
+        // only via sync:tax-payers), fallback to month=1 as the base list.
+        $hasAnnualSummary = DB::table('simpadu_tax_payers')
+            ->where('year', $year)
+            ->where('month', 0)
+            ->exists();
+
+        $baseMonth = $hasAnnualSummary ? 0 : 1;
 
         // Parse sort column: format is 'sptpd_M' or 'bayar_M' where M is month number
         $sortMonth = null;
@@ -39,7 +46,7 @@ class GetTaxPayerMatrixAction
                 'tax_types.name as tax_type_name',
             ])
             ->where('s.year', $year)
-            ->where('s.month', 0)
+            ->where('s.month', $baseMonth)
             ->when(! empty($search), function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->where('s.nm_wp', 'like', "%{$search}%")
