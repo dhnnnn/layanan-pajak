@@ -29,31 +29,38 @@ class GetTaxForecastAction
             }
         }
 
-        // Exclude bulan berjalan yang belum selesai agar tidak merusak pola ARIMA.
-        // Bulan dianggap "selesai" jika sudah lewat dari bulan saat ini.
         $currentYear = (int) now()->year;
         $currentMonth = (int) now()->month;
 
-        $rows = SimpaduMonthlyRealization::query()
-            ->where('ayat', $ayat)
+        $baseQuery = SimpaduMonthlyRealization::query()
             ->where(function ($q) use ($currentYear, $currentMonth): void {
-                // Ambil semua bulan dari tahun-tahun sebelumnya
                 $q->where('year', '<', $currentYear)
-                  // Atau bulan yang sudah selesai di tahun berjalan (bulan < bulan sekarang)
                     ->orWhere(function ($q2) use ($currentYear, $currentMonth): void {
                         $q2->where('year', $currentYear)
                             ->where('month', '<', $currentMonth);
                     });
-            })
-            ->orderBy('year')
-            ->orderBy('month')
-            ->get(['year', 'month', 'total_bayar']);
+            });
+
+        // Jika ayat = 'all', aggregate semua jenis pajak per bulan
+        if ($ayat === 'all') {
+            $rows = $baseQuery
+                ->selectRaw('year, month, SUM(total_bayar) as total_bayar')
+                ->groupBy('year', 'month')
+                ->orderBy('year')
+                ->orderBy('month')
+                ->get();
+        } else {
+            $rows = $baseQuery
+                ->where('ayat', $ayat)
+                ->orderBy('year')
+                ->orderBy('month')
+                ->get(['year', 'month', 'total_bayar']);
+        }
 
         if ($rows->count() < 2) {
             return null;
         }
 
-        // Format ke array {periode: "YYYY-MM", nilai: float}
         $historisData = $rows->map(fn ($r) => [
             'periode' => sprintf('%d-%02d', $r->year, $r->month),
             'nilai' => (float) $r->total_bayar,

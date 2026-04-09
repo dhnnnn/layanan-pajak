@@ -22,7 +22,7 @@ class ForecastingController extends Controller
             ->sortBy('no_ayat')
             ->mapWithKeys(fn ($t) => [$t->no_ayat => $t->keterangan]);
 
-        $selectedAyat = $request->query('ayat', $availableAyat->keys()->first());
+        $selectedAyat = $request->query('ayat', 'all');
 
         return view('admin.forecasting.index', [
             'availableAyat' => $availableAyat,
@@ -38,10 +38,12 @@ class ForecastingController extends Controller
             return response()->json(['error' => 'Parameter ayat diperlukan.'], 422);
         }
 
-        $label = SimpaduTarget::query()
-            ->where('no_ayat', $ayat)
-            ->orderByDesc('year')
-            ->value('keterangan') ?? $ayat;
+        $label = $ayat === 'all'
+            ? 'Semua Jenis Pajak'
+            : SimpaduTarget::query()
+                ->where('no_ayat', $ayat)
+                ->orderByDesc('year')
+                ->value('keterangan') ?? $ayat;
 
         $result = $getForecast($ayat, $label);
 

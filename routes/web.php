@@ -73,7 +73,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::get('employees/{employee}/wp-tunggakan', [EmployeeController::class, 'wpTunggakan'])->name('employees.wp-tunggakan');
 
         // UPT
-        Route::resou
+        Route::resource('upts', UptController::class);
         Route::get('upts/{upt}/districts', [UptController::class, 'assignDistricts'])->name('upts.districts');
         Route::post('upts/{upt}/districts', [UptController::class, 'storeDistricts'])->name('upts.districts.store');
         Route::get('upts/{upt}/employees', [UptController::class, 'manageEmployees'])->name('upts.employees.manage');

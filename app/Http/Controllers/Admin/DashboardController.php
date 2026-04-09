@@ -26,7 +26,7 @@ class DashboardController extends Controller
             ->distinct()
             ->pluck('year');
 
-        $yearsFromRealizations = \App\Models\SimpaduMonthlyRealization::query()
+        $yearsFromRealizations = SimpaduMonthlyRealization::query()
             ->distinct()
             ->pluck('year');
 
@@ -201,6 +201,14 @@ class DashboardController extends Controller
                 ->take(5);
         }
 
+        $availableAyat = SimpaduTarget::query()
+            ->select('no_ayat', 'keterangan', 'year')
+            ->orderByDesc('year')
+            ->get()
+            ->unique('no_ayat')
+            ->sortBy('no_ayat')
+            ->mapWithKeys(fn ($t) => [$t->no_ayat => $t->keterangan]);
+
         return view($view, [
             'dashboard' => $result['data'],
             'totals' => $result['totals'],
@@ -215,6 +223,7 @@ class DashboardController extends Controller
             'priorityDistrictId' => $priorityDistrictId,
             'selectedPriorityDistrict' => $selectedPriorityDistrict ?? null,
             'upt' => $isKepalaUpt ? $user->upt : null,
+            'availableAyat' => $availableAyat,
         ]);
     }
 }

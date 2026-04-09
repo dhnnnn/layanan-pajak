@@ -66,6 +66,63 @@
             </div>
         </div>
 
+        {{-- Forecasting Preview --}}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-4 bg-orange-400 rounded-full"></div>
+                    <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest">Prediksi Penerimaan 12 Bulan ke Depan</h3>
+                </div>
+                <a href="{{ route('admin.forecasting.index') }}"
+                   class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                    Lihat detail
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            {{-- Filter bar --}}
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                {{-- Pilih jenis pajak --}}
+                <div class="flex-1 min-w-40 max-w-xs">
+                    <select id="dashForecastAyat" class="no-search w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Semua Jenis Pajak</option>
+                        @foreach($availableAyat as $kode => $nama)
+                            <option value="{{ $kode }}">{{ $kode }} — {{ $nama }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Filter tampilan range --}}
+                <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                    <button data-range="year" onclick="setDashRange('year')"
+                        class="dash-range-btn px-3 py-1 rounded-md text-xs font-medium transition-colors bg-white text-blue-600 shadow-sm">
+                        Tahun Ini
+                    </button>
+                    <button data-range="1y" onclick="setDashRange('1y')"
+                        class="dash-range-btn px-3 py-1 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700">
+                        1 Thn Terakhir
+                    </button>
+                    <button data-range="2y" onclick="setDashRange('2y')"
+                        class="dash-range-btn px-3 py-1 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700">
+                        2 Thn Terakhir
+                    </button>
+                    <button data-range="all" onclick="setDashRange('all')"
+                        class="dash-range-btn px-3 py-1 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700">
+                        Semua
+                    </button>
+                </div>
+
+                <div id="dashForecastMeta" class="text-xs text-slate-400 w-full sm:w-auto"></div>
+            </div>
+
+            <div id="dashChartError" class="hidden text-center py-8 text-sm text-red-400"></div>
+            <div id="dashChartWrapper" class="w-full">
+                <canvas id="dashForecastChart"></canvas>
+            </div>
+        </div>
+
         {{-- Section Title --}}
         <div class="flex items-center gap-2 pt-2">
             <div class="w-1.5 h-4 bg-blue-600 rounded-full"></div>
@@ -192,5 +249,174 @@
             });
         });
     </script>
+
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        const FORECAST_URL = '{{ route('admin.forecasting.data') }}';
+        const SELECTED_YEAR = {{ $selectedYear }};
+        let dashChart = null;
+        let dashLastData = null;
+        let dashResizeTimer = null;
+        let dashCurrentRange = 'year'; // default: tampilkan tahun yang dipilih
+
+        const fmt = val => {
+            if (val >= 1e9) return 'Rp ' + (val/1e9).toFixed(2) + ' M';
+            if (val >= 1e6) return 'Rp ' + (val/1e6).toFixed(1) + ' Jt';
+            return 'Rp ' + val.toLocaleString('id-ID');
+        };
+        const fmtFull = val => 'Rp ' + Math.round(val).toLocaleString('id-ID');
+        const fmtP = str => {
+            const [y, m] = str.split('-');
+            return ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'][+m-1] + ' ' + y;
+        };
+
+        // Filter data berdasarkan range yang dipilih
+        function filterByRange(historis, forecast, range) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            let cutoff = null;
+
+            if (range === 'year') {
+                const filteredH = historis.filter(h => h.periode.startsWith(SELECTED_YEAR + '-'));
+                // Jika tahun yang dipilih sudah lewat → tidak tampilkan prediksi
+                const showForecast = SELECTED_YEAR >= currentYear;
+                return { historis: filteredH, forecast: showForecast ? forecast : [] };
+            } else if (range === '1y') {
+                cutoff = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+            } else if (range === '2y') {
+                cutoff = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+            } else {
+                // 'all' — tampilkan semua historis + prediksi
+                return { historis, forecast };
+            }
+
+            const cutoffStr = cutoff.getFullYear() + '-' + String(cutoff.getMonth() + 1).padStart(2, '0');
+            const filteredH = historis.filter(h => h.periode >= cutoffStr);
+            return { historis: filteredH, forecast };
+        }
+
+        function buildDashChart(data) {
+            dashLastData = data;
+
+            const { historis: filteredH, forecast: filteredF } = filterByRange(
+                data.historis, data.forecast, dashCurrentRange
+            );
+
+            if (filteredH.length === 0) {
+                document.getElementById('dashChartError').textContent =
+                    'Tidak ada data historis untuk periode yang dipilih.';
+                document.getElementById('dashChartError').classList.remove('hidden');
+                document.getElementById('dashChartWrapper').classList.add('hidden');
+                return;
+            }
+            document.getElementById('dashChartError').classList.add('hidden');
+            document.getElementById('dashChartWrapper').classList.remove('hidden');
+
+            const hL = filteredH.map(h => fmtP(h.periode));
+            const hV = filteredH.map(h => h.nilai);
+            const fL = filteredF.map(f => fmtP(f.periode));
+            const fV = filteredF.map(f => f.nilai);
+            const last = hV[hV.length - 1];
+            const hasForecast = fV.length > 0;
+
+            const mape = data.mape?.toFixed(1) ?? '—';
+            const n = parseFloat(mape);
+            const mapeColor = n < 20 ? '#16a34a' : n < 40 ? '#d97706' : '#dc2626';
+            document.getElementById('dashForecastMeta').innerHTML =
+                `${data.historis.length} bulan historis &nbsp;·&nbsp; Model: ${data.model_used}`
+                + (hasForecast ? ` &nbsp;·&nbsp; sMAPE: <span style="color:${mapeColor};font-weight:600">${mape}%</span>` : '');
+
+            if (dashChart) { dashChart.destroy(); dashChart = null; }
+            document.getElementById('dashChartWrapper').innerHTML = '<canvas id="dashForecastChart"></canvas>';
+
+            const datasets = [
+                {
+                    label: 'Realisasi Aktual',
+                    data: hasForecast
+                        ? [...hV, fV[0] ?? null, ...Array(Math.max(0, fV.length - 1)).fill(null)]
+                        : hV,
+                    borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.07)',
+                    borderWidth: 2, pointRadius: 1.5, tension: 0.3, fill: true, spanGaps: false,
+                },
+            ];
+
+            if (hasForecast) {
+                datasets.push({
+                    label: 'Prediksi',
+                    data: [...Array(Math.max(0, hV.length - 1)).fill(null), last, ...fV],
+                    borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.05)',
+                    borderWidth: 2, borderDash: [5,4], pointRadius: 2.5, tension: 0.3, fill: true, spanGaps: false,
+                });
+            }
+
+            dashChart = new Chart(document.getElementById('dashForecastChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: hasForecast ? [...hL, ...fL] : hL,
+                    datasets,
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: hasForecast,
+                            position: 'top', align: 'end',
+                            labels: { boxWidth: 24, font: { size: 10 }, padding: 12 },
+                        },
+                        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtFull(c.parsed.y)}` } },
+                    },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 14, font: { size: 9 } }, grid: { display: false } },
+                        y: { ticks: { font: { size: 9 }, callback: v => fmt(v) }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                    },
+                },
+            });
+        }
+
+        function setDashRange(range) {
+            dashCurrentRange = range;
+            document.querySelectorAll('.dash-range-btn').forEach(btn => {
+                const isActive = btn.dataset.range === range;
+                btn.classList.toggle('bg-white', isActive);
+                btn.classList.toggle('text-blue-600', isActive);
+                btn.classList.toggle('shadow-sm', isActive);
+                btn.classList.toggle('text-slate-500', !isActive);
+            });
+            if (dashLastData) buildDashChart(dashLastData);
+        }
+
+        async function loadDashForecast(ayat) {
+            document.getElementById('dashChartError').classList.add('hidden');
+            document.getElementById('dashChartWrapper').classList.remove('hidden');
+            document.getElementById('dashForecastMeta').textContent = 'Memuat...';
+            try {
+                const res = await fetch(`${FORECAST_URL}?ayat=${ayat}`);
+                if (!res.ok) throw new Error((await res.json()).error || 'Gagal memuat.');
+                buildDashChart(await res.json());
+            } catch (e) {
+                document.getElementById('dashChartError').textContent = e.message;
+                document.getElementById('dashChartError').classList.remove('hidden');
+                document.getElementById('dashChartWrapper').classList.add('hidden');
+                document.getElementById('dashForecastMeta').textContent = '';
+            }
+        }
+
+        document.getElementById('dashForecastAyat').addEventListener('change', function () {
+            loadDashForecast(this.value);
+        });
+
+        window.addEventListener('resize', () => {
+            clearTimeout(dashResizeTimer);
+            dashResizeTimer = setTimeout(() => {
+                if (dashLastData) buildDashChart(dashLastData);
+            }, 300);
+        });
+
+        const firstAyat = document.getElementById('dashForecastAyat').value;
+        if (firstAyat) loadDashForecast(firstAyat);
     </script>
+    @endpush
 </x-layouts.admin>

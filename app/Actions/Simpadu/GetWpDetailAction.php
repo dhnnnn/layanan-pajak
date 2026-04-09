@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 class GetWpDetailAction
 {
+    public function __construct(private readonly DetectWpTrendAction $detectTrend) {}
+
     /** @return array<string, mixed> */
     public function __invoke(string $npwpd, string $nop, int $year, int $monthFrom, int $monthTo, int $multiYear = 1): array
     {
@@ -112,6 +114,15 @@ class GetWpDetailAction
             ->where('simpadu_code', $wpInfo?->kd_kecamatan)
             ->value('name') ?? '-';
 
+        // Hitung trend dari data yang sudah di-load sesuai filter aktif,
+        // urutkan ascending (tahun & bulan terlama → terbaru)
+        $trendValues = collect($tableData)
+            ->sortKeys()
+            ->flatMap(fn ($rows) => collect($rows)->sortBy('month')->pluck('total_bayar'))
+            ->values()
+            ->map(fn ($v) => (float) $v)
+            ->toArray();
+
         return [
             'wpInfo' => $wpInfo,
             'districtName' => $districtName,
@@ -121,6 +132,7 @@ class GetWpDetailAction
             'years' => $years,
             'months' => $months,
             'bulanIndo' => $bulanIndo,
+            'trendData' => ($this->detectTrend)($trendValues),
         ];
     }
 }

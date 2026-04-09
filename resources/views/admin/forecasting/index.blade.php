@@ -11,7 +11,9 @@
                     name="ayat"
                     :value="$selectedAyat"
                     placeholder="Pilih jenis pajak..."
-                    :options="$availableAyat->map(fn($nama, $kode) => ['id' => $kode, 'name' => $kode . ' — ' . $nama])->values()->toArray()"
+                    :options="collect([['id' => 'all', 'name' => 'Semua Jenis Pajak']])->merge(
+                        $availableAyat->map(fn($nama, $kode) => ['id' => $kode, 'name' => $kode . ' — ' . $nama])->values()
+                    )->toArray()"
                     id="ayat-select"
                     target-input-id="ayat-hidden"
                 />

@@ -101,12 +101,36 @@
                             @endif
                         </div>
                     </div>
-                    <div class="shrink-0">
+                    <div class="shrink-0 flex flex-col items-end gap-2">
                         @if(($wpInfo?->status ?? '') === '1')
                             <span class="inline-flex px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AKTIF</span>
                         @else
                             <span class="inline-flex px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30">NON-AKTIF</span>
                         @endif
+
+                        {{-- Trend Badge --}}
+                        @php
+                            $trendConfig = match($trendData['direction']) {
+                                'up'       => ['icon' => '↑', 'color' => 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'],
+                                'down'     => ['icon' => '↓', 'color' => 'bg-rose-500/20 text-rose-400 border-rose-500/30'],
+                                'stable'   => ['icon' => '→', 'color' => 'bg-amber-500/20 text-amber-400 border-amber-500/30'],
+                                'inactive' => ['icon' => '⊘', 'color' => 'bg-slate-500/20 text-slate-400 border-slate-500/30'],
+                                default    => ['icon' => '?', 'color' => 'bg-slate-500/20 text-slate-400 border-slate-500/30'],
+                            };
+                        @endphp
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border {{ $trendConfig['color'] }}">
+                                {{ $trendConfig['icon'] }} Trend {{ $trendData['label'] }}
+                            </span>
+                            @if(!$trendData['is_inactive'] && $trendData['data_points'] > 0)
+                                <span class="text-[9px] text-slate-500 font-bold">
+                                    {{ $trendData['change_pct'] >= 0 ? '+' : '' }}{{ $trendData['change_pct'] }}% vs periode sebelumnya
+                                    &bull; {{ $trendData['data_points'] }} bulan data
+                                </span>
+                            @elseif($trendData['last_active_month'])
+                                <span class="text-[9px] text-slate-500 font-bold">Terakhir aktif: {{ $trendData['last_active_month'] }}</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
