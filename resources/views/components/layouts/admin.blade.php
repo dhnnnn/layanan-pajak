@@ -103,10 +103,24 @@
                     </svg>
                     Pemantau Wajib Pajak
                 </x-layouts.sidebar-item>
+
+                <x-layouts.sidebar-item route="admin.forecasting.index" :active="request()->routeIs('admin.forecasting.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                    Prediksi Penerimaan
+                </x-layouts.sidebar-item>
                 @endif
 
                 @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan & Pantauan</p>
+
+                <x-layouts.sidebar-item route="admin.forecasting.index" :active="request()->routeIs('admin.forecasting.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                    Prediksi Penerimaan
+                </x-layouts.sidebar-item>
 
                 <x-layouts.sidebar-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

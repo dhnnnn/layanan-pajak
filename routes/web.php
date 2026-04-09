@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\ForecastingController;
 use App\Http\Controllers\Admin\RealizationMonitoringController;
 use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
@@ -72,7 +73,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::get('employees/{employee}/wp-tunggakan', [EmployeeController::class, 'wpTunggakan'])->name('employees.wp-tunggakan');
 
         // UPT
-        Route::resource('upts', UptController::class);
+        Route::resou
         Route::get('upts/{upt}/districts', [UptController::class, 'assignDistricts'])->name('upts.districts');
         Route::post('upts/{upt}/districts', [UptController::class, 'storeDistricts'])->name('upts.districts.store');
         Route::get('upts/{upt}/employees', [UptController::class, 'manageEmployees'])->name('upts.employees.manage');
@@ -107,6 +108,10 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
                 Route::get('/wp/{npwpd}/{nop}/export-excel', [TaxPayerMonitoringController::class, 'wpDetailExportExcel'])->name('wp-detail.export-excel');
                 Route::get('/wp/{npwpd}/{nop}/export-pdf', [TaxPayerMonitoringController::class, 'wpDetailExportPdf'])->name('wp-detail.export-pdf');
             });
+
+        // Forecasting
+        Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
+        Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data');
     });
 
 /*

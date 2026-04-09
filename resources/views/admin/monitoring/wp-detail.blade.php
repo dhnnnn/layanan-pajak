@@ -11,7 +11,8 @@
         ? min($years) . ' – ' . max($years)
         : (string) $years[0];
 @endphp
-<x-layouts.admin :title="'Detail WP — ' . $nm" :header="'Detail Wajib Pajak'">
+@php $layout = $isFieldOfficer ? 'layouts.field-officer' : 'layouts.admin'; @endphp
+<x-dynamic-component :component="$layout" :title="'Detail WP — ' . $nm" :header="'Detail Wajib Pajak'">
     <x-slot:headerActions>
         <a href="{{ $backRoute }}"
             class="inline-flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-slate-900 text-xs font-bold transition-colors">
@@ -416,4 +417,4 @@
     })();
     </script>
     @endpush
-</x-layouts.admin>
+</x-dynamic-component>

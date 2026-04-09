@@ -99,8 +99,16 @@
 
             <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pengelolaan</p>
 
+            <a href="{{ route('admin.forecasting.index') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.forecasting.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                Prediksi Penerimaan
+            </a>
+
             @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
-            <a href="{{ route('admin.tax-targets.index') }}"
+            <a href="{{ route('admin.tax-targets.report') }}"
                class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.tax-targets.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -108,6 +116,7 @@
                 Target APBD
             </a>
 
+            @if(Route::has('admin.import.index'))
             <a href="{{ route('admin.import.index') }}"
                class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.import.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,6 +124,7 @@
                 </svg>
                 Import Data
             </a>
+            @endif
 
 
             <a href="{{ route('admin.realization-monitoring.index') }}"
@@ -199,7 +209,7 @@
 
         {{-- Footer --}}
         <footer class="shrink-0 border-t border-slate-200 bg-white px-6 py-3 text-center text-[11px] text-slate-400">
-            &copy; {{ date('Y') }} Diskominfo Kabupaten Pasuruan
+            &copy; {{ date('Y') }} Dinas Komunikasi dan Informatika Kabupaten Pasuruan
         </footer>
     </div>
 
@@ -233,6 +243,8 @@
         }
     });
 </script>
+
+@stack('scripts')
 
 </body>
 </html>
