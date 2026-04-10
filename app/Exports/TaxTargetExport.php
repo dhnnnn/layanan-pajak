@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\TaxRealizationDailyEntry;
 use App\Models\TaxTarget;
 use App\Models\TaxType;
 use Maatwebsite\Excel\Concerns\FromArray;

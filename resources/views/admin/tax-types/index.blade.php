@@ -48,8 +48,7 @@
                 <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs">
                     <tr>
                         <th class="px-6 py-4">Nama Jenis Pajak</th>
-                        <th class="px-6 py-4 text-center">Jumlah Target</th>
-                        <th class="px-6 py-4 text-center">Jumlah Realisasi</th>
+                        <th class="px-6 py-4 text-center"></th>
                         <th class="px-6 py-4 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -62,10 +61,7 @@
                             </td>
 
                             <td class="px-6 py-3.5 text-center font-semibold text-slate-700">
-                                {{ $taxType->tax_targets_count }}
-                            </td>
-                            <td class="px-6 py-3.5 text-center font-semibold text-slate-700">
-                                {{ $taxType->tax_realizations_count }}
+                                
                             </td>
                             <td class="px-6 py-3.5 text-right">
                                 <div class="flex items-center justify-end gap-2">
@@ -97,8 +93,7 @@
                                     </div>
                                 </td>
 
-                                <td class="px-6 py-3 text-center text-slate-500">{{ $child->tax_targets_count }}</td>
-                                <td class="px-6 py-3 text-center text-slate-500">{{ $child->tax_realizations_count }}</td>
+                                <td class="px-6 py-3 text-center text-slate-500"></td>
                                 <td class="px-6 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('admin.tax-types.edit', $child) }}" class="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="Edit subbab">

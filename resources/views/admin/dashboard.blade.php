@@ -72,6 +72,11 @@
                 <div class="flex items-center gap-2">
                     <div class="w-1.5 h-4 bg-orange-400 rounded-full"></div>
                     <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest">Prediksi Penerimaan 12 Bulan ke Depan</h3>
+                    <button onclick="document.getElementById('forecastInfoModal').classList.remove('hidden')"
+                        class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition-colors shrink-0"
+                        title="Informasi tentang prediksi ini">
+                        <span class="text-[10px] font-black leading-none">i</span>
+                    </button>
                 </div>
                 <a href="{{ route('admin.forecasting.index') }}"
                    class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
@@ -86,12 +91,15 @@
             <div class="flex flex-wrap items-center gap-2 mb-4">
                 {{-- Pilih jenis pajak --}}
                 <div class="flex-1 min-w-40 max-w-xs">
-                    <select id="dashForecastAyat" class="no-search w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="all">Semua Jenis Pajak</option>
-                        @foreach($availableAyat as $kode => $nama)
-                            <option value="{{ $kode }}">{{ $kode }} — {{ $nama }}</option>
-                        @endforeach
-                    </select>
+                    <x-searchable-select
+                        target-input-id="dashForecastAyat"
+                        :value="'all'"
+                        placeholder="Semua Jenis Pajak"
+                        :options="collect([['id' => 'all', 'name' => 'Semua Jenis Pajak']])->merge(
+                            $availableAyat->map(fn($nama, $kode) => ['id' => $kode, 'name' => $kode . ' — ' . $nama])->values()
+                        )->toArray()"
+                    />
+                    <input type="hidden" id="dashForecastAyat" value="all">
                 </div>
 
                 {{-- Filter tampilan range --}}
@@ -108,17 +116,17 @@
                         class="dash-range-btn px-3 py-1 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700">
                         2 Thn Terakhir
                     </button>
-                    <button data-range="all" onclick="setDashRange('all')"
-                        class="dash-range-btn px-3 py-1 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700">
-                        Semua
-                    </button>
                 </div>
 
                 <div id="dashForecastMeta" class="text-xs text-slate-400 w-full sm:w-auto"></div>
             </div>
 
             <div id="dashChartError" class="hidden text-center py-8 text-sm text-red-400"></div>
-            <div id="dashChartWrapper" class="w-full">
+            <div id="dashChartLoading" class="flex flex-col items-center justify-center py-8 gap-3">
+                <img src="{{ asset('img/generating_report.gif') }}" alt="Memuat..." class="w-24 h-24 object-contain">
+                <p class="text-xs text-slate-400 font-medium">Sedang memproses prediksi...</p>
+            </div>
+            <div id="dashChartWrapper" class="w-full hidden">
                 <canvas id="dashForecastChart"></canvas>
             </div>
         </div>
@@ -212,6 +220,66 @@
         <p class="text-[10px] text-slate-400 italic px-1">* Angka Tribulan bersifat kumulatif (Tribulan 2 = T1 + T2)</p>
     </div>
 
+    {{-- Modal: Informasi Prediksi --}}
+    <div id="forecastInfoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="document.getElementById('forecastInfoModal').classList.add('hidden')"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 z-10">
+            <div class="flex items-start justify-between mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center shrink-0">
+                        <span class="text-orange-500 font-black text-base leading-none">i</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black text-slate-800">Dari Mana Data Prediksi Ini Berasal?</h3>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('forecastInfoModal').classList.add('hidden')"
+                    class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm text-slate-600">
+                <div class="flex gap-3">
+                    <div class="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <span class="text-blue-600 font-black text-xs">1</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-800 text-xs mb-0.5">Berbasis Data Historis</p>
+                        <p class="text-xs text-slate-500 leading-relaxed">Sistem menganalisis riwayat penerimaan pajak dari periode sebelumnya — mulai dari beberapa bulan hingga bertahun-tahun ke belakang. Dari data tersebut, sistem mengidentifikasi pola seperti periode ramai, periode sepi, serta kecenderungan tren naik atau turun.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <span class="text-orange-500 font-black text-xs">2</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-800 text-xs mb-0.5">Diproses dengan Model Statistik (SARIMA/ARIMA)</p>
+                        <p class="text-xs text-slate-500 leading-relaxed">Prediksi tidak dibuat secara acak. Sistem menggunakan model statistik yang telah terbukti akurat dalam menganalisis data deret waktu (time series), khususnya yang memiliki pola musiman. Pendekatan ini mirip seperti prakiraan cuaca — menggunakan data masa lalu untuk memperkirakan kondisi di masa depan.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <span class="text-emerald-600 font-black text-xs">3</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-800 text-xs mb-0.5">Hasil Berupa Estimasi, Bukan Kepastian</p>
+                        <p class="text-xs text-slate-500 leading-relaxed">Perlu dipahami bahwa hasil prediksi merupakan estimasi terbaik berdasarkan data yang tersedia. Semakin lengkap dan konsisten data historis, semakin tinggi tingkat akurasi prediksi. Gunakan hasil ini sebagai acuan dalam perencanaan, bukan sebagai angka pasti.</p>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2.5">
+                    <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-xs text-amber-700 leading-relaxed">Nilai sMAPE yang ditampilkan menunjukkan seberapa akurat model ini. Semakin kecil angkanya, semakin baik. Di bawah 20% berarti prediksi sangat dapat diandalkan.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <style>
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -299,62 +367,80 @@
         function buildDashChart(data) {
             dashLastData = data;
 
-            const { historis: filteredH, forecast: filteredF } = filterByRange(
-                data.historis, data.forecast, dashCurrentRange
-            );
+            const now = new Date();
+            const thisYear = now.getFullYear();
+            const fittedCutoff = '2024-01';
+
+            // Filter historis sesuai range
+            let filteredH;
+            if (dashCurrentRange === 'year') {
+                filteredH = data.historis.filter(h => h.periode.startsWith(SELECTED_YEAR + '-'));
+            } else if (dashCurrentRange === '1y') {
+                filteredH = data.historis.filter(h => h.periode >= `${thisYear - 1}-01`);
+            } else {
+                filteredH = data.historis.filter(h => h.periode >= `${thisYear - 2}-01`);
+            }
+
+            const forecast = (dashCurrentRange === 'year' && SELECTED_YEAR < thisYear) ? [] : (data.forecast ?? []);
+            const fitted   = data.fitted ?? [];
 
             if (filteredH.length === 0) {
-                document.getElementById('dashChartError').textContent =
-                    'Tidak ada data historis untuk periode yang dipilih.';
+                document.getElementById('dashChartError').textContent = 'Tidak ada data historis untuk periode yang dipilih.';
                 document.getElementById('dashChartError').classList.remove('hidden');
                 document.getElementById('dashChartWrapper').classList.add('hidden');
                 return;
             }
             document.getElementById('dashChartError').classList.add('hidden');
+            document.getElementById('dashChartLoading').classList.add('hidden');
             document.getElementById('dashChartWrapper').classList.remove('hidden');
 
-            const hL = filteredH.map(h => fmtP(h.periode));
-            const hV = filteredH.map(h => h.nilai);
-            const fL = filteredF.map(f => fmtP(f.periode));
-            const fV = filteredF.map(f => f.nilai);
-            const last = hV[hV.length - 1];
-            const hasForecast = fV.length > 0;
+            const hMap      = Object.fromEntries(filteredH.map(h => [h.periode, h.nilai]));
+            const fMap      = Object.fromEntries(forecast.map(f => [f.periode, f.nilai]));
+            const fittedMap = Object.fromEntries(fitted.map(f => [f.periode, f.nilai]));
+
+            const allPeriodes = [...new Set([
+                ...filteredH.map(h => h.periode),
+                ...forecast.map(f => f.periode),
+            ])].sort();
+            const allLabels = allPeriodes.map(p => fmtP(p));
+
+            const historisDataset = allPeriodes.map(p => hMap[p] ?? null);
+
+            const forecastDataset = allPeriodes.map(p => {
+                if (fMap[p] !== undefined) return fMap[p];
+                if (fittedMap[p] !== undefined && p >= fittedCutoff) return fittedMap[p];
+                if (hMap[p] !== undefined && p < fittedCutoff) return hMap[p];
+                return null;
+            });
 
             const mape = data.mape?.toFixed(1) ?? '—';
             const n = parseFloat(mape);
             const mapeColor = n < 20 ? '#16a34a' : n < 40 ? '#d97706' : '#dc2626';
             document.getElementById('dashForecastMeta').innerHTML =
                 `${data.historis.length} bulan historis &nbsp;·&nbsp; Model: ${data.model_used}`
-                + (hasForecast ? ` &nbsp;·&nbsp; sMAPE: <span style="color:${mapeColor};font-weight:600">${mape}%</span>` : '');
+                + (forecast.length > 0 ? ` &nbsp;·&nbsp; sMAPE: <span style="color:${mapeColor};font-weight:600">${mape}%</span>` : '');
 
             if (dashChart) { dashChart.destroy(); dashChart = null; }
             document.getElementById('dashChartWrapper').innerHTML = '<canvas id="dashForecastChart"></canvas>';
 
-            const datasets = [
-                {
-                    label: 'Realisasi Aktual',
-                    data: hasForecast
-                        ? [...hV, fV[0] ?? null, ...Array(Math.max(0, fV.length - 1)).fill(null)]
-                        : hV,
-                    borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.07)',
-                    borderWidth: 2, pointRadius: 1.5, tension: 0.3, fill: true, spanGaps: false,
-                },
-            ];
-
-            if (hasForecast) {
-                datasets.push({
-                    label: 'Prediksi',
-                    data: [...Array(Math.max(0, hV.length - 1)).fill(null), last, ...fV],
-                    borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.05)',
-                    borderWidth: 2, borderDash: [5,4], pointRadius: 2.5, tension: 0.3, fill: true, spanGaps: false,
-                });
-            }
-
             dashChart = new Chart(document.getElementById('dashForecastChart').getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: hasForecast ? [...hL, ...fL] : hL,
-                    datasets,
+                    labels: allLabels,
+                    datasets: [
+                        {
+                            label: 'Realisasi Aktual',
+                            data: historisDataset,
+                            borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.07)',
+                            borderWidth: 2, pointRadius: 1.5, tension: 0.3, fill: true, spanGaps: false,
+                        },
+                        {
+                            label: 'Prediksi',
+                            data: forecastDataset,
+                            borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.05)',
+                            borderWidth: 2, borderDash: [5,4], pointRadius: 2.5, tension: 0.3, fill: true, spanGaps: false,
+                        },
+                    ],
                 },
                 options: {
                     responsive: true,
@@ -362,11 +448,10 @@
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
-                            display: hasForecast,
-                            position: 'top', align: 'end',
+                            display: true, position: 'top', align: 'end',
                             labels: { boxWidth: 24, font: { size: 10 }, padding: 12 },
                         },
-                        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtFull(c.parsed.y)}` } },
+                        tooltip: { callbacks: { label: c => c.parsed.y !== null ? `${c.dataset.label}: ${fmtFull(c.parsed.y)}` : null } },
                     },
                     scales: {
                         x: { ticks: { maxTicksLimit: 14, font: { size: 9 } }, grid: { display: false } },
@@ -390,8 +475,9 @@
 
         async function loadDashForecast(ayat) {
             document.getElementById('dashChartError').classList.add('hidden');
-            document.getElementById('dashChartWrapper').classList.remove('hidden');
-            document.getElementById('dashForecastMeta').textContent = 'Memuat...';
+            document.getElementById('dashChartWrapper').classList.add('hidden');
+            document.getElementById('dashChartLoading').classList.remove('hidden');
+            document.getElementById('dashForecastMeta').textContent = '';
             try {
                 const res = await fetch(`${FORECAST_URL}?ayat=${ayat}`);
                 if (!res.ok) throw new Error((await res.json()).error || 'Gagal memuat.');
@@ -399,6 +485,7 @@
             } catch (e) {
                 document.getElementById('dashChartError').textContent = e.message;
                 document.getElementById('dashChartError').classList.remove('hidden');
+                document.getElementById('dashChartLoading').classList.add('hidden');
                 document.getElementById('dashChartWrapper').classList.add('hidden');
                 document.getElementById('dashForecastMeta').textContent = '';
             }
@@ -415,8 +502,8 @@
             }, 300);
         });
 
-        const firstAyat = document.getElementById('dashForecastAyat').value;
-        if (firstAyat) loadDashForecast(firstAyat);
+        const firstAyat = document.getElementById('dashForecastAyat').value || 'all';
+        loadDashForecast(firstAyat);
     </script>
     @endpush
 </x-layouts.admin>

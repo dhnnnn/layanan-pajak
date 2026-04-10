@@ -104,9 +104,4 @@ class TaxType extends Model
         return $this->hasMany(TaxTarget::class);
     }
 
-    public function taxRealizations(): HasMany
-    {
-        return $this->hasMany(TaxRealization::class);
-    }
-
 }

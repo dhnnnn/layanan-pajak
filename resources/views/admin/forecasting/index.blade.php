@@ -8,18 +8,23 @@
             <div class="flex-1 min-w-48">
                 <label class="block text-xs font-medium text-slate-600 mb-1">Jenis Pajak</label>
                 <x-searchable-select
-                    name="ayat"
+                    target-input-id="ayat-hidden"
                     :value="$selectedAyat"
-                    placeholder="Pilih jenis pajak..."
+                    placeholder="Semua Jenis Pajak"
                     :options="collect([['id' => 'all', 'name' => 'Semua Jenis Pajak']])->merge(
                         $availableAyat->map(fn($nama, $kode) => ['id' => $kode, 'name' => $kode . ' — ' . $nama])->values()
                     )->toArray()"
-                    id="ayat-select"
-                    target-input-id="ayat-hidden"
                 />
                 <input type="hidden" id="ayat-hidden" value="{{ $selectedAyat }}">
             </div>
-            <p class="text-xs text-slate-400 pb-2">Data diambil dari realisasi bulanan historis</p>
+            <div class="flex items-center gap-2 pb-2">
+                <p class="text-xs text-slate-400">Data diambil dari realisasi bulanan historis</p>
+                <button onclick="document.getElementById('forecastInfoModal').classList.remove('hidden')"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition-colors shrink-0"
+                    title="Informasi tentang prediksi ini">
+                    <span class="text-[10px] font-black leading-none">i</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -35,22 +40,44 @@
 
     {{-- Chart --}}
     <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <div class="flex flex-wrap items-start justify-between gap-2 mb-4">
-            <div>
-                <p class="text-sm font-semibold text-slate-800" id="chartTitle">Memuat data...</p>
-                <p class="text-xs text-slate-400 mt-0.5" id="chartSubtitle"></p>
+        <div class="mb-4">
+            <div class="flex items-start justify-between gap-2 flex-wrap mb-3">
+                <div>
+                    <p class="text-sm font-semibold text-slate-800" id="chartTitle">Memuat data...</p>
+                    <p class="text-xs text-slate-400 mt-0.5" id="chartSubtitle"></p>
+                </div>
+                {{-- Legend --}}
+                <div class="flex items-center gap-4 text-xs text-slate-500 shrink-0">
+                    <span class="flex items-center gap-1.5">
+                        <span class="inline-block w-6 h-0.5 bg-blue-500"></span> Realisasi Aktual
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="inline-block w-6 border-t-2 border-dashed border-orange-400"></span> Prediksi
+                    </span>
+                </div>
             </div>
-            <div class="flex items-center gap-4 text-xs text-slate-500 shrink-0">
-                <span class="flex items-center gap-1.5">
-                    <span class="inline-block w-6 h-0.5 bg-blue-500"></span> Realisasi Aktual
-                </span>
-                <span class="flex items-center gap-1.5">
-                    <span class="inline-block w-6 border-t-2 border-dashed border-orange-400"></span> Prediksi
-                </span>
+            {{-- Filter range — full width, wrap di mobile --}}
+            <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-full sm:w-auto">
+                <button data-range="year" onclick="setRange('year')"
+                    class="range-btn flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-medium transition-colors bg-white text-blue-600 shadow-sm text-center">
+                    Tahun Ini
+                </button>
+                <button data-range="1y" onclick="setRange('1y')"
+                    class="range-btn flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700 text-center">
+                    1 Thn Terakhir
+                </button>
+                <button data-range="2y" onclick="setRange('2y')"
+                    class="range-btn flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-slate-500 hover:text-slate-700 text-center">
+                    2 Thn Terakhir
+                </button>
             </div>
         </div>
         <div id="chartError" class="hidden text-center py-12 text-sm text-red-500"></div>
-        <div id="chartWrapper" class="w-full">
+        <div id="chartLoading" class="flex flex-col items-center justify-center py-8 gap-3">
+            <img src="{{ asset('img/generating_report.gif') }}" alt="Memuat..." class="w-24 h-24 object-contain">
+            <p class="text-xs text-slate-400 font-medium">Sedang memproses prediksi...</p>
+        </div>
+        <div id="chartWrapper" class="w-full hidden">
             <canvas id="forecastChart"></canvas>
         </div>
     </div>
@@ -81,6 +108,64 @@
         </div>
     </div>
 
+</div>
+
+{{-- Modal: Informasi Prediksi --}}
+<div id="forecastInfoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="document.getElementById('forecastInfoModal').classList.add('hidden')"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 z-10">
+        <div class="flex items-start justify-between mb-5">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center shrink-0">
+                    <span class="text-orange-500 font-black text-base leading-none">i</span>
+                </div>
+                <div>
+                    <h3 class="text-sm font-black text-slate-800">Dari Mana Data Prediksi Ini Berasal?</h3>
+                </div>
+            </div>
+            <button onclick="document.getElementById('forecastInfoModal').classList.add('hidden')"
+                class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="space-y-4 text-sm text-slate-600">
+            <div class="flex gap-3">
+                <div class="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="text-blue-600 font-black text-xs">1</span>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800 text-xs mb-0.5">Berbasis Data Historis</p>
+                    <p class="text-xs text-slate-500 leading-relaxed">Sistem menganalisis riwayat penerimaan pajak dari periode sebelumnya — mulai dari beberapa bulan hingga bertahun-tahun ke belakang. Dari data tersebut, sistem mengidentifikasi pola seperti periode ramai, periode sepi, serta kecenderungan tren naik atau turun.</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <div class="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="text-orange-500 font-black text-xs">2</span>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800 text-xs mb-0.5">Diproses dengan Model Statistik (SARIMA/ARIMA)</p>
+                    <p class="text-xs text-slate-500 leading-relaxed">Prediksi tidak dibuat secara acak. Sistem menggunakan model statistik yang telah terbukti akurat dalam menganalisis data deret waktu (time series), khususnya yang memiliki pola musiman. Pendekatan ini mirip seperti prakiraan cuaca — menggunakan data masa lalu untuk memperkirakan kondisi di masa depan.</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <div class="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="text-emerald-600 font-black text-xs">3</span>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800 text-xs mb-0.5">Hasil Berupa Estimasi, Bukan Kepastian</p>
+                    <p class="text-xs text-slate-500 leading-relaxed">Perlu dipahami bahwa hasil prediksi merupakan estimasi terbaik berdasarkan data yang tersedia. Semakin lengkap dan konsisten data historis, semakin tinggi tingkat akurasi prediksi. Gunakan hasil ini sebagai acuan dalam perencanaan, bukan sebagai angka pasti.</p>
+                </div>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2.5">
+                <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-xs text-amber-700 leading-relaxed">Nilai sMAPE menunjukkan seberapa akurat model ini. Semakin kecil angkanya, semakin baik. Di bawah 20% berarti prediksi sangat dapat diandalkan.</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Modal penjelasan sMAPE --}}
@@ -129,6 +214,8 @@
 let currentAyat = '{{ $selectedAyat }}';
 const DATA_URL = '{{ route('admin.forecasting.data') }}';
 let chartInstance = null;
+let currentRange = 'year';
+let lastRawData = null;
 
 const fmt = val => {
     if (val >= 1e9) return 'Rp ' + (val/1e9).toFixed(2) + ' M';
@@ -143,8 +230,9 @@ const fmtPeriode = str => {
 
 async function loadForecast(ayat) {
     document.getElementById('chartError').classList.add('hidden');
-    document.getElementById('chartWrapper').classList.remove('hidden');
-    document.getElementById('chartTitle').textContent = 'Memuat data...';
+    document.getElementById('chartWrapper').classList.add('hidden');
+    document.getElementById('chartLoading').classList.remove('hidden');
+    document.getElementById('chartTitle').textContent = '';
     document.getElementById('chartSubtitle').textContent = '';
     document.getElementById('forecastTableBody').innerHTML =
         '<tr><td colspan="2" class="px-4 py-8 text-center text-slate-400">Memuat data...</td></tr>';
@@ -160,6 +248,7 @@ async function loadForecast(ayat) {
     } catch (e) {
         document.getElementById('chartError').textContent = e.message;
         document.getElementById('chartError').classList.remove('hidden');
+        document.getElementById('chartLoading').classList.add('hidden');
         document.getElementById('chartWrapper').classList.add('hidden');
         document.getElementById('forecastTableBody').innerHTML =
             `<tr><td colspan="2" class="px-4 py-8 text-center text-red-400">${e.message}</td></tr>`;
@@ -206,61 +295,131 @@ function renderTable(data) {
     document.getElementById('forecastTableFoot').classList.remove('hidden');
 }
 
-// Trigger load saat searchable-select berubah
-document.getElementById('ayat-hidden').addEventListener('change', function () {
-    if (this.value && this.value !== currentAyat) {
-        currentAyat = this.value;
-        loadForecast(this.value);
-    }
-});
-
 // Fix chart mengecil permanen setelah resize dari mobile ke desktop.
 // Chart.js terkunci di ukuran container saat dibuat — solusinya recreate canvas + chart.
 let lastChartData = null;
 let resizeTimer = null;
 
-const originalRenderChart = renderChart;
-window.renderChart = function(data) {
-    lastChartData = data;
-    originalRenderChart(data);
-};
+// Trigger load saat searchable-select berubah
+document.getElementById('ayat-hidden').addEventListener('change', function () {
+    currentAyat = this.value;
+    loadForecast(this.value);
+});
 
-// Override renderChart agar selalu simpan data terakhir
+function filterByRange(historis, range) {
+    const now = new Date();
+    const thisYear = now.getFullYear();
+    if (range === 'year') {
+        return historis.filter(h => h.periode >= `${thisYear}-01`);
+    }
+    if (range === '1y') {
+        return historis.filter(h => h.periode >= `${thisYear - 1}-01`);
+    }
+    // 2y
+    return historis.filter(h => h.periode >= `${thisYear - 2}-01`);
+}
+
+function setRange(range) {
+    currentRange = range;
+    document.querySelectorAll('.range-btn').forEach(btn => {
+        const isActive = btn.dataset.range === range;
+        btn.classList.toggle('bg-white', isActive);
+        btn.classList.toggle('text-blue-600', isActive);
+        btn.classList.toggle('shadow-sm', isActive);
+        btn.classList.toggle('text-slate-500', !isActive);
+        btn.classList.toggle('hover:text-slate-700', !isActive);
+    });
+    // Reload karena from_jan bisa berubah
+    loadForecast(currentAyat);
+}
+
 function renderChart(data) {
-    lastChartData = data;
+    lastRawData = data;
 
-    const hLabels = data.historis.map(h => fmtPeriode(h.periode));
-    const hVals   = data.historis.map(h => h.nilai);
-    const fLabels = data.forecast.map(f => fmtPeriode(f.periode));
-    const fVals   = data.forecast.map(f => f.nilai);
-    const last    = hVals[hVals.length - 1];
+    const showFromJan = true; // semua range tampilkan fitted values dari awal historis
+    const filteredH   = filterByRange(data.historis, currentRange);
+    const forecast    = data.forecast ?? [];
+    const fitted      = data.fitted ?? [];
+
+    const hMap      = Object.fromEntries(filteredH.map(h => [h.periode, h.nilai]));
+    const fMap      = Object.fromEntries(forecast.map(f => [f.periode, f.nilai]));
+    const fittedMap = Object.fromEntries(fitted.map(f => [f.periode, f.nilai]));
+
+    // Gabungkan semua periode unik: historis + forecast
+    const allPeriodes = [...new Set([
+        ...filteredH.map(h => h.periode),
+        ...forecast.map(f => f.periode),
+    ])].sort();
+    const allLabels = allPeriodes.map(p => fmtPeriode(p));
+
+    // Dataset historis: nilai aktual saja
+    const historisDataset = allPeriodes.map(p => hMap[p] ?? null);
+
+    // Dataset prediksi:
+    // - Di bulan historis (year/1y): pakai fitted values
+    // - Di bulan forecast: pakai nilai forecast
+    // - Titik sambung: di bulan terakhir historis, pakai nilai historis agar garis nyambung
+    let forecastDataset;
+    if (showFromJan && fitted.length > 0) {
+        const lastHPeriode = filteredH[filteredH.length - 1]?.periode;
+        // Tampilkan fitted mulai 2024-01. Untuk sebelumnya, gunakan nilai aktual
+        // sebagai retroaktif (model warm-up period) agar garis tidak kosong
+        const fittedCutoff = '2024-01';
+        forecastDataset = allPeriodes.map(p => {
+            if (fMap[p] !== undefined) return fMap[p];
+            if (fittedMap[p] !== undefined && p >= fittedCutoff) return fittedMap[p];
+            if (hMap[p] !== undefined && p < fittedCutoff) return hMap[p]; // retroaktif = nilai aktual
+            return null;
+        });
+        // Pastikan titik sambung di akhir historis → awal forecast tidak putus
+        if (lastHPeriode && fMap[lastHPeriode] === undefined) {
+            const lastHIdx = allPeriodes.indexOf(lastHPeriode);
+            const firstFIdx = allPeriodes.findIndex(p => fMap[p] !== undefined);
+            if (firstFIdx > lastHIdx + 1) {
+                // Ada gap — isi dengan nilai historis terakhir sebagai bridge
+                forecastDataset[lastHIdx] = hMap[lastHPeriode];
+            }
+        }
+    } else {
+        const lastH = filteredH[filteredH.length - 1];
+        forecastDataset = allPeriodes.map(p => {
+            if (fMap[p] !== undefined) return fMap[p];
+            if (lastH && p === lastH.periode) return lastH.nilai;
+            return null;
+        });
+    }
+
+    const lastForecastPeriode = forecast[forecast.length - 1]?.periode ?? '';
+    const firstHistorisPeriode = filteredH[0]?.periode ?? '';
 
     document.getElementById('chartTitle').textContent =
         `Forecasting: ${data.jenis_pajak} — ${data.label ?? ''}`;
     document.getElementById('chartSubtitle').textContent =
-        `${hLabels[0]} s/d ${fLabels[fLabels.length-1]} · ${data.historis.length} bulan historis`;
+        `${fmtPeriode(firstHistorisPeriode)} s/d ${fmtPeriode(lastForecastPeriode)} · ${filteredH.length} bulan historis · garis oranye = prediksi model (fitted + forecast)`;
 
-    // Recreate canvas agar Chart.js tidak terkunci di ukuran lama
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-    const wrapper = document.getElementById('chartWrapper');
-    wrapper.innerHTML = '<canvas id="forecastChart"></canvas>';
+    document.getElementById('chartLoading').classList.add('hidden');
+    document.getElementById('chartWrapper').classList.remove('hidden');
+    document.getElementById('chartWrapper').innerHTML = '<canvas id="forecastChart"></canvas>';
 
     chartInstance = new Chart(document.getElementById('forecastChart').getContext('2d'), {
         type: 'line',
         data: {
-            labels: [...hLabels, ...fLabels],
+            labels: allLabels,
             datasets: [
                 {
                     label: 'Realisasi Aktual',
-                    data: [...hVals, fVals[0], ...Array(fVals.length - 1).fill(null)],
+                    data: historisDataset,
                     borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)',
-                    borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true, spanGaps: false,
+                    borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true,
+                    spanGaps: false,
                 },
                 {
                     label: 'Prediksi',
-                    data: [...Array(hVals.length - 1).fill(null), last, ...fVals],
+                    data: forecastDataset,
                     borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.06)',
-                    borderWidth: 2, borderDash: [6,4], pointRadius: 3, tension: 0.3, fill: true, spanGaps: false,
+                    borderWidth: 2, borderDash: [6, 4], pointRadius: 3, tension: 0.3, fill: true,
+                    spanGaps: false,
                 },
             ],
         },
@@ -269,8 +428,15 @@ function renderChart(data) {
             maintainAspectRatio: true,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtFull(c.parsed.y)}` } },
+                legend: {
+                    display: true, position: 'top', align: 'end',
+                    labels: { boxWidth: 24, font: { size: 10 }, padding: 12 },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: c => c.parsed.y !== null ? `${c.dataset.label}: ${fmtFull(c.parsed.y)}` : null,
+                    },
+                },
             },
             scales: {
                 x: { ticks: { maxTicksLimit: 18, font: { size: 10 } }, grid: { display: false } },
@@ -280,11 +446,10 @@ function renderChart(data) {
     });
 }
 
-// Saat window resize, recreate chart dengan data terakhir (debounce 300ms)
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-        if (lastChartData) renderChart(lastChartData);
+        if (lastRawData) { renderChart(lastRawData); }
     }, 300);
 });
 

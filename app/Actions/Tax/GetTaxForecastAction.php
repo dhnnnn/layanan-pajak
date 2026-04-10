@@ -15,14 +15,15 @@ class GetTaxForecastAction
      * @param  string  $ayat  Kode ayat pajak, misal "41101"
      * @param  string  $label  Label tampilan, misal "Pajak Hotel"
      * @param  int  $horizon  Jumlah bulan ke depan yang di-forecast
+     * @param  string|null  $startPeriode  Jika diisi (format: 'YYYY-MM'), forecast dimulai dari periode ini
      * @return array{historis: array, forecast: array, model_used: string, mae: float, mape: float, aic: float|null}|null
      */
-    public function __invoke(string $ayat, string $label, int $horizon = 12): ?array
+    public function __invoke(string $ayat, string $label, int $horizon = 12, ?string $startPeriode = null, bool $skipCache = false): ?array
     {
-        $cacheKey = "forecast:{$ayat}:{$horizon}";
+        $cacheKey = "forecast:{$ayat}:{$horizon}:{$startPeriode}";
         $cacheTtl = (int) config('forecasting.cache_ttl', 3600);
 
-        if ($cacheTtl > 0) {
+        if ($cacheTtl > 0 && ! $skipCache) {
             $cached = Cache::get($cacheKey);
             if ($cached !== null) {
                 return $cached;
@@ -37,7 +38,7 @@ class GetTaxForecastAction
                 $q->where('year', '<', $currentYear)
                     ->orWhere(function ($q2) use ($currentYear, $currentMonth): void {
                         $q2->where('year', $currentYear)
-                            ->where('month', '<', $currentMonth);
+                            ->where('month', '<=', $currentMonth); // include bulan berjalan jika datanya sudah ada
                     });
             });
 
@@ -67,12 +68,18 @@ class GetTaxForecastAction
         ])->values()->toArray();
 
         try {
+            $payload = [
+                'jenis_pajak' => $ayat,
+                'data' => $historisData,
+                'horizon' => $horizon,
+            ];
+
+            if ($startPeriode) {
+                $payload['start_periode'] = $startPeriode;
+            }
+
             $response = Http::timeout(config('forecasting.timeout', 60))
-                ->post(config('forecasting.url').'/forecast/from-data', [
-                    'jenis_pajak' => $ayat,
-                    'data' => $historisData,
-                    'horizon' => $horizon,
-                ]);
+                ->post(config('forecasting.url').'/forecast/from-data', $payload);
 
             if (! $response->successful()) {
                 Log::warning('Forecasting service error', [

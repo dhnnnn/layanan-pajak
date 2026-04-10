@@ -22,8 +22,8 @@ class TaxTypeController extends Controller
         $search = request()->string('search')->trim();
 
         $taxTypes = TaxType::query()
-            ->with(['children' => fn ($q) => $q->withCount(['taxTargets', 'taxRealizations'])->orderBy('code')])
-            ->withCount(['taxTargets', 'taxRealizations'])
+            ->with(['children' => fn ($q) => $q->withCount('taxTargets')->orderBy('code')])
+            ->withCount('taxTargets')
             ->whereNull('parent_id')
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")

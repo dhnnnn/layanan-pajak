@@ -79,11 +79,6 @@ class User extends Authenticatable
         return $this->districts(); // Relasi BelongsToMany original untuk pegawai
     }
 
-    public function taxRealizations(): HasMany
-    {
-        return $this->hasMany(TaxRealization::class);
-    }
-
     public function importLogs(): HasMany
     {
         return $this->hasMany(ImportLog::class);

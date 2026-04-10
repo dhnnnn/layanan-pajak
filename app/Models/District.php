@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class District extends Model
 {
@@ -52,11 +51,6 @@ class District extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'employee_districts');
-    }
-
-    public function taxRealizations(): HasMany
-    {
-        return $this->hasMany(TaxRealization::class);
     }
 
     public function upts(): BelongsToMany
