@@ -50,22 +50,57 @@ Route::middleware('auth')->group(function (): void {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:admin|kepala_upt'])
+Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {
         // Dashboard
         Route::get('/dashboard', [AdminDashboardController::class, 'show'])->name('dashboard');
 
+        // Forecasting (prediksi)
+        Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
+        Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data');
+
+        // Laporan Realisasi
+        Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
+        Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
+        Route::get('tax-targets/{taxType}/show', [TaxTargetController::class, 'show'])->name('tax-targets.show');
+
+        // Monitoring Realisasi per UPT
+        Route::get('realization-monitoring/export', [RealizationMonitoringController::class, 'exportAll'])->name('realization-monitoring.export-all')->middleware('role:admin');
+        Route::get('realization-monitoring', [RealizationMonitoringController::class, 'index'])->name('realization-monitoring.index');
+        Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
+        Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');
+        Route::get('realization-monitoring/{upt}/export-pdf', [RealizationMonitoringController::class, 'exportUptPdf'])->name('realization-monitoring.export-pdf');
+        Route::get('realization-monitoring/{upt}/employee/{employee}', [RealizationMonitoringController::class, 'employeeDetail'])->name('realization-monitoring.employee');
+        Route::get('realization-monitoring/{upt}/employee/{employee}/wp-tunggakan', [RealizationMonitoringController::class, 'wpTunggakan'])->name('realization-monitoring.wp-tunggakan');
+        Route::get('realization-monitoring/{upt}/employee/{employee}/export-excel', [RealizationMonitoringController::class, 'exportEmployee'])->name('realization-monitoring.employee.export-excel');
+        Route::get('realization-monitoring/{upt}/employee/{employee}/export-pdf', [RealizationMonitoringController::class, 'exportEmployeePdf'])->name('realization-monitoring.employee.export-pdf');
+
+        // Pemantauan WP (read-only)
+        Route::prefix('monitoring')
+            ->name('monitoring.')
+            ->group(function (): void {
+                Route::get('/', [TaxPayerMonitoringController::class, 'index'])->name('index');
+                Route::get('/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('export-excel');
+                Route::get('/wp-chart', [TaxPayerMonitoringController::class, 'wpChart'])->name('wp-chart');
+                Route::get('/wp/{npwpd}/{nop}', [TaxPayerMonitoringController::class, 'wpDetail'])->name('wp-detail');
+                Route::get('/wp/{npwpd}/{nop}/export-excel', [TaxPayerMonitoringController::class, 'wpDetailExportExcel'])->name('wp-detail.export-excel');
+                Route::get('/wp/{npwpd}/{nop}/export-pdf', [TaxPayerMonitoringController::class, 'wpDetailExportPdf'])->name('wp-detail.export-pdf');
+            });
+    });
+
+Route::middleware(['auth', 'role:admin|kepala_upt'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
         // Jenis Pajak
         Route::resource('tax-types', TaxTypeController::class);
         Route::post('tax-types/{tax_type}/subtypes', [TaxTypeController::class, 'storeSubtype'])->name('tax-types.subtypes.store');
         Route::patch('tax-types/{tax_type}/subtypes/{subtype}', [TaxTypeController::class, 'updateSubtype'])->name('tax-types.subtypes.update');
 
         // Kecamatan
-        Route::resource('districts', DistrictController::class)->except([
-            'show',
-        ]);
+        Route::resource('districts', DistrictController::class)->except(['show']);
 
         // Pegawai
         Route::resource('employees', EmployeeController::class);
@@ -80,38 +115,8 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::post('upts/{upt}/employees', [UptController::class, 'storeEmployees'])->name('upts.employees.store');
         Route::get('upts/{upt}/employees/{employee}/districts', [UptController::class, 'assignEmployeeDistricts'])->name('upts.employees.districts');
 
-        // Monitoring Realisasi
-        Route::get('realization-monitoring/export', [RealizationMonitoringController::class, 'exportAll'])->name('realization-monitoring.export-all')->middleware('role:admin');
-        Route::get('realization-monitoring', [RealizationMonitoringController::class, 'index'])->name('realization-monitoring.index');
-        Route::get('realization-monitoring/{upt}', [RealizationMonitoringController::class, 'show'])->name('realization-monitoring.show');
-        Route::get('realization-monitoring/{upt}/export', [RealizationMonitoringController::class, 'export'])->name('realization-monitoring.export');
-        Route::get('realization-monitoring/{upt}/export-pdf', [RealizationMonitoringController::class, 'exportUptPdf'])->name('realization-monitoring.export-pdf');
-        Route::get('realization-monitoring/{upt}/employee/{employee}', [RealizationMonitoringController::class, 'employeeDetail'])->name('realization-monitoring.employee');
-        Route::get('realization-monitoring/{upt}/employee/{employee}/wp-tunggakan', [RealizationMonitoringController::class, 'wpTunggakan'])->name('realization-monitoring.wp-tunggakan');
-        Route::get('realization-monitoring/{upt}/employee/{employee}/export-excel', [RealizationMonitoringController::class, 'exportEmployee'])->name('realization-monitoring.employee.export-excel');
-        Route::get('realization-monitoring/{upt}/employee/{employee}/export-pdf', [RealizationMonitoringController::class, 'exportEmployeePdf'])->name('realization-monitoring.employee.export-pdf');
-
-        // Target Pajak (APBD)
-        Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
-        Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
-        Route::get('tax-targets/{taxType}/show', [TaxTargetController::class, 'show'])->name('tax-targets.show');
-
-        // Monitoring WP & Penugasan
-        Route::prefix('monitoring')
-            ->name('monitoring.')
-            ->group(function (): void {
-                Route::get('/', [TaxPayerMonitoringController::class, 'index'])->name('index');
-                Route::post('/assign', [TaxPayerMonitoringController::class, 'storeTask'])->name('assign');
-                Route::get('/export-excel', [TaxPayerMonitoringController::class, 'exportExcel'])->name('export-excel');
-                Route::get('/wp-chart', [TaxPayerMonitoringController::class, 'wpChart'])->name('wp-chart');
-                Route::get('/wp/{npwpd}/{nop}', [TaxPayerMonitoringController::class, 'wpDetail'])->name('wp-detail');
-                Route::get('/wp/{npwpd}/{nop}/export-excel', [TaxPayerMonitoringController::class, 'wpDetailExportExcel'])->name('wp-detail.export-excel');
-                Route::get('/wp/{npwpd}/{nop}/export-pdf', [TaxPayerMonitoringController::class, 'wpDetailExportPdf'])->name('wp-detail.export-pdf');
-            });
-
-        // Forecasting
-        Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
-        Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data');
+        // Monitoring WP — aksi assign hanya untuk admin & kepala_upt
+        Route::post('monitoring/assign', [TaxPayerMonitoringController::class, 'storeTask'])->name('monitoring.assign');
     });
 
 /*

@@ -38,6 +38,8 @@
             <input type="hidden" name="district" id="districtValue" value="{{ $selectedDistrict }}">
             <input type="hidden" name="status_filter" id="statusFilterValue" value="{{ $statusFilter }}">
             <input type="hidden" name="ayat" id="ayatValue" value="{{ $selectedAyat }}">
+            <input type="hidden" name="sort_by" id="sortByValue" value="{{ request('sort_by', '') }}">
+            <input type="hidden" name="sort_dir" id="sortDirValue" value="{{ request('sort_dir', 'desc') }}">
 
             <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-4 py-4 border-b border-slate-100 bg-white space-y-3">
@@ -193,7 +195,15 @@
                 const url = $(this).attr('href');
                 if (url) { refreshTable(url); window.scrollTo({ top: 0, behavior: 'smooth' }); }
             });
-            $('#filterForm').on('submit', function(e) { e.preventDefault(); refreshTable(); });
-        });
+            $(document).on('click', '[data-sort-col]', function() {
+                const col = $(this).data('sort-col');
+                const currentCol = $('#sortByValue').val();
+                const currentDir = $('#sortDirValue').val();
+                const newDir = (currentCol === col && currentDir === 'desc') ? 'asc' : 'desc';
+                $('#sortByValue').val(col);
+                $('#sortDirValue').val(newDir);
+                refreshTable();
+            });
+            $('#filterForm').on('submit', function(e) { e.preventDefault(); refreshTable(); });        });
     </script>
 </x-layouts.field-officer>

@@ -18,6 +18,7 @@ class DetectWpTrendAction
      *     change_pct: float,
      *     data_points: int,
      *     is_inactive: bool,
+     *     last_active_month: string|null,
      * }
      */
     public function __invoke(array $values): array
@@ -25,13 +26,13 @@ class DetectWpTrendAction
         $n = count($values);
 
         if ($n === 0) {
-            return $this->buildResult('Tidak Ada Data', 'no_data', 0, 0, 0, true);
+            return $this->buildResult('Tidak Ada Data', 'no_data', 0, 0, 0, true, null);
         }
 
         $totalBayar = array_sum($values);
 
         if ($totalBayar <= 0) {
-            return $this->buildResult('Tidak Aktif', 'inactive', 0, 0, $n, true);
+            return $this->buildResult('Tidak Aktif', 'inactive', 0, 0, $n, true, null);
         }
 
         $slope = $this->calculateSlope($values);
@@ -48,11 +49,11 @@ class DetectWpTrendAction
         $threshold = $avgValue * 0.05;
 
         if ($slope > $threshold) {
-            return $this->buildResult('Naik', 'up', $slope, $changePct, $n, false);
+            return $this->buildResult('Naik', 'up', $slope, $changePct, $n, false, null);
         } elseif ($slope < -$threshold) {
-            return $this->buildResult('Turun', 'down', $slope, $changePct, $n, false);
+            return $this->buildResult('Turun', 'down', $slope, $changePct, $n, false, null);
         } else {
-            return $this->buildResult('Stagnan', 'stable', $slope, $changePct, $n, false);
+            return $this->buildResult('Stagnan', 'stable', $slope, $changePct, $n, false, null);
         }
     }
 
@@ -88,7 +89,7 @@ class DetectWpTrendAction
         return (($n * $sumXY) - ($sumX * $sumY)) / $denominator;
     }
 
-    /** @return array{label: string, direction: string, slope: float, change_pct: float, data_points: int, is_inactive: bool} */
+    /** @return array{label: string, direction: string, slope: float, change_pct: float, data_points: int, is_inactive: bool, last_active_month: string|null} */
     private function buildResult(
         string $label,
         string $direction,
@@ -96,6 +97,7 @@ class DetectWpTrendAction
         float $changePct,
         int $dataPoints,
         bool $isInactive,
+        ?string $lastActiveMonth,
     ): array {
         return [
             'label' => $label,
@@ -104,6 +106,7 @@ class DetectWpTrendAction
             'change_pct' => round($changePct, 1),
             'data_points' => $dataPoints,
             'is_inactive' => $isInactive,
+            'last_active_month' => $lastActiveMonth,
         ];
     }
 }

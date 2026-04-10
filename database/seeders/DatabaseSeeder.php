@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             UptSeeder::class,
             UserSeeder::class,
             KepalaUptSeeder::class,
+            PemimpinSeeder::class,
             MonthSeeder::class,
         ]);
     }
