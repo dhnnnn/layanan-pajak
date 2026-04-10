@@ -3,6 +3,8 @@ stages:
 
 deploy_production:
   stage: deploy
+  tags:
+    - production
   environment:
     name: production
   only:
