@@ -1,6 +1,6 @@
 @php
     $user = auth()->user();
-    if ($user->hasRole('admin') || $user->isKepalaUpt()) {
+    if ($user->hasRole('admin') || $user->isKepalaUpt() || $user->hasRole('pemimpin')) {
         $layout = 'layouts.admin';
     } elseif ($user->hasRole('pegawai')) {
         $layout = 'layouts.field-officer';
