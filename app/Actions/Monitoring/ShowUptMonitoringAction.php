@@ -26,9 +26,17 @@ class ShowUptMonitoringAction
     {
         $cacheKey = "monitoring:upt:{$upt->id}:{$year}";
 
-        return Cache::remember($cacheKey, now()->addHours(3), function () use ($upt, $year, $month) {
+        $result = Cache::remember($cacheKey, now()->addHours(3), function () use ($upt, $year, $month) {
             return $this->build($upt, $year, $month);
         });
+
+        $result['availableYears'] = TaxTarget::query()->select('year')->distinct()->pluck('year')
+            ->merge(DB::table('simpadu_tax_payers')->distinct()->pluck('year'))
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        return $result;
     }
 
     private function build(Upt $upt, int $year, int $month): array
@@ -41,10 +49,18 @@ class ShowUptMonitoringAction
         $uptDistrictCodes = $upt->districts->pluck('simpadu_code')->filter()->toArray();
 
         // Fetch data from LOCAL simpadu_tax_payers table (Filtered by Status: 1/Active)
-        $districtStats = DB::table('simpadu_tax_payers')
+        // Jika ada data month=0 (summary tahunan), gunakan itu. Jika tidak (data historis),
+        // aggregate dari semua bulan (1-12).
+        $hasMonthZero = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->where('status', '1')
             ->where('month', 0)
+            ->exists();
+
+        $districtStats = DB::table('simpadu_tax_payers')
+            ->where('year', $year)
+            ->where('status', '1')
+            ->when($hasMonthZero, fn ($q) => $q->where('month', 0), fn ($q) => $q->where('month', '>', 0))
             ->whereIn('kd_kecamatan', $uptDistrictCodes)
             ->selectRaw('kd_kecamatan, SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_pay')
             ->groupBy('kd_kecamatan')
@@ -73,7 +89,7 @@ class ShowUptMonitoringAction
         $uptSptpd = (float) collect($uptDistrictCodes)->sum(fn ($code) => (float) $districtSptpd->get($code) ?? 0);
         $uptPay = (float) collect($uptDistrictCodes)->sum(fn ($code) => (float) $districtPay->get($code) ?? 0);
 
-        $availableYears = TaxTarget::query()->select('year')->distinct()->orderByDesc('year')->pluck('year');
+        $availableYears = collect();
 
         $months = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',

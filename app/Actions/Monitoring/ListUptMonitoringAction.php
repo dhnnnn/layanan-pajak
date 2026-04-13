@@ -23,9 +23,18 @@ class ListUptMonitoringAction
      */
     public function __invoke(int $year): array
     {
-        return Cache::remember("monitoring:upt:list:{$year}", now()->addHours(3), function () use ($year) {
+        $result = Cache::remember("monitoring:upt:list:{$year}", now()->addHours(3), function () use ($year) {
             return $this->build($year);
         });
+
+        // availableYears dihitung di luar cache agar selalu mencakup semua tahun historis
+        $result['availableYears'] = TaxTarget::query()->select('year')->distinct()->pluck('year')
+            ->merge(DB::table('simpadu_tax_payers')->distinct()->pluck('year'))
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        return $result;
     }
 
     private function build(int $year): array
@@ -41,10 +50,18 @@ class ListUptMonitoringAction
         );
 
         // Fetch data from LOCAL simpadu_tax_payers table (Filtered by Status: 1/Active)
-        $districtStats = DB::table('simpadu_tax_payers')
+        // Jika ada data month=0 (summary tahunan), gunakan itu. Jika tidak (data historis),
+        // aggregate dari semua bulan (1-12).
+        $hasMonthZero = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->where('status', '1')
             ->where('month', 0)
+            ->exists();
+
+        $districtStats = DB::table('simpadu_tax_payers')
+            ->where('year', $year)
+            ->where('status', '1')
+            ->when($hasMonthZero, fn ($q) => $q->where('month', 0), fn ($q) => $q->where('month', '>', 0))
             ->selectRaw('kd_kecamatan, SUM(total_ketetapan) as total_sptpd, SUM(total_bayar) as total_pay')
             ->groupBy('kd_kecamatan')
             ->get();
@@ -75,15 +92,13 @@ class ListUptMonitoringAction
         $totalSptpd = (float) $uptSptpdTotals->sum();
         $totalPay = (float) $uptPayTotals->sum();
 
-        $availableYears = TaxTarget::query()->select('year')->distinct()->orderByDesc('year')->pluck('year');
-
         return [
             'upts' => $uptsWithMetrics,
             'uptSptpdTotals' => $uptSptpdTotals,
             'uptPayTotals' => $uptPayTotals,
             'totalSptpd' => $totalSptpd,
             'totalPay' => $totalPay,
-            'availableYears' => $availableYears,
+            'availableYears' => collect(),
             'year' => $year,
         ];
     }
