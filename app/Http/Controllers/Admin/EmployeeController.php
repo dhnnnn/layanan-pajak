@@ -15,20 +15,22 @@ use App\Http\Requests\Admin\UpdateEmployeeRequest;
 use App\Models\District;
 use App\Models\Upt;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+
 class EmployeeController extends Controller
 {
     public function index(Request $request, ShowUptMonitoringAction $showUptMonitoring): View
     {
         $user = auth()->user();
 
-        if ($user->isKepalaUpt() && $user->upt_id) {
+        if ($user->isKepalaUpt() && $user->upt()) {
             $year = $request->integer('year', (int) date('Y'));
             $month = $request->integer('month', (int) date('n'));
-            $upt = $user->upt;
+            $upt = $user->upt();
 
             $monitoringData = $showUptMonitoring($upt, $year, $month);
 
@@ -39,9 +41,10 @@ class EmployeeController extends Controller
 
         $employees = User::query()
             ->role('pegawai')
-            ->with(['districts', 'upt'])
-            ->when($user->hasRole('kepala_upt'), function ($q) use ($user) {
-                $q->where('upt_id', $user->upt_id);
+            ->with(['districts', 'upts'])
+            ->when($user->hasRole('kepala_upt'), function ($q) use ($user): void {
+                $uptId = $user->upt()?->id;
+                $q->whereHas('upts', fn ($uq) => $uq->where('upts.id', $uptId));
             })
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
@@ -85,7 +88,7 @@ class EmployeeController extends Controller
         $sortDir = $request->query('sort_dir', 'desc');
         $taxTypeId = $request->query('tax_type_id');
 
-        $upt = $employee->upt;
+        $upt = $employee->upt();
 
         if (! $upt) {
             $employee->load('districts');
@@ -134,17 +137,17 @@ class EmployeeController extends Controller
             ->with('success', 'Pegawai berhasil dihapus.');
     }
 
-    public function wpTunggakan(Request $request, User $employee): \Illuminate\Http\JsonResponse
+    public function wpTunggakan(Request $request, User $employee): JsonResponse
     {
         $validated = $request->validate([
-            'year'  => 'nullable|integer|min:2000|max:2099',
+            'year' => 'nullable|integer|min:2000|max:2099',
             'npwpd' => 'required|string|max:50',
-            'nop'   => 'required|string|max:50',
+            'nop' => 'required|string|max:50',
         ]);
 
-        $year  = $validated['year'] ?? (int) date('Y');
+        $year = $validated['year'] ?? (int) date('Y');
         $npwpd = $validated['npwpd'];
-        $nop   = $validated['nop'];
+        $nop = $validated['nop'];
 
         $months = DB::table('simpadu_tax_payers')
             ->where('year', $year)
@@ -156,12 +159,12 @@ class EmployeeController extends Controller
 
         $bulanIndo = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-        $result = $months->map(fn($r) => [
-            'bulan'           => $bulanIndo[(int) $r->month] ?? $r->month,
+        $result = $months->map(fn ($r) => [
+            'bulan' => $bulanIndo[(int) $r->month] ?? $r->month,
             'total_ketetapan' => (float) $r->total_ketetapan,
-            'total_bayar'     => (float) $r->total_bayar,
+            'total_bayar' => (float) $r->total_bayar,
             'total_tunggakan' => (float) max($r->total_tunggakan, 0),
-        ])->filter(fn($r) => $r['total_ketetapan'] > 0);
+        ])->filter(fn ($r) => $r['total_ketetapan'] > 0);
 
         return response()->json($result->values());
     }
@@ -170,11 +173,12 @@ class EmployeeController extends Controller
         AssignDistrictRequest $request,
         User $employee,
         AssignEmployeeDistrictAction $assignDistricts,
-    ): RedirectResponse {        $assignDistricts($employee, $request->array('district_ids'));
+    ): RedirectResponse {
+        $assignDistricts($employee, $request->array('district_ids'));
 
-        if ($employee->upt_id) {
+        if ($employee->upt()) {
             return redirect()
-                ->route('admin.upts.show', $employee->upt_id)
+                ->route('admin.upts.show', $employee->upt()->id)
                 ->with('success', 'Kecamatan berhasil diperbarui.');
         }
 

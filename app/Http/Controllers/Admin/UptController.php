@@ -22,14 +22,13 @@ class UptController extends Controller
     public function index(): View|RedirectResponse
     {
         if (auth()->user()->isKepalaUpt()) {
-            return redirect()->route('admin.upts.show', auth()->user()->upt_id);
+            $upt = auth()->user()->upt();
+
+            return redirect()->route('admin.upts.show', $upt?->id);
         }
 
         $upts = Upt::query()
             ->withCount(['employees', 'districts'])
-            ->when(auth()->user()->hasRole('kepala_upt'), function ($q) {
-                $q->where('id', auth()->user()->upt_id);
-            })
             ->orderBy('code')
             ->paginate(20);
 
@@ -90,7 +89,7 @@ class UptController extends Controller
 
         $allEmployees = User::query()
             ->role('pegawai')
-            ->with('upt')
+            ->with('upts')
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -100,9 +99,7 @@ class UptController extends Controller
             ->withQueryString();
 
         // IDs of employees already in this UPT (needed to preserve checked state across pages)
-        $assignedIds = User::query()
-            ->where('upt_id', $upt->id)
-            ->pluck('id');
+        $assignedIds = $upt->users()->pluck('users.id');
 
         return view('admin.upts.manage-employees', compact('upt', 'allEmployees', 'assignedIds'));
     }

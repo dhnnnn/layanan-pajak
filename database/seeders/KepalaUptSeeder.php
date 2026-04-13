@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Upt;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 
 class KepalaUptSeeder extends Seeder
@@ -31,10 +30,10 @@ class KepalaUptSeeder extends Seeder
             [
                 'name' => $name1,
                 'password' => Hash::make('password'),
-                'upt_id' => $upt1->id,
             ]
         );
         $user1->syncRoles(['kepala_upt']);
+        $user1->upts()->sync([$upt1->id]);
 
         // UPT 2
         $upt2 = Upt::firstOrCreate(
@@ -53,9 +52,9 @@ class KepalaUptSeeder extends Seeder
             [
                 'name' => $name2,
                 'password' => Hash::make('password'),
-                'upt_id' => $upt2->id,
             ]
         );
         $user2->syncRoles(['kepala_upt']);
+        $user2->upts()->sync([$upt2->id]);
     }
 }

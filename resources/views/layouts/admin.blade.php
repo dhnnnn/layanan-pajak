@@ -88,7 +88,7 @@
             @if(auth()->user()->isKepalaUpt())
             <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">UPT Anda</p>
 
-            <a href="{{ route('admin.upts.show', auth()->user()->upt_id) }}"
+            <a href="{{ route('admin.upts.show', auth()->user()->upt()?->id) }}"
                class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('admin.upts.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white' }}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -143,7 +143,7 @@
             <p class="text-sm text-white font-medium truncate">{{ auth()->user()->name }}</p>
             <p class="text-xs text-slate-400 mb-3">
                 @if(auth()->user()->isKepalaUpt())
-                    Kepala {{ auth()->user()->upt?->name ?? 'UPT' }}
+                    Kepala {{ auth()->user()->upt()?->name ?? 'UPT' }}
                 @elseif(auth()->user()->isAdmin())
                     Administrator
                 @else

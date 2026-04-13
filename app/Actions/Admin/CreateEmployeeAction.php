@@ -22,10 +22,13 @@ class CreateEmployeeAction
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'upt_id' => $data['upt_id'] ?? null,
         ]);
 
         $employee->assignRole('pegawai');
+
+        if (! empty($data['upt_id'])) {
+            $employee->upts()->sync([$data['upt_id']]);
+        }
 
         if (! empty($data['district_ids'])) {
             $employee->districts()->sync($data['district_ids']);

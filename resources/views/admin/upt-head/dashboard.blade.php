@@ -39,7 +39,7 @@
                 </div>
                 <div>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Unit Pelaksana Teknis</p>
-                    <p class="text-sm font-bold text-slate-800">{{ auth()->user()->upt?->name ?? 'UPT' }}</p>
+                    <p class="text-sm font-bold text-slate-800">{{ auth()->user()->upt()?->name ?? 'UPT' }}</p>
                 </div>
             </div>
         </div>

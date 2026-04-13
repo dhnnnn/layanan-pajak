@@ -73,7 +73,7 @@ class TaxPayerMonitoringController extends Controller
         $user = auth()->user();
 
         if ($user->isKepalaUpt()) {
-            $uptCodes = $user->upt->districts->pluck('simpadu_code')->toArray();
+            $uptCodes = $user->upt()?->districts->pluck('simpadu_code')->toArray() ?? [];
 
             return ($selectedDistrict !== '' && in_array($selectedDistrict, $uptCodes))
                 ? [$selectedDistrict]

@@ -67,8 +67,9 @@
                     <div class="space-y-2 border border-slate-200 rounded-lg p-4">
                         @forelse($allEmployees as $employee)
                             @php
-                                $isInThisUpt = $employee->upt_id === $upt->id;
-                                $isInOtherUpt = $employee->upt_id !== null && $employee->upt_id !== $upt->id;
+                                $employeeUptId = $employee->upts->first()?->id;
+                                $isInThisUpt = $employeeUptId === $upt->id;
+                                $isInOtherUpt = $employeeUptId !== null && $employeeUptId !== $upt->id;
                             @endphp
                             <label class="flex items-center gap-3 p-3 border rounded-lg transition-colors
                                 {{ $isInOtherUpt ? 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed' : 'border-transparent hover:border-slate-200 hover:bg-slate-50 cursor-pointer' }}">
@@ -86,7 +87,7 @@
                                 @if($isInThisUpt)
                                     <span class="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold shrink-0">UPT ini</span>
                                 @elseif($isInOtherUpt)
-                                    <span class="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold shrink-0">{{ $employee->upt->name }}</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold shrink-0">{{ $employee->upts->first()?->name }}</span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs shrink-0">Belum ada UPT</span>
                                 @endif

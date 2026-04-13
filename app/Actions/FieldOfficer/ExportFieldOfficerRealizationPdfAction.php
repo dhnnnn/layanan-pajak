@@ -44,7 +44,7 @@ class ExportFieldOfficerRealizationPdfAction
 
         $employee = $user;
         $employee->load('districts');
-        $upt = $user->upt;
+        $upt = $user->upt();
 
         $pdf = Pdf::loadView('admin.realization-monitoring.employee-pdf', compact(
             'upt', 'employee', 'year', 'summary', 'wpList', 'monthlyData'

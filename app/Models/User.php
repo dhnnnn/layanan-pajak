@@ -19,7 +19,7 @@ class User extends Authenticatable
     use HasFactory, HasRoles, HasUuids, Notifiable;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'email', 'password', 'upt_id'];
+    protected $fillable = ['name', 'email', 'password', 'role_id'];
 
     protected $keyType = 'string';
 
@@ -67,12 +67,13 @@ class User extends Authenticatable
         }
 
         if ($this->hasRole('kepala_upt')) {
-            if (! $this->upt_id) {
+            $upt = $this->upt();
+            if (! $upt) {
                 return District::query()->whereRaw('1 = 0'); // No UPT, no districts
             }
 
-            return District::query()->whereHas('upts', function ($q) {
-                $q->where('upts.id', $this->upt_id);
+            return District::query()->whereHas('upts', function ($q) use ($upt): void {
+                $q->where('upts.id', $upt->id);
             });
         }
 
@@ -84,9 +85,22 @@ class User extends Authenticatable
         return $this->hasMany(ImportLog::class);
     }
 
-    public function upt(): BelongsTo
+    public function upts(): BelongsToMany
     {
-        return $this->belongsTo(Upt::class);
+        return $this->belongsToMany(Upt::class, 'upt_users');
+    }
+
+    /**
+     * Shortcut untuk mengambil UPT pertama (kepala_upt hanya punya satu UPT).
+     */
+    public function upt(): ?Upt
+    {
+        return $this->upts->first();
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
     }
 
     public function tasks(): HasMany

@@ -24,6 +24,7 @@ class UserSeeder extends Seeder
             ]
         );
         $admin->syncRoles(['admin']);
+        $admin->updateQuietly(['role_id' => $admin->roles->first()?->id]);
 
         // 2. Clear other users (Pegawai)
         // We delete users who are NOT the admin we just created/updated
@@ -63,7 +64,7 @@ class UserSeeder extends Seeder
             $emailName = strtolower($data['name']);
             $emailName = preg_replace('/[^a-z0-9]/', '.', $emailName);
             $emailName = preg_replace('/\.+/', '.', trim($emailName, '.'));
-            $email = $emailName . '@upp.pendapatan';
+            $email = $emailName.'@upp.pendapatan';
 
             $upt = Upt::where('code', $data['upt'])->first();
 
@@ -71,10 +72,14 @@ class UserSeeder extends Seeder
                 'name' => $data['name'],
                 'email' => $email,
                 'password' => Hash::make('password'),
-                'upt_id' => $upt?->id,
             ]);
 
             $user->assignRole('pegawai');
+            $user->updateQuietly(['role_id' => $user->roles->first()?->id]);
+
+            if ($upt) {
+                $user->upts()->sync([$upt->id]);
+            }
 
             // Map districts
             $districtIds = District::whereIn('name', $data['districts'])->pluck('id');

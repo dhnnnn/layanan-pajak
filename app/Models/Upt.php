@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Upt extends Model
 {
@@ -58,19 +57,18 @@ class Upt extends Model
         return $this->belongsToMany(District::class, 'upt_districts');
     }
 
-    public function users(): HasMany
+    public function users(): BelongsToMany
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'upt_users');
     }
 
-    public function employees()
+    public function employees(): BelongsToMany
     {
-        return $this->hasMany(User::class)->role('pegawai');
+        return $this->belongsToMany(User::class, 'upt_users')->role('pegawai');
     }
 
-    public function kepalaUpt()
+    public function kepalaUpt(): ?User
     {
-        return $this->users()->role('kepala_upt')->first();
+        return $this->belongsToMany(User::class, 'upt_users')->role('kepala_upt')->first();
     }
-
 }

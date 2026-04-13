@@ -21,7 +21,6 @@ class UpdateEmployeeAction
         $updateData = [
             'name' => $data['name'],
             'email' => $data['email'],
-            'upt_id' => $data['upt_id'] ?? null,
         ];
 
         if (! empty($data['password'])) {
@@ -29,6 +28,10 @@ class UpdateEmployeeAction
         }
 
         $employee->update($updateData);
+
+        if (array_key_exists('upt_id', $data)) {
+            $employee->upts()->sync($data['upt_id'] ? [$data['upt_id']] : []);
+        }
 
         if (isset($data['district_ids'])) {
             $employee->districts()->sync($data['district_ids']);

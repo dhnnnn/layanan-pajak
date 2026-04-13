@@ -60,7 +60,7 @@ class BuildTaxPayerFilterAction
         $user = auth()->user();
 
         if ($user->isKepalaUpt()) {
-            $uptCodes = $user->upt->districts->pluck('simpadu_code')->toArray();
+            $uptCodes = $user->upt()?->districts->pluck('simpadu_code')->toArray() ?? [];
 
             return ($selectedDistrict !== '' && in_array($selectedDistrict, $uptCodes))
                 ? [$selectedDistrict]
@@ -92,7 +92,7 @@ class BuildTaxPayerFilterAction
         $query = District::orderBy('name');
 
         if ($user->isKepalaUpt()) {
-            $query->whereIn('id', $user->upt->districts->pluck('id'));
+            $query->whereIn('id', $user->upt()?->districts->pluck('id') ?? []);
         } elseif ($user->hasRole('pegawai')) {
             $query->whereIn('id', $user->accessibleDistricts()->pluck('id'));
         }

@@ -66,11 +66,11 @@ class DashboardController extends Controller
         $topDelinquents = collect();
         $officerStats = collect();
 
-        if ($isKepalaUpt && $user->upt) {
+        if ($isKepalaUpt && $user->upt()) {
             $currentMonth = (int) $request->query('compliance_month', date('n'));
             // Clamp to valid month range
             $currentMonth = max(1, min(12, $currentMonth));
-            $districtCodes = $user->upt->districts->pluck('simpadu_code')->toArray();
+            $districtCodes = $user->upt()->districts->pluck('simpadu_code')->toArray();
 
             // Find current simpadu_code if district filter is set
             $filterCodes = $districtCodes;
@@ -222,7 +222,7 @@ class DashboardController extends Controller
             'employeeDashboardData' => $employeeDashboardData ?? collect(),
             'priorityDistrictId' => $priorityDistrictId,
             'selectedPriorityDistrict' => $selectedPriorityDistrict ?? null,
-            'upt' => $isKepalaUpt ? $user->upt : null,
+            'upt' => $isKepalaUpt ? $user->upt() : null,
             'availableAyat' => $availableAyat,
         ]);
     }
