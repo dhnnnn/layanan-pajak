@@ -5,6 +5,7 @@ namespace App\Actions\Monitoring;
 use App\Models\TaxTarget;
 use App\Models\Upt;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ShowUptMonitoringAction
@@ -23,9 +24,18 @@ class ShowUptMonitoringAction
      */
     public function __invoke(Upt $upt, int $year, int $month): array
     {
+        $cacheKey = "monitoring:upt:{$upt->id}:{$year}";
+
+        return Cache::remember($cacheKey, now()->addHours(3), function () use ($upt, $year, $month) {
+            return $this->build($upt, $year, $month);
+        });
+    }
+
+    private function build(Upt $upt, int $year, int $month): array
+    {
         $upt->load([
             'districts',
-            'users' => fn ($q) => $q->role('pegawai')->with('districts')
+            'users' => fn ($q) => $q->role('pegawai')->with('districts'),
         ]);
 
         $uptDistrictCodes = $upt->districts->pluck('simpadu_code')->filter()->toArray();
@@ -46,7 +56,7 @@ class ShowUptMonitoringAction
         // 2. Map metrics to Officers
         $employeeData = $upt->users->map(function ($employee) use ($districtSptpd, $districtPay) {
             $codes = $employee->districts->pluck('simpadu_code')->filter();
-            
+
             $sptpd = (float) $codes->sum(fn ($code) => (float) $districtSptpd->get($code) ?? 0);
             $pay = (float) $codes->sum(fn ($code) => (float) $districtPay->get($code) ?? 0);
             $pct = $sptpd > 0 ? ($pay / $sptpd) * 100 : 0;

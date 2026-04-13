@@ -5,6 +5,7 @@ namespace App\Actions\Tax;
 use App\Models\SimpaduMonthlyRealization;
 use App\Models\SimpaduTarget;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class GenerateTaxDashboardAction
 {
@@ -16,6 +17,23 @@ class GenerateTaxDashboardAction
     ) {}
 
     public function __invoke(int $year, ?string $search = null): array
+    {
+        $cacheKey = "dashboard:tax:{$year}";
+
+        $result = Cache::remember($cacheKey, now()->addHours(6), function () use ($year) {
+            return $this->build($year);
+        });
+
+        if ($search) {
+            $result['data'] = $result['data']->filter(
+                fn ($i) => str_contains(strtolower($i['tax_type_name']), strtolower($search))
+            )->values();
+        }
+
+        return $result;
+    }
+
+    private function build(int $year): array
     {
         // Targets dari lokal (synced dari m_target_anggaran simpadunew)
         $targets = SimpaduTarget::query()
@@ -107,12 +125,6 @@ class GenerateTaxDashboardAction
 
             return $item;
         });
-
-        if ($search) {
-            $data = $data->filter(
-                fn ($i) => str_contains(strtolower($i['tax_type_name']), strtolower($search))
-            )->values();
-        }
 
         // Grand totals — hanya dari baris top-level (bukan child)
         $topLevel = $data->where('is_child', false);

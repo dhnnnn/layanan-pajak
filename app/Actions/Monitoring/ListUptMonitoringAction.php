@@ -5,6 +5,7 @@ namespace App\Actions\Monitoring;
 use App\Models\TaxTarget;
 use App\Models\Upt;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ListUptMonitoringAction
@@ -21,6 +22,13 @@ class ListUptMonitoringAction
      * }
      */
     public function __invoke(int $year): array
+    {
+        return Cache::remember("monitoring:upt:list:{$year}", now()->addHours(3), function () use ($year) {
+            return $this->build($year);
+        });
+    }
+
+    private function build(int $year): array
     {
         $upts = Upt::query()
             ->with(['districts', 'employees'])
