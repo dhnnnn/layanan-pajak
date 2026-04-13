@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             KepalaUptSeeder::class,
             PemimpinSeeder::class,
             MonthSeeder::class,
+            PermissionSeeder::class,
         ]);
     }
 }

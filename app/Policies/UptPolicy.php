@@ -32,7 +32,7 @@ class UptPolicy
      */
     public function view(User $user, Upt $upt): bool
     {
-        return $user->upt_id === $upt->id;
+        return $user->upts()->where('upts.id', $upt->id)->exists();
     }
 
     /**
@@ -64,14 +64,11 @@ class UptPolicy
      */
     public function manageEmployees(User $user, Upt $upt): bool
     {
-        return $user->upt_id === $upt->id;
+        return $user->upts()->where('upts.id', $upt->id)->exists();
     }
 
-    /**
-     * Determine whether the user can manage districts for the UPT.
-     */
     public function manageDistricts(User $user, Upt $upt): bool
     {
-        return $user->upt_id === $upt->id;
+        return $user->upts()->where('upts.id', $upt->id)->exists();
     }
 }

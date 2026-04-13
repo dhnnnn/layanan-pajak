@@ -12,4 +12,12 @@ class Role extends SpatieRole
     protected $keyType = 'string';
 
     public $incrementing = false;
+
+    /** @var list<string> */
+    public const SYSTEM_ROLES = ['admin', 'kepala_upt', 'pegawai', 'pemimpin'];
+
+    public function isSystemRole(): bool
+    {
+        return in_array($this->name, self::SYSTEM_ROLES, true);
+    }
 }

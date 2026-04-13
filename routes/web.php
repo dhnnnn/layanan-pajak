@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\Admin\AccessMonitoringController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\ForecastingController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\RbacUserController;
 use App\Http\Controllers\Admin\RealizationMonitoringController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
@@ -154,4 +158,34 @@ Route::middleware(['auth', 'role:pegawai'])
                 Route::get('/wp-detail/{npwpd}/{nop}/export-excel', [TaxPayerMonitoringController::class, 'wpDetailExportExcel'])->name('wp-detail.export-excel');
                 Route::get('/wp-detail/{npwpd}/{nop}/export-pdf', [TaxPayerMonitoringController::class, 'wpDetailExportPdf'])->name('wp-detail.export-pdf');
             });
+    });
+
+/*
+|--------------------------------------------------------------------------
+| RBAC Management Routes (Admin only)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'role:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        // Role Management
+        Route::resource('roles', RoleController::class);
+        Route::put('roles/{role}/permissions', [RoleController::class, 'syncPermissions'])
+            ->name('roles.permissions.sync');
+
+        // Permission Management
+        Route::resource('permissions', PermissionController::class)
+            ->except(['show', 'edit', 'update']);
+
+        // User RBAC Management
+        Route::resource('rbac-users', RbacUserController::class)
+            ->except(['show']);
+
+        // Access Monitoring
+        Route::get('access-monitoring', [AccessMonitoringController::class, 'index'])
+            ->name('access-monitoring.index');
+        Route::get('access-monitoring/{role}', [AccessMonitoringController::class, 'show'])
+            ->name('access-monitoring.show');
     });

@@ -24,14 +24,6 @@
                     @enderror
                 </div>
 
-                <div>
-                    <label for="code" class="block text-sm font-semibold text-slate-700 mb-1">Kode Kecamatan</label>
-                    <input type="text" id="code" value="{{ $district->code }}" 
-                        class="w-full rounded-lg bg-slate-100 text-slate-500 font-mono text-sm uppercase cursor-not-allowed" 
-                        readonly>
-                    <p class="mt-1 text-xs text-slate-500 italic">Kode tidak dapat diubah setelah dibuat.</p>
-                </div>
-
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                     <a href="{{ route('admin.districts.index') }}" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Batal</a>
                     <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">

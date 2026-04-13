@@ -98,9 +98,9 @@ class User extends Authenticatable
         return $this->upts->first();
     }
 
-    public function role(): BelongsTo
+    public function primaryRole(): BelongsTo
     {
-        return $this->belongsTo(Role::class);
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function tasks(): HasMany

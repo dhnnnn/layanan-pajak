@@ -171,8 +171,8 @@ class DashboardController extends Controller
                 ->get()
                 ->keyBy('kd_kecamatan');
 
-            $employeeDashboardData = User::role('pegawai')
-                ->where('upt_id', $user->upt_id)
+            $employeeDashboardData = User::query()->role('pegawai')
+                ->whereHas('upts', fn ($q) => $q->where('upts.id', $user->upt()?->id))
                 ->with('districts')
                 ->get()
                 ->map(function ($employee) use ($districtStats) {
