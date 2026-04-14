@@ -80,6 +80,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::get('realization-monitoring/{upt}/employee/{employee}/wp-tunggakan', [RealizationMonitoringController::class, 'wpTunggakan'])->name('realization-monitoring.wp-tunggakan');
         Route::get('realization-monitoring/{upt}/employee/{employee}/export-excel', [RealizationMonitoringController::class, 'exportEmployee'])->name('realization-monitoring.employee.export-excel');
         Route::get('realization-monitoring/{upt}/employee/{employee}/export-pdf', [RealizationMonitoringController::class, 'exportEmployeePdf'])->name('realization-monitoring.employee.export-pdf');
+        Route::get('realization-monitoring/{upt}/district-forecast', [RealizationMonitoringController::class, 'districtForecast'])->name('realization-monitoring.district-forecast');
 
         // Pemantauan WP (read-only)
         Route::prefix('monitoring')

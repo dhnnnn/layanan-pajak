@@ -266,6 +266,7 @@
                             {{-- Main Row --}}
                             <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
                                 onclick="toggleAccordion('{{ $wp['npwpd'] }}-{{ $wp['nop'] }}')"
+                                data-key="{{ $wp['npwpd'] }}-{{ $wp['nop'] }}"
                                 data-npwpd="{{ $wp['npwpd'] }}"
                                 data-nop="{{ $wp['nop'] }}">
                                 <td class="px-6 py-4">
@@ -393,8 +394,9 @@
 
                 if (isHidden && !accordionLoaded[key]) {
                     accordionLoaded[key] = true;
-                    const mainRow = document.querySelector('[data-npwpd]' + '[data-nop]');
-                    const tr = document.querySelector(`tr[onclick="toggleAccordion('${key}')"]`);
+                    // Cari tr yang memiliki data-npwpd dan data-nop sesuai key
+                    const tr = document.querySelector(`tr[data-key="${key}"]`);
+                    if (!tr) return;
                     const npwpd = tr.dataset.npwpd;
                     const nop   = tr.dataset.nop;
                     const year  = document.getElementById('yearValue').value;

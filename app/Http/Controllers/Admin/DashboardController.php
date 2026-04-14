@@ -81,12 +81,20 @@ class DashboardController extends Controller
                 }
             }
 
+            // Deteksi apakah ada data month=0 (summary tahunan) untuk tahun ini
+            // Jika tidak ada (data historis), aggregate dari semua bulan (1-12)
+            $hasMonthZero = DB::table('simpadu_tax_payers')
+                ->where('year', $selectedYear)
+                ->where('status', '1')
+                ->where('month', 0)
+                ->exists();
+
             // Calculate global totals from simpadu_tax_payers based on filter
             // Use status='1' (active only) to match ShowUptMonitoringAction
             $simpaduTotals = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
                 ->where('status', '1')
-                ->where('month', 0)
+                ->when($hasMonthZero, fn ($q) => $q->where('month', 0), fn ($q) => $q->where('month', '>', 0))
                 ->whereIn('kd_kecamatan', $filterCodes)
                 ->select([
                     DB::raw('SUM(total_ketetapan) as target'),
@@ -105,7 +113,7 @@ class DashboardController extends Controller
                 ->where('year', $selectedYear)
                 ->whereIn('kd_kecamatan', $districtCodes)
                 ->where('status', '1')
-                ->where('month', 0)
+                ->when($hasMonthZero, fn ($q) => $q->where('month', 0), fn ($q) => $q->where('month', '>', 0)->distinct(['npwpd', 'nop']))
                 ->distinct(['npwpd', 'nop'])
                 ->count(['npwpd', 'nop', 'year']);
 
@@ -148,7 +156,7 @@ class DashboardController extends Controller
                 ])
                 ->where('year', $selectedYear)
                 ->where('status', '1')
-                ->where('month', 0)
+                ->when($hasMonthZero, fn ($q) => $q->where('month', 0), fn ($q) => $q->where('month', '>', 0))
                 ->whereIn('kd_kecamatan', $priorityCodes)
                 ->where('total_tunggakan', '>', 0)
                 ->groupBy(['npwpd', 'nm_wp', 'nm_op', 'kd_kecamatan'])
@@ -160,7 +168,7 @@ class DashboardController extends Controller
             $districtStats = DB::table('simpadu_tax_payers')
                 ->where('year', $selectedYear)
                 ->where('status', '1')
-                ->where('month', 0)
+                ->when($hasMonthZero, fn ($q) => $q->where('month', 0), fn ($q) => $q->where('month', '>', 0))
                 ->whereIn('kd_kecamatan', $districtCodes)
                 ->select([
                     'kd_kecamatan',

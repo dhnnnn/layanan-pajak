@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Monitoring\GetDistrictForecastAction;
 use App\Actions\Monitoring\ListUptMonitoringAction;
 use App\Actions\Monitoring\ShowEmployeeMonitoringAction;
 use App\Actions\Monitoring\ShowUptMonitoringAction;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -54,8 +56,8 @@ class RealizationMonitoringController extends Controller
         ShowEmployeeMonitoringAction $showEmployeeMonitoring,
     ): View {
         // Validasi: employee harus benar-benar berada di UPT yang ada di URL
-        // Ini berlaku untuk semua role — mencegah URL manipulation
-        if ($employee->upt_id !== $upt->id) {
+        // Gunakan pivot upt_users karena kolom upt_id di users bisa kosong
+        if (! $upt->users()->where('users.id', $employee->id)->exists()) {
             abort(404, 'Petugas tidak ditemukan di UPT ini.');
         }
 
@@ -165,7 +167,7 @@ class RealizationMonitoringController extends Controller
      */
     public function exportEmployeePdf(Request $request, Upt $upt, User $employee): Response
     {
-        if ($employee->upt_id !== $upt->id) {
+        if (! $upt->users()->where('users.id', $employee->id)->exists()) {
             abort(404);
         }
 
@@ -256,5 +258,122 @@ class RealizationMonitoringController extends Controller
         $filename = "monitoring-realisasi-upt-{$year}.xlsx";
 
         return Excel::download(new RealizationMonitoringExport($year), $filename);
+    }
+
+    /**
+     * Endpoint AJAX: forecast realisasi per kecamatan untuk satu UPT.
+     * district_id=all → aggregate semua kecamatan di UPT.
+     */
+    public function districtForecast(Request $request, Upt $upt, GetDistrictForecastAction $getForecast): JsonResponse
+    {
+        $districtId = $request->query('district_id');
+
+        if ($districtId === 'all') {
+            // Aggregate semua kecamatan di UPT
+            $districts = $upt->districts()->get();
+            if ($districts->isEmpty()) {
+                return response()->json(['error' => 'Tidak ada kecamatan di UPT ini.'], 404);
+            }
+
+            $codes = $districts->pluck('simpadu_code')->filter()->toArray();
+
+            $rows = DB::table('simpadu_tax_payers')
+                ->whereIn('kd_kecamatan', $codes)
+                ->where('status', '1')
+                ->where('month', '>', 0)
+                ->selectRaw('year, month, SUM(total_bayar) as total_bayar, SUM(total_ketetapan) as total_ketetapan')
+                ->groupBy('year', 'month')
+                ->orderBy('year')
+                ->orderBy('month')
+                ->get();
+
+            if ($rows->count() < 2) {
+                return response()->json(['error' => 'Data tidak tersedia.'], 503);
+            }
+
+            // Potong data di gap pertama agar ARIMA tidak terpengaruh data acak
+            $validRows = collect();
+            $prevYear = null;
+            $prevMonth = null;
+
+            foreach ($rows as $r) {
+                if ((float) $r->total_bayar <= 0) {
+                    if ($prevYear !== null) {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if ($prevYear !== null) {
+                    $expectedYear = $prevMonth === 12 ? $prevYear + 1 : $prevYear;
+                    $expectedMonth = $prevMonth === 12 ? 1 : $prevMonth + 1;
+                    if ((int) $r->year !== $expectedYear || (int) $r->month !== $expectedMonth) {
+                        break;
+                    }
+                }
+
+                $validRows->push($r);
+                $prevYear = (int) $r->year;
+                $prevMonth = (int) $r->month;
+            }
+
+            // Potong bulan terakhir jika nilainya < 20% rata-rata (laporan belum lengkap)
+            if ($validRows->count() >= 3) {
+                $avg = $validRows->avg('total_bayar');
+                while ($validRows->count() >= 2 && (float) $validRows->last()->total_bayar < $avg * 0.2) {
+                    $validRows->pop();
+                }
+            }
+
+            $historisData = $validRows->map(fn ($r) => [
+                'periode' => sprintf('%d-%02d', $r->year, $r->month),
+                'nilai' => (float) $r->total_bayar,
+            ])->values()->toArray();
+
+            $ketetapanData = $validRows->filter(fn ($r) => (float) $r->total_ketetapan > 0)
+                ->map(fn ($r) => [
+                    'periode' => sprintf('%d-%02d', $r->year, $r->month),
+                    'nilai' => (float) $r->total_ketetapan,
+                ])->values()->toArray();
+
+            if (count($historisData) < 2) {
+                return response()->json(['error' => 'Data realisasi tidak tersedia.'], 503);
+            }
+
+            try {
+                $response = Http::timeout(config('forecasting.timeout', 60))
+                    ->post(config('forecasting.url').'/forecast/from-data', [
+                        'jenis_pajak' => 'realisasi_all',
+                        'data' => $historisData,
+                        'horizon' => 12,
+                    ]);
+
+                if (! $response->successful()) {
+                    return response()->json(['error' => 'Forecasting service error.'], 503);
+                }
+
+                return response()->json(array_merge($response->json(), [
+                    'kecamatan' => 'Semua Kecamatan',
+                    'total_ketetapan' => $ketetapanData,
+                ]));
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Forecasting service tidak dapat dijangkau.'], 503);
+            }
+        }
+
+        $district = $upt->districts()->find($districtId);
+
+        if (! $district) {
+            return response()->json(['error' => 'Kecamatan tidak ditemukan.'], 404);
+        }
+
+        $result = $getForecast($district);
+
+        if ($result === null) {
+            return response()->json(['error' => 'Data tidak tersedia atau forecasting service tidak dapat dijangkau.'], 503);
+        }
+
+        return response()->json($result);
     }
 }
