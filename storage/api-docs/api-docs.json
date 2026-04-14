@@ -1,0 +1,252 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Layanan Pajak API",
+        "description": "REST API untuk data realisasi pajak daerah Kabupaten Pasuruan. Semua endpoint memerlukan Bearer Token pada header Authorization.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://upp.pendapatan.pasuruankab.go.id/api",
+            "description": "Production Server"
+        },
+        {
+            "url": "http://localhost:8000/api",
+            "description": "Local Development"
+        }
+    ],
+    "paths": {
+        "/tax-summary": {
+            "get": {
+                "tags": [
+                    "Ringkasan Pajak"
+                ],
+                "summary": "Total target dan realisasi pajak",
+                "description": "Mengembalikan total target, realisasi, lebih/(kurang), dan persentase capaian. Jika parameter year tidak diisi, mengembalikan semua tahun yang tersedia.",
+                "operationId": "782bc08151b0ebf60e338fbea2a1d000",
+                "parameters": [
+                    {
+                        "name": "year",
+                        "in": "query",
+                        "description": "Tahun anggaran (contoh: 2026). Kosongkan untuk semua tahun.",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2026
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil — tahun spesifik",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "year": {
+                                            "type": "integer",
+                                            "example": 2026
+                                        },
+                                        "total_target": {
+                                            "type": "number",
+                                            "example": 653283255374
+                                        },
+                                        "total_realization": {
+                                            "type": "number",
+                                            "example": 198105196856
+                                        },
+                                        "more_less": {
+                                            "type": "number",
+                                            "example": -455178058518
+                                        },
+                                        "percentage": {
+                                            "type": "number",
+                                            "example": 30.32
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized — token tidak valid"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/tax-types": {
+            "get": {
+                "tags": [
+                    "Jenis Pajak"
+                ],
+                "summary": "Daftar semua jenis pajak",
+                "description": "Mengembalikan daftar semua jenis pajak yang tersedia di dashboard, termasuk grup PBJT dan anggotanya.",
+                "operationId": "5025fad0db7a9ce0b65f2b0103b6f0ea",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "no_ayat": {
+                                                "description": "Kode ayat pajak",
+                                                "type": "string",
+                                                "example": "41101"
+                                            },
+                                            "nama": {
+                                                "description": "Nama jenis pajak",
+                                                "type": "string",
+                                                "example": "PBJT-HOTEL"
+                                            },
+                                            "is_group": {
+                                                "description": "true jika ini grup induk (Pajak PBJT)",
+                                                "type": "boolean",
+                                                "example": false
+                                            },
+                                            "in_pbjt_group": {
+                                                "description": "true jika termasuk dalam grup PBJT",
+                                                "type": "boolean",
+                                                "example": true
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized — token tidak valid"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/tax-realization": {
+            "get": {
+                "tags": [
+                    "Realisasi per Jenis Pajak"
+                ],
+                "summary": "Realisasi pajak per jenis pajak",
+                "description": "Mengembalikan detail target, realisasi, lebih/(kurang), dan persentase capaian untuk setiap jenis pajak. Data konsisten dengan tabel di dashboard admin.",
+                "operationId": "269449609a35b40f47ff4069fd3c04e4",
+                "parameters": [
+                    {
+                        "name": "year",
+                        "in": "query",
+                        "description": "Tahun anggaran (default: tahun berjalan)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2026
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "year": {
+                                            "type": "integer",
+                                            "example": 2026
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "no_ayat": {
+                                                        "type": "string",
+                                                        "example": "41100"
+                                                    },
+                                                    "nama": {
+                                                        "type": "string",
+                                                        "example": "Pajak (PBJT)"
+                                                    },
+                                                    "is_group": {
+                                                        "description": "true jika baris grup induk",
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "in_pbjt_group": {
+                                                        "description": "true jika anggota grup PBJT",
+                                                        "type": "boolean",
+                                                        "example": false
+                                                    },
+                                                    "target": {
+                                                        "type": "number",
+                                                        "example": 239976870832
+                                                    },
+                                                    "realisasi": {
+                                                        "type": "number",
+                                                        "example": 81420725151
+                                                    },
+                                                    "more_less": {
+                                                        "type": "number",
+                                                        "example": -158556145681
+                                                    },
+                                                    "percentage": {
+                                                        "type": "number",
+                                                        "example": 33.93
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized — token tidak valid"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerToken": {
+                "type": "http",
+                "description": "Masukkan token API.",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Ringkasan Pajak",
+            "description": "Total target dan realisasi pajak per tahun"
+        },
+        {
+            "name": "Jenis Pajak",
+            "description": "Daftar jenis pajak yang tersedia"
+        },
+        {
+            "name": "Realisasi per Jenis Pajak",
+            "description": "Detail realisasi pajak dipecah per jenis pajak"
+        }
+    ]
+}

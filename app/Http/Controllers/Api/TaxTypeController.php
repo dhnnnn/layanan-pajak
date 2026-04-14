@@ -7,18 +7,37 @@ use App\Http\Controllers\Controller;
 use App\Models\SimpaduTarget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
 class TaxTypeController extends Controller
 {
-    /**
-     * GET /api/tax-types
-     *
-     * Daftar semua jenis pajak yang ada di dashboard.
-     * Response: [{ no_ayat, nama, is_parent }]
-     */
+    #[OA\Get(
+        path: '/tax-types',
+        tags: ['Jenis Pajak'],
+        summary: 'Daftar semua jenis pajak',
+        description: 'Mengembalikan daftar semua jenis pajak yang tersedia di dashboard, termasuk grup PBJT dan anggotanya.',
+        security: [['BearerToken' => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Berhasil',
+                content: new OA\JsonContent(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'no_ayat', type: 'string', example: '41101', description: 'Kode ayat pajak'),
+                            new OA\Property(property: 'nama', type: 'string', example: 'PBJT-HOTEL', description: 'Nama jenis pajak'),
+                            new OA\Property(property: 'is_group', type: 'boolean', example: false, description: 'true jika ini grup induk (Pajak PBJT)'),
+                            new OA\Property(property: 'in_pbjt_group', type: 'boolean', example: true, description: 'true jika termasuk dalam grup PBJT'),
+                        ],
+                    ),
+                ),
+            ),
+            new OA\Response(response: 401, description: 'Unauthorized — token tidak valid'),
+        ],
+    )]
     public function index(): JsonResponse
     {
-        // Ambil dari tahun terbaru yang ada datanya
         $latestYear = SimpaduTarget::query()->max('year') ?? (int) date('Y');
 
         $items = SimpaduTarget::query()
@@ -30,7 +49,6 @@ class TaxTypeController extends Controller
                 'nama' => $t->keterangan,
             ]);
 
-        // Tambahkan grup PBJT (parent) di awal
         $pbjt = ['no_ayat' => '41100', 'nama' => 'Pajak (PBJT)', 'is_group' => true];
         $result = collect([$pbjt]);
 
@@ -42,14 +60,50 @@ class TaxTypeController extends Controller
         return response()->json($result->values());
     }
 
-    /**
-     * GET /api/tax-realization?year=2026
-     *
-     * Realisasi per jenis pajak untuk tahun tertentu.
-     * Konsisten dengan data di dashboard admin.
-     *
-     * Response: [{ no_ayat, nama, target, realisasi, more_less, percentage, is_group }]
-     */
+    #[OA\Get(
+        path: '/tax-realization',
+        tags: ['Realisasi per Jenis Pajak'],
+        summary: 'Realisasi pajak per jenis pajak',
+        description: 'Mengembalikan detail target, realisasi, lebih/(kurang), dan persentase capaian untuk setiap jenis pajak. Data konsisten dengan tabel di dashboard admin.',
+        security: [['BearerToken' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'year',
+                in: 'query',
+                required: false,
+                description: 'Tahun anggaran (default: tahun berjalan)',
+                schema: new OA\Schema(type: 'integer', example: 2026),
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Berhasil',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'year', type: 'integer', example: 2026),
+                        new OA\Property(
+                            property: 'items',
+                            type: 'array',
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: 'no_ayat', type: 'string', example: '41100'),
+                                    new OA\Property(property: 'nama', type: 'string', example: 'Pajak (PBJT)'),
+                                    new OA\Property(property: 'is_group', type: 'boolean', example: true, description: 'true jika baris grup induk'),
+                                    new OA\Property(property: 'in_pbjt_group', type: 'boolean', example: false, description: 'true jika anggota grup PBJT'),
+                                    new OA\Property(property: 'target', type: 'number', example: 239976870832),
+                                    new OA\Property(property: 'realisasi', type: 'number', example: 81420725151),
+                                    new OA\Property(property: 'more_less', type: 'number', example: -158556145681),
+                                    new OA\Property(property: 'percentage', type: 'number', example: 33.93),
+                                ],
+                            ),
+                        ),
+                    ],
+                ),
+            ),
+            new OA\Response(response: 401, description: 'Unauthorized — token tidak valid'),
+        ],
+    )]
     public function realization(Request $request, GenerateTaxDashboardAction $generateDashboard): JsonResponse
     {
         $year = $request->integer('year', (int) date('Y'));
