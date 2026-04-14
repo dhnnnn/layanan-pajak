@@ -33,10 +33,12 @@ return new class extends Migration
             });
 
         // Drop kolom upt_id dari users
-        Schema::table('users', function (Blueprint $table): void {
-            $table->dropForeign(['upt_id']);
-            $table->dropColumn('upt_id');
-        });
+        if (DB::getDriverName() === 'mysql') {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->dropForeign(['upt_id']);
+                $table->dropColumn('upt_id');
+            });
+        }
     }
 
     public function down(): void

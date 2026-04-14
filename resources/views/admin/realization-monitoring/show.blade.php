@@ -288,7 +288,7 @@
         // ── Forecast ──────────────────────────────────────────────────────
         const forecastUrl   = '{{ route('admin.realization-monitoring.district-forecast', $upt) }}';
         const selectedYear  = {{ $year }};
-        const CACHE_VERSION = 'v3'; // bump ini setiap ada perubahan logika forecast
+        const CACHE_VERSION = 'v4';
         let chartInstance = null;
         let currentRange  = 'year';
         let lastRawData   = null;
@@ -388,10 +388,24 @@
             const fittedCutoff = `${selectedYear - 2}-01`;
             const predDataset  = allPeriods.map(p => {
                 if (fMap[p] !== undefined && p > (lastHPeriode ?? '')) return fMap[p]; // forecast
-                if (p === lastHPeriode) return hMap[p];                                 // titik sambung
+                if (p === lastHPeriode) return fittedMap[p] ?? hMap[p];               // titik sambung
                 if (hMap[p] !== undefined && fittedMap[p] !== undefined) return fittedMap[p]; // fitted in-sample
                 return null;
             });
+
+            // Bridge: isi gap antara akhir historis dan awal forecast agar garis tidak putus
+            if (lastHPeriode && forecastVisible.length > 0) {
+                const lastHIdx  = allPeriods.indexOf(lastHPeriode);
+                const firstFIdx = allPeriods.findIndex(p => fMap[p] !== undefined);
+                if (firstFIdx > lastHIdx + 1) {
+                    const startVal = predDataset[lastHIdx] ?? hMap[lastHPeriode];
+                    const endVal   = predDataset[firstFIdx];
+                    const steps    = firstFIdx - lastHIdx;
+                    for (let i = 1; i < steps; i++) {
+                        predDataset[lastHIdx + i] = startVal + (endVal - startVal) * (i / steps);
+                    }
+                }
+            }
 
             const wrapper = document.getElementById('forecastChartWrapper');
             if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -425,7 +439,7 @@
                             spanGaps: false,
                         },
                         {
-                            label: 'Prediksi',
+                            label: 'Prediksi Pendapatan',
                             data: predDataset,
                             borderColor: '#f97316',
                             backgroundColor: 'rgba(249,115,22,0.06)',
@@ -460,9 +474,9 @@
             const kec = data.kecamatan ?? 'Kecamatan';
             const firstP = filteredH[0]?.periode ?? '';
             const lastFP = forecastVisible.length > 0 ? forecastVisible[forecastVisible.length - 1].periode : (lastHPeriode ?? '');
-            document.getElementById('forecastChartTitle').textContent    = `Prediksi Realisasi — ${kec}`;
+            document.getElementById('forecastChartTitle').textContent    = `Prediksi Realisasi Pendapatan — ${kec}`;
             document.getElementById('forecastChartSubtitle').textContent =
-                `${firstP ? fmtPeriode(firstP) : ''} s/d ${lastFP ? fmtPeriode(lastFP) : ''} · ${filteredH.length} bulan historis · garis oranye = prediksi model`;
+                `${firstP ? fmtPeriode(firstP) : ''} s/d ${lastFP ? fmtPeriode(lastFP) : ''} · ${filteredH.length} bulan historis · garis oranye = prediksi realisasi`;
             document.getElementById('forecastModelUsed').textContent     = data.model_used ?? '-';
 
             const mape   = data.mape ?? 0;

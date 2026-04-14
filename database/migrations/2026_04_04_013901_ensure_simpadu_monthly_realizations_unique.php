@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         Schema::table('simpadu_monthly_realizations', function (Blueprint $table) {
             $indexes = collect(DB::select('SHOW INDEX FROM simpadu_monthly_realizations'))
                 ->pluck('Key_name')->unique()->toArray();

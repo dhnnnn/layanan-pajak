@@ -162,6 +162,22 @@
                 </div>
                 <div id="dashForecastChartWrapper" class="w-full"><canvas id="dashForecastChart"></canvas></div>
             </div>
+
+            {{-- Tombol Lihat Detail --}}
+            <div class="px-5 pb-5 flex justify-end">
+                @if($upt)
+                <a href="{{ route('admin.employees.index', ['year' => $selectedYear]) }}"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-black rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Lihat Detail Kinerja Petugas
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                @endif
+            </div>
         </div>
         @endif
 
@@ -491,10 +507,24 @@
 
             const predDataset = allPeriods.map(p => {
                 if (fMap[p] !== undefined && p > (lastHPeriode ?? '')) return fMap[p];
-                if (p === lastHPeriode) return hMap[p];
+                if (p === lastHPeriode) return fittedMap[p] ?? hMap[p];
                 if (hMap[p] !== undefined && fittedMap[p] !== undefined) return fittedMap[p];
                 return null;
             });
+
+            // Bridge: isi gap antara akhir historis dan awal forecast agar garis tidak putus
+            if (lastHPeriode && forecastVisible.length > 0) {
+                const lastHIdx  = allPeriods.indexOf(lastHPeriode);
+                const firstFIdx = allPeriods.findIndex(p => fMap[p] !== undefined);
+                if (firstFIdx > lastHIdx + 1) {
+                    const startVal = predDataset[lastHIdx] ?? hMap[lastHPeriode];
+                    const endVal   = predDataset[firstFIdx];
+                    const steps    = firstFIdx - lastHIdx;
+                    for (let i = 1; i < steps; i++) {
+                        predDataset[lastHIdx + i] = startVal + (endVal - startVal) * (i / steps);
+                    }
+                }
+            }
 
             const wrapper = document.getElementById('dashForecastChartWrapper');
             if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -507,7 +537,7 @@
                     datasets: [
                         { label: 'Ketetapan',       data: allPeriods.map(p => kMap[p] ?? null), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.06)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true, spanGaps: false },
                         { label: 'Realisasi Aktual', data: allPeriods.map(p => hMap[p] ?? null), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.07)', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true, spanGaps: false },
-                        { label: 'Prediksi',         data: predDataset, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.06)', borderWidth: 2, borderDash: [6, 4], pointRadius: 3, tension: 0.3, fill: true, spanGaps: false },
+                        { label: 'Prediksi Pendapatan',         data: predDataset, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.06)', borderWidth: 2, borderDash: [6, 4], pointRadius: 3, tension: 0.3, fill: true, spanGaps: false },
                     ],
                 },
                 options: {
@@ -527,8 +557,8 @@
             const kec = data.kecamatan ?? '';
             const firstP = filteredH[0]?.periode ?? '';
             const lastFP = forecastVisible.length > 0 ? forecastVisible[forecastVisible.length - 1].periode : (lastHPeriode ?? '');
-            document.getElementById('dashForecastTitle').textContent    = `Prediksi Realisasi${kec ? ' — ' + kec : ''}`;
-            document.getElementById('dashForecastSubtitle').textContent = `${firstP ? fmtPeriode(firstP) : ''} s/d ${lastFP ? fmtPeriode(lastFP) : ''} · ${filteredH.length} bulan historis`;
+            document.getElementById('dashForecastTitle').textContent    = `Prediksi Realisasi Pendapatan${kec ? ' — ' + kec : ''}`;
+            document.getElementById('dashForecastSubtitle').textContent = `${firstP ? fmtPeriode(firstP) : ''} s/d ${lastFP ? fmtPeriode(lastFP) : ''} · ${filteredH.length} bulan historis · garis oranye = prediksi realisasi`;
             document.getElementById('dashForecastModel').textContent    = data.model_used ?? '-';
 
             const mape   = data.mape ?? 0;

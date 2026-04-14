@@ -62,8 +62,8 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::get('/dashboard', [AdminDashboardController::class, 'show'])->name('dashboard');
 
         // Forecasting (prediksi)
-        Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index');
-        Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data');
+        Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index')->middleware('permission:view forecasting');
+        Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data')->middleware('permission:view forecasting');
 
         // Laporan Realisasi
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
