@@ -6,12 +6,12 @@ echo "=== Starting deployment ==="
 # Pull latest changes from main
 git pull origin main
 
-# Install/update PHP dependencies (no dev)
-composer install --no-dev --optimize-autoloader --no-interaction
+# Install/update PHP dependencies (no dev) - Disabled by user request
+# composer install --no-dev --optimize-autoloader --no-interaction
 
-# Install/update Node dependencies & build assets
-npm ci
-npm run build
+# Install/update Node dependencies & build assets - Disabled by user request
+# npm ci
+# npm run build
 
 # Run database migrations
 php artisan migrate --force --no-interaction
