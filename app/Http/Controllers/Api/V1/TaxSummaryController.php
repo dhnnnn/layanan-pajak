@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Http\Controllers\Controller;
@@ -26,10 +26,11 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Ringkasan Pajak', description: 'Total target dan realisasi pajak per tahun')]
 #[OA\Tag(name: 'Jenis Pajak', description: 'Daftar jenis pajak yang tersedia')]
 #[OA\Tag(name: 'Realisasi per Jenis Pajak', description: 'Detail realisasi pajak dipecah per jenis pajak')]
+#[OA\Tag(name: 'Cek Pembayaran', description: 'Cek status pembayaran pajak daerah per NPWPD')]
 class TaxSummaryController extends Controller
 {
     #[OA\Get(
-        path: '/tax-summary',
+        path: '/v1/tax-summary',
         tags: ['Ringkasan Pajak'],
         summary: 'Total target dan realisasi pajak',
         description: 'Mengembalikan total target, realisasi, lebih/(kurang), dan persentase capaian. Jika parameter year tidak diisi, mengembalikan semua tahun yang tersedia.',

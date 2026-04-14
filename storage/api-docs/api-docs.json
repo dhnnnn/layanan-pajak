@@ -16,14 +16,393 @@
         }
     ],
     "paths": {
-        "/tax-summary": {
+        "/v1/payment-check/hotel": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran PBJT Hotel",
+                "operationId": "2249fac82b64f17948d7f7e7a3ee9195",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/restoran": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran PBJT Restoran",
+                "operationId": "a737539bfae992fc00038732ad33cdb6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/hiburan": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran PBJT Hiburan",
+                "operationId": "d8b08bea93f8e3dcf94508cc6c2b22da",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/reklame": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran Pajak Reklame",
+                "operationId": "6fe6077b0884bdc4f849dc18cd4c33a0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/ppj": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran Pajak Penerangan Jalan (PPJ)",
+                "operationId": "ed1851ae5fe30148d8d225aeeee84ffb",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/parkir": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran PBJT Parkir",
+                "operationId": "9cc7e1d5ca591ce6ffd22cc2d84cd990",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/at": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran Pajak Air Tanah (AT)",
+                "operationId": "8c3a7894ba70827cf3dd82a4d0f29fb6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/minerba": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran Pajak Mineral Bukan Logam (MINERBA)",
+                "operationId": "cd90103e123cc09e0c55bbddda0e13a5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/payment-check/bphtb": {
+            "post": {
+                "tags": [
+                    "Cek Pembayaran"
+                ],
+                "summary": "Cek pembayaran BPHTB",
+                "description": "Untuk BPHTB, field `npwpd` diisi dengan Nomor Register (kohir).",
+                "operationId": "007a7c83b40685acc2b8cf206c406d0e",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentCheckBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/v1/tax-summary": {
             "get": {
                 "tags": [
                     "Ringkasan Pajak"
                 ],
                 "summary": "Total target dan realisasi pajak",
                 "description": "Mengembalikan total target, realisasi, lebih/(kurang), dan persentase capaian. Jika parameter year tidak diisi, mengembalikan semua tahun yang tersedia.",
-                "operationId": "782bc08151b0ebf60e338fbea2a1d000",
+                "operationId": "2d049ddd884387fa4e78a80418b6be9e",
                 "parameters": [
                     {
                         "name": "year",
@@ -80,14 +459,14 @@
                 ]
             }
         },
-        "/tax-types": {
+        "/v1/tax-types": {
             "get": {
                 "tags": [
                     "Jenis Pajak"
                 ],
                 "summary": "Daftar semua jenis pajak",
                 "description": "Mengembalikan daftar semua jenis pajak yang tersedia di dashboard, termasuk grup PBJT dan anggotanya.",
-                "operationId": "5025fad0db7a9ce0b65f2b0103b6f0ea",
+                "operationId": "49eefa81a986936b2a8669d118c01125",
                 "responses": {
                     "200": {
                         "description": "Berhasil",
@@ -135,14 +514,14 @@
                 ]
             }
         },
-        "/tax-realization": {
+        "/v1/tax-realization": {
             "get": {
                 "tags": [
                     "Realisasi per Jenis Pajak"
                 ],
                 "summary": "Realisasi pajak per jenis pajak",
                 "description": "Mengembalikan detail target, realisasi, lebih/(kurang), dan persentase capaian untuk setiap jenis pajak. Data konsisten dengan tabel di dashboard admin.",
-                "operationId": "269449609a35b40f47ff4069fd3c04e4",
+                "operationId": "8425621f6b55b2910a9802208e08b1d8",
                 "parameters": [
                     {
                         "name": "year",
@@ -227,6 +606,126 @@
         }
     },
     "components": {
+        "schemas": {
+            "PaymentCheckItem": {
+                "properties": {
+                    "nop": {
+                        "type": "string"
+                    },
+                    "nama_op": {
+                        "type": "string"
+                    },
+                    "kohir": {
+                        "type": "string"
+                    },
+                    "masa_awal": {
+                        "type": "string"
+                    },
+                    "jatuh_tempo": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "tgl_bayar": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "jml_sptpd": {
+                        "type": "integer"
+                    },
+                    "bayar_pokok": {
+                        "type": "integer"
+                    },
+                    "bayar_denda": {
+                        "type": "integer"
+                    },
+                    "sisa_pokok": {
+                        "type": "integer"
+                    },
+                    "sisa_denda": {
+                        "type": "integer"
+                    },
+                    "sisa": {
+                        "type": "integer"
+                    },
+                    "keterangan": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PaymentCheckResult": {
+                "properties": {
+                    "npwpd": {
+                        "type": "string",
+                        "example": "1234567890123"
+                    },
+                    "nama_op": {
+                        "type": "string",
+                        "example": "HOTEL SEJAHTERA"
+                    },
+                    "jenis_pajak": {
+                        "type": "string",
+                        "example": "hotel"
+                    },
+                    "tahun": {
+                        "type": "string",
+                        "example": "2025"
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PaymentCheckItem"
+                        }
+                    },
+                    "summary": {
+                        "properties": {
+                            "total_sptpd": {
+                                "type": "integer"
+                            },
+                            "total_denda": {
+                                "type": "integer"
+                            },
+                            "total_bayar_pokok": {
+                                "type": "integer"
+                            },
+                            "total_bayar_denda": {
+                                "type": "integer"
+                            },
+                            "total_sisa": {
+                                "type": "integer"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "PaymentCheckBody": {
+                "required": [
+                    "npwpd",
+                    "tahun"
+                ],
+                "properties": {
+                    "npwpd": {
+                        "description": "Nomor Pokok Wajib Pajak Daerah",
+                        "type": "string",
+                        "example": "1234567890123"
+                    },
+                    "tahun": {
+                        "description": "Tahun pajak",
+                        "type": "integer",
+                        "example": 2025
+                    },
+                    "npwpd_lama": {
+                        "description": "true jika menggunakan NPWPD lama",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            }
+        },
         "securitySchemes": {
             "BearerToken": {
                 "type": "http",
@@ -247,6 +746,10 @@
         {
             "name": "Realisasi per Jenis Pajak",
             "description": "Detail realisasi pajak dipecah per jenis pajak"
+        },
+        {
+            "name": "Cek Pembayaran",
+            "description": "Cek status pembayaran pajak daerah per NPWPD"
         }
     ]
 }

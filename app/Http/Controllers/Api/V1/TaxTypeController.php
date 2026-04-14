@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Http\Controllers\Controller;
@@ -12,7 +12,7 @@ use OpenApi\Attributes as OA;
 class TaxTypeController extends Controller
 {
     #[OA\Get(
-        path: '/tax-types',
+        path: '/v1/tax-types',
         tags: ['Jenis Pajak'],
         summary: 'Daftar semua jenis pajak',
         description: 'Mengembalikan daftar semua jenis pajak yang tersedia di dashboard, termasuk grup PBJT dan anggotanya.',
@@ -61,7 +61,7 @@ class TaxTypeController extends Controller
     }
 
     #[OA\Get(
-        path: '/tax-realization',
+        path: '/v1/tax-realization',
         tags: ['Realisasi per Jenis Pajak'],
         summary: 'Realisasi pajak per jenis pajak',
         description: 'Mengembalikan detail target, realisasi, lebih/(kurang), dan persentase capaian untuk setiap jenis pajak. Data konsisten dengan tabel di dashboard admin.',

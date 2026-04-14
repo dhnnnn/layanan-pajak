@@ -22,6 +22,9 @@ php artisan route:cache
 php artisan view:cache
 php artisan event:cache
 
+# Generate Swagger API docs
+php artisan l5-swagger:generate
+
 # Restart queue workers (jika pakai queue)
 # php artisan queue:restart
 
