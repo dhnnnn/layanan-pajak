@@ -70,17 +70,31 @@ class CheckPaymentAction
     {
         $col = $npwpdLama ? 'OLD_NPWPD' : 'NPWPD';
 
-        // Normalisasi di PHP — hapus spasi berlebih dan uppercase
-        $normalizedInput = strtoupper(preg_replace('/\s+/', '', trim($namaWp)));
-
-        $result = DB::connection('simpadunew')->selectOne(
-            "SELECT NPWPD FROM dat_subjek_pajak
-             WHERE {$col} = ?
-               AND UPPER(REPLACE(TRIM(NM_WP), ' ', '')) = ?",
-            [$npwpd, $normalizedInput]
+        $row = DB::connection('simpadunew')->selectOne(
+            "SELECT NM_WP FROM dat_subjek_pajak WHERE {$col} = ?",
+            [$npwpd]
         );
 
-        return $result !== null;
+        if ($row === null) {
+            return false;
+        }
+
+        $normalizedInput = strtoupper(preg_replace('/\s+/', '', trim($namaWp)));
+        $normalizedFull = strtoupper(preg_replace('/\s+/', '', trim($row->NM_WP)));
+
+        // Cocok dengan nama lengkap (termasuk "/")
+        if ($normalizedFull === $normalizedInput) {
+            return true;
+        }
+
+        // Cocok dengan salah satu bagian yang dipisah "/"
+        foreach (explode('/', $row->NM_WP) as $part) {
+            if (strtoupper(preg_replace('/\s+/', '', trim($part))) === $normalizedInput) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function formatRow(array $row): array
