@@ -19,12 +19,18 @@ class CheckPaymentAction
         'bphtb' => ['ayat' => '41113', 'source' => 'bphtb'],
     ];
 
-    public function __invoke(string $npwpd, string $tahun, string $jenisPajak, bool $npwpdLama = false): array
+    public function __invoke(string $npwpd, string $tahun, string $jenisPajak, bool $npwpdLama = false, ?string $namaWp = null): array
     {
         $jenisPajak = strtolower($jenisPajak);
 
         if (! array_key_exists($jenisPajak, self::TAX_TYPES)) {
             return ['error' => 'Jenis pajak tidak valid.'];
+        }
+
+        // Verifikasi nama WP — wajib cocok
+        $verified = $this->verifyNamaWp($npwpd, $namaWp ?? '', $npwpdLama);
+        if (! $verified) {
+            return ['error' => 'NPWPD dan nama wajib pajak tidak cocok.'];
         }
 
         $config = self::TAX_TYPES[$jenisPajak];
@@ -58,6 +64,23 @@ class CheckPaymentAction
                 'total_sisa' => $items->sum('sisa'),
             ],
         ];
+    }
+
+    private function verifyNamaWp(string $npwpd, string $namaWp, bool $npwpdLama): bool
+    {
+        $col = $npwpdLama ? 'OLD_NPWPD' : 'NPWPD';
+
+        // Normalisasi di PHP — hapus spasi berlebih dan uppercase
+        $normalizedInput = strtoupper(preg_replace('/\s+/', '', trim($namaWp)));
+
+        $result = DB::connection('simpadunew')->selectOne(
+            "SELECT NPWPD FROM dat_subjek_pajak
+             WHERE {$col} = ?
+               AND UPPER(REPLACE(TRIM(NM_WP), ' ', '')) = ?",
+            [$npwpd, $normalizedInput]
+        );
+
+        return $result !== null;
     }
 
     private function formatRow(array $row): array

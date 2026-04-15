@@ -53,10 +53,11 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Schema(
     schema: 'PaymentCheckBody',
-    required: ['npwpd', 'tahun'],
+    required: ['npwpd', 'tahun', 'nama_wp'],
     properties: [
         new OA\Property(property: 'npwpd', type: 'string', description: 'Nomor Pokok Wajib Pajak Daerah', example: '1234567890123'),
         new OA\Property(property: 'tahun', type: 'integer', description: 'Tahun pajak', example: 2025),
+        new OA\Property(property: 'nama_wp', type: 'string', description: 'Nama wajib pajak (harus cocok dengan data NPWPD)', example: 'HOTEL SEJAHTERA'),
         new OA\Property(property: 'npwpd_lama', type: 'boolean', description: 'true jika menggunakan NPWPD lama', example: false),
     ],
 )]
@@ -176,6 +177,7 @@ class PaymentCheckController extends Controller
         $validated = $request->validate([
             'npwpd' => ['required', 'string'],
             'tahun' => ['required', 'digits:4'],
+            'nama_wp' => ['required', 'string'],
             'npwpd_lama' => ['nullable', 'boolean'],
         ]);
 
@@ -184,6 +186,7 @@ class PaymentCheckController extends Controller
             tahun: $validated['tahun'],
             jenisPajak: $jenis_pajak,
             npwpdLama: (bool) ($validated['npwpd_lama'] ?? false),
+            namaWp: $validated['nama_wp'] ?? null,
         );
 
         if (isset($result['error'])) {

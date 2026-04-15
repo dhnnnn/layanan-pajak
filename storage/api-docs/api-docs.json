@@ -704,7 +704,8 @@
             "PaymentCheckBody": {
                 "required": [
                     "npwpd",
-                    "tahun"
+                    "tahun",
+                    "nama_wp"
                 ],
                 "properties": {
                     "npwpd": {
@@ -716,6 +717,11 @@
                         "description": "Tahun pajak",
                         "type": "integer",
                         "example": 2025
+                    },
+                    "nama_wp": {
+                        "description": "Nama wajib pajak (harus cocok dengan data NPWPD)",
+                        "type": "string",
+                        "example": "HOTEL SEJAHTERA"
                     },
                     "npwpd_lama": {
                         "description": "true jika menggunakan NPWPD lama",
