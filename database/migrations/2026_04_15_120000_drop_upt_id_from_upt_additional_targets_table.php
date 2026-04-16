@@ -12,8 +12,33 @@ return new class extends Migration
         // Drop upt_id jika masih ada
         if (Schema::hasColumn('upt_additional_targets', 'upt_id')) {
             Schema::table('upt_additional_targets', function (Blueprint $table): void {
-                $table->dropForeign(['upt_id']);
-                $table->dropUnique('upt_additional_targets_unique');
+                // Cek apakah foreign key ada sebelum drop
+                $foreignKeys = DB::select("
+                    SELECT CONSTRAINT_NAME
+                    FROM information_schema.TABLE_CONSTRAINTS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'upt_additional_targets'
+                      AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                      AND CONSTRAINT_NAME = 'upt_additional_targets_upt_id_foreign'
+                ");
+
+                if (count($foreignKeys) > 0) {
+                    $table->dropForeign(['upt_id']);
+                }
+
+                // Cek apakah unique constraint lama ada
+                $oldUnique = DB::select("
+                    SELECT COUNT(*) as cnt
+                    FROM information_schema.STATISTICS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'upt_additional_targets'
+                      AND INDEX_NAME = 'upt_additional_targets_unique'
+                ")[0]->cnt > 0;
+
+                if ($oldUnique) {
+                    $table->dropUnique('upt_additional_targets_unique');
+                }
+
                 $table->dropColumn('upt_id');
             });
         }
