@@ -394,13 +394,27 @@
             document.getElementById('dashChartLoading').classList.add('hidden');
             document.getElementById('dashChartWrapper').classList.remove('hidden');
 
+            // Filter forecast: untuk range 'year', potong di Desember SELECTED_YEAR
+            let filteredForecast = forecast;
+            let filteredTarget = (data.target_bulanan ?? []);
+            if (dashCurrentRange === 'year') {
+                const endPeriode = `${SELECTED_YEAR}-12`;
+                filteredForecast = forecast.filter(f => f.periode <= endPeriode);
+                filteredTarget = filteredTarget.filter(t => t.periode.startsWith(SELECTED_YEAR + '-'));
+            } else if (dashCurrentRange === '1y') {
+                filteredTarget = filteredTarget.filter(t => t.periode >= `${thisYear - 1}-01`);
+            } else {
+                filteredTarget = filteredTarget.filter(t => t.periode >= `${thisYear - 2}-01`);
+            }
+
             const hMap      = Object.fromEntries(filteredH.map(h => [h.periode, h.nilai]));
-            const fMap      = Object.fromEntries(forecast.map(f => [f.periode, f.nilai]));
+            const fMap      = Object.fromEntries(filteredForecast.map(f => [f.periode, f.nilai]));
             const fittedMap = Object.fromEntries(fitted.map(f => [f.periode, f.nilai]));
+            const targetMap = Object.fromEntries(filteredTarget.map(t => [t.periode, t.nilai]));
 
             const allPeriodes = [...new Set([
                 ...filteredH.map(h => h.periode),
-                ...forecast.map(f => f.periode),
+                ...filteredForecast.map(f => f.periode),
             ])].sort();
             const allLabels = allPeriodes.map(p => fmtP(p));
 
@@ -429,16 +443,42 @@
                     labels: allLabels,
                     datasets: [
                         {
-                            label: 'Realisasi Aktual',
-                            data: historisDataset,
-                            borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.07)',
-                            borderWidth: 2, pointRadius: 1.5, tension: 0.3, fill: true, spanGaps: false,
+                            // Target APBD — hijau teal putus-putus
+                            label: 'Target',
+                            data: allPeriodes.map(p => targetMap[p] ?? null),
+                            borderColor: '#0d9488',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [4, 3],
+                            pointRadius: 0,
+                            tension: 0.3,
+                            fill: false,
+                            spanGaps: false,
                         },
                         {
+                            // Realisasi Aktual — biru solid dengan fill
+                            label: 'Realisasi Aktual',
+                            data: historisDataset,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37,99,235,0.08)',
+                            borderWidth: 2,
+                            pointRadius: 1.5,
+                            tension: 0.3,
+                            fill: true,
+                            spanGaps: false,
+                        },
+                        {
+                            // Prediksi — orange putus-putus dengan fill tipis
                             label: 'Prediksi',
                             data: forecastDataset,
-                            borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.05)',
-                            borderWidth: 2, borderDash: [5,4], pointRadius: 2.5, tension: 0.3, fill: true, spanGaps: false,
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249,115,22,0.05)',
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 2.5,
+                            tension: 0.3,
+                            fill: true,
+                            spanGaps: false,
                         },
                     ],
                 },

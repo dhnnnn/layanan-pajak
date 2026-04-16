@@ -124,7 +124,7 @@
                                 <th class="px-3 py-3 border border-slate-300 text-right min-w-[90px] bg-amber-50 text-amber-700 font-bold">+Tambahan</th>
                                 <th class="px-3 py-3 border border-slate-300 text-right min-w-[110px] bg-slate-50 font-bold">Realisasi</th>
                                 <th class="px-3 py-3 border border-slate-300 text-center min-w-[50px] bg-slate-50 font-bold">% Awal</th>
-                                <th class="px-3 py-3 border border-slate-300 text-center min-w-[50px] bg-emerald-50 text-emerald-700 font-bold">% Baru</th>
+                                <th class="px-3 py-3 border border-slate-300 text-center min-w-[50px] bg-emerald-50 text-emerald-700 font-bold">% Naik</th>
                             @endfor
                         </tr>
                     </thead>
@@ -152,16 +152,18 @@
                                 
                                 @foreach(['q1', 'q2', 'q3', 'q4'] as $q)
                                     @php
-                                        $tambQ   = ($item['targets'][$q] ?? 0) - ($item['targets_base'][$q] ?? 0);
-                                        $pctBase = $item['percentages_base'][$q] ?? 0;
-                                        $pctNew  = $item['percentages'][$q] ?? 0;
-                                        $hasAdd  = ($item['additional_target'] ?? 0) > 0;
+                                        $targetBase = (float) ($item['targets_base'][$q] ?? $item['targets'][$q] ?? 0);
+                                        $tambQ      = ($item['targets'][$q] ?? 0) - $targetBase;
+                                        $pctBase    = $item['percentages_base'][$q] ?? 0;
+                                        $hasAdd     = $tambQ > 0;
+                                        // % kenaikan target = tambahan / target_awal * 100
+                                        $pctNaikTarget = $targetBase > 0 && $hasAdd ? ($tambQ / $targetBase) * 100 : 0;
                                     @endphp
                                     <td class="px-3 py-3 border-r border-slate-200 text-right text-slate-600 {{ $isParent ? 'bg-blue-50' : '' }}">
-                                        {{ number_format($item['targets_base'][$q] ?? $item['targets'][$q], 0, ',', '.') }}
+                                        {{ number_format($targetBase, 0, ',', '.') }}
                                     </td>
-                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'bg-blue-50' : '' }} {{ $tambQ > 0 ? 'text-amber-700 font-bold' : 'text-slate-300' }}">
-                                        {{ $tambQ > 0 ? '+'.number_format($tambQ, 0, ',', '.') : '—' }}
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'bg-blue-50' : '' }} {{ $hasAdd ? 'text-amber-700 font-bold' : 'text-slate-300' }}">
+                                        {{ $hasAdd ? '+'.number_format($tambQ, 0, ',', '.') : '—' }}
                                     </td>
                                     <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-blue-900 bg-blue-50' : 'text-slate-900 font-bold' }}">
                                         {{ number_format($item['realizations'][$q], 0, ',', '.') }}
@@ -171,8 +173,8 @@
                                         {{ number_format($pctBase, 1, ',', '.') }}%
                                     </td>
                                     <td class="px-3 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-emerald-50/40' : 'bg-emerald-50/20' }}
-                                        {{ !$hasAdd ? 'text-slate-300' : ($pctNew >= 100 ? 'text-emerald-600' : ($pctNew >= 50 ? 'text-amber-500' : 'text-rose-600')) }}">
-                                        {{ $hasAdd ? number_format($pctNew, 1, ',', '.').'%' : '—' }}
+                                        {{ !$hasAdd ? 'text-slate-300' : 'text-amber-600' }}">
+                                        {{ $hasAdd ? '+'.number_format($pctNaikTarget, 1, ',', '.').'%' : '—' }}
                                     </td>
                                 @endforeach
 
