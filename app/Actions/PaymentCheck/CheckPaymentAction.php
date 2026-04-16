@@ -8,41 +8,38 @@ use Illuminate\Support\Facades\DB;
 class CheckPaymentAction
 {
     private const TAX_TYPES = [
-        'hotel' => ['ayat' => '41101', 'source' => 'self'],
-        'restoran' => ['ayat' => '41102', 'source' => 'self'],
-        'hiburan' => ['ayat' => '41103', 'source' => 'self'],
-        'reklame' => ['ayat' => '41104', 'source' => 'reklame'],
-        'ppj' => ['ayat' => '41105', 'source' => 'ppj'],
-        'parkir' => ['ayat' => '41107', 'source' => 'self'],
-        'at' => ['ayat' => '41108', 'source' => 'at'],
-        'minerba' => ['ayat' => '41109', 'source' => 'self'],
-        'bphtb' => ['ayat' => '41113', 'source' => 'bphtb'],
+        'hotel' => '41101',
+        'restoran' => '41102',
+        'hiburan' => '41103',
+        'reklame' => '41104',
+        'ppj' => '41105',
+        'parkir' => '41107',
+        'at' => '41108',
+        'minerba' => '41109',
+        'bphtb' => '41113',
     ];
 
-    public function __invoke(string $npwpd, string $tahun, string $jenisPajak, bool $npwpdLama = false, ?string $namaWp = null): array
-    {
+    public function __invoke(
+        string $npwpd,
+        string $tahun,
+        string $jenisPajak,
+        bool $npwpdLama = false,
+        ?string $namaWp = null,
+    ): array {
         $jenisPajak = strtolower($jenisPajak);
 
         if (! array_key_exists($jenisPajak, self::TAX_TYPES)) {
             return ['error' => 'Jenis pajak tidak valid.'];
         }
 
-        // Verifikasi nama WP — wajib cocok
-        $verified = $this->verifyNamaWp($npwpd, $namaWp ?? '', $npwpdLama);
-        if (! $verified) {
+        $ayat = self::TAX_TYPES[$jenisPajak];
+
+        // Verifikasi nama WP dari data lokal
+        if ($namaWp && ! $this->verifyNamaWp($npwpd, $namaWp)) {
             return ['error' => 'NPWPD dan nama wajib pajak tidak cocok.'];
         }
 
-        $config = self::TAX_TYPES[$jenisPajak];
-
-        $rows = match ($config['source']) {
-            'self' => $this->querySelf($npwpd, $tahun, $config['ayat'], $npwpdLama),
-            'reklame' => $this->queryReklame($npwpd, $tahun),
-            'ppj' => $this->queryPpj($npwpd, $tahun),
-            'at' => $this->queryAirTanah($npwpd, $tahun),
-            'bphtb' => $this->queryBphtb($npwpd, $tahun),
-            default => collect(),
-        };
+        $rows = $this->queryLocal($npwpd, $tahun, $ayat);
 
         if ($rows->isEmpty()) {
             return ['data' => [], 'summary' => null];
@@ -66,30 +63,28 @@ class CheckPaymentAction
         ];
     }
 
-    private function verifyNamaWp(string $npwpd, string $namaWp, bool $npwpdLama): bool
+    /**
+     * Verifikasi nama WP dari tabel lokal simpadu_tax_payers.
+     */
+    private function verifyNamaWp(string $npwpd, string $namaWp): bool
     {
-        $col = $npwpdLama ? 'OLD_NPWPD' : 'NPWPD';
-
-        $row = DB::connection('simpadunew')->selectOne(
-            "SELECT NM_WP FROM dat_subjek_pajak WHERE {$col} = ?",
-            [$npwpd]
-        );
+        $row = DB::table('simpadu_tax_payers')
+            ->where('npwpd', $npwpd)
+            ->value('nm_wp');
 
         if ($row === null) {
             return false;
         }
 
-        $normalizedInput = strtoupper(preg_replace('/\s+/', '', trim($namaWp)));
-        $normalizedFull = strtoupper(preg_replace('/\s+/', '', trim($row->NM_WP)));
+        $normalize = fn (string $s) => strtoupper(preg_replace('/\s+/', '', trim($s)));
 
-        // Cocok dengan nama lengkap (termasuk "/")
-        if ($normalizedFull === $normalizedInput) {
+        if ($normalize($row) === $normalize($namaWp)) {
             return true;
         }
 
-        // Cocok dengan salah satu bagian yang dipisah "/"
-        foreach (explode('/', $row->NM_WP) as $part) {
-            if (strtoupper(preg_replace('/\s+/', '', trim($part))) === $normalizedInput) {
+        // Cocokkan tiap bagian yang dipisah "/"
+        foreach (explode('/', $row) as $part) {
+            if ($normalize($part) === $normalize($namaWp)) {
                 return true;
             }
         }
@@ -97,332 +92,66 @@ class CheckPaymentAction
         return false;
     }
 
+    /**
+     * Query data pembayaran dari tabel lokal simpadu_tax_payers.
+     * Setiap baris = 1 bulan (masa pajak).
+     */
+    private function queryLocal(string $npwpd, string $tahun, string $ayat): Collection
+    {
+        return DB::table('simpadu_tax_payers as tp')
+            ->leftJoin('simpadu_sptpd_reports as sr', function ($join) {
+                $join->on('sr.npwpd', '=', 'tp.npwpd')
+                    ->on('sr.nop', '=', 'tp.nop')
+                    ->on('sr.year', '=', 'tp.year')
+                    ->on('sr.month', '=', 'tp.month');
+            })
+            ->where('tp.npwpd', $npwpd)
+            ->where('tp.ayat', $ayat)
+            ->where('tp.year', $tahun)
+            ->orderBy('tp.month')
+            ->select([
+                'tp.npwpd',
+                'tp.nop',
+                'tp.nm_op as nama_op',
+                'tp.month',
+                'tp.year',
+                'tp.total_ketetapan',
+                'tp.total_bayar',
+                'tp.total_tunggakan',
+                'tp.status',
+                'sr.tgl_lapor',
+                'sr.masa_pajak',
+                'sr.jml_lapor',
+            ])
+            ->get();
+    }
+
     private function formatRow(array $row): array
     {
+        $ketetapan = (float) ($row['total_ketetapan'] ?? 0);
+        $bayar = (float) ($row['total_bayar'] ?? 0);
+        $tunggakan = (float) ($row['total_tunggakan'] ?? 0);
+        $jmlLapor = (float) ($row['jml_lapor'] ?? 0);
+
+        // Masa pajak: format YYYY-MM dari year+month
+        $masaPajak = $row['masa_pajak']
+            ?? sprintf('%d-%02d', $row['year'], $row['month']);
+
         return [
-            'npwpd' => $row['npwpd'] ?? null,
-            'nop' => $row['nop'] ?? null,
-            'nama_op' => $row['nama_op'] ?? null,
-            'kohir' => $row['kohir'] ?? null,
-            'masa_awal' => $row['masa_awal'] ?? null,
-            'jatuh_tempo' => $row['jatuh_tempo'] ?? null,
-            'tgl_bayar' => ($row['tgl_bayar'] && $row['tgl_bayar'] !== '-') ? $row['tgl_bayar'] : null,
-            'jml_sptpd' => (int) ($row['jml_sptpd'] ?? 0),
-            'bayar_pokok' => (int) ($row['bayar_pokok'] ?? 0),
-            'bayar_denda' => (int) ($row['bayar_denda'] ?? 0),
-            'sisa_pokok' => (int) ($row['sisa_pokok'] ?? 0),
-            'sisa_denda' => (int) ($row['sisa_denda'] ?? 0),
-            'sisa' => (int) ($row['sisa'] ?? 0),
-            'keterangan' => $row['ket'] ?? null,
+            'npwpd' => $row['npwpd'],
+            'nop' => $row['nop'],
+            'nama_op' => $row['nama_op'],
+            'kohir' => null, // tidak tersedia di lokal
+            'masa_awal' => $masaPajak,
+            'jatuh_tempo' => null,
+            'tgl_bayar' => $row['tgl_lapor'] ?? null,
+            'jml_sptpd' => (int) $jmlLapor ?: (int) $ketetapan,
+            'bayar_pokok' => (int) $bayar,
+            'bayar_denda' => 0,
+            'sisa_pokok' => (int) $tunggakan,
+            'sisa_denda' => 0,
+            'sisa' => (int) $tunggakan,
+            'keterangan' => $row['status'] === '1' ? 'Lunas' : ($tunggakan > 0 ? 'Belum Lunas' : null),
         ];
-    }
-
-    /** Hotel, Restoran, Hiburan, Parkir, Minerba */
-    private function querySelf(string $npwpd, string $tahun, string $ayat, bool $npwpdLama): Collection
-    {
-        $npwpdCol = $npwpdLama ? 's.old_npwpd' : 's.npwpd';
-        $joinCol = $npwpdLama ? 's.old_NPWPD' : 's.NPWPD';
-
-        return collect(DB::connection('simpadunew')->select("
-            SELECT
-                {$npwpdCol} AS npwpd,
-                s.nop,
-                s.`NAME` AS nama_op,
-                r.kohir,
-                r.masa_awal,
-                r.masa_akhir AS jatuh_tempo,
-                r.tgl_bayar,
-                r.jmlsptpd AS jml_sptpd,
-                IFNULL(r.jml_byr_pokok, 0) AS bayar_pokok,
-                IFNULL(r.byr_denda, 0) AS bayar_denda,
-                IFNULL(r.jmlsptpd - r.jml_byr_pokok, r.jmlsptpd) AS sisa_pokok,
-                GREATEST(IFNULL(r.denda, 0) - IFNULL(r.byr_denda, 0), 0) AS sisa_denda,
-                GREATEST(
-                    IFNULL(r.jmlsptpd - r.jml_byr_pokok, r.jmlsptpd)
-                    + IFNULL(r.denda, 0) - IFNULL(r.byr_denda, 0),
-                    0
-                ) AS sisa,
-                r.ket
-            FROM dat_objek_pajak s
-            INNER JOIN dat_subjek_pajak sp ON sp.NPWPD = {$joinCol}
-            INNER JOIN (
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.kohir,
-                    p.masa AS masa_awal, p.jatuhtempo AS masa_akhir,
-                    x.tgl_bayar, p.pajak AS jmlsptpd,
-                    x.jml_byr_pokok, x.byr_denda, x.denda, p.ket
-                FROM dat_sptpd_self p
-                LEFT JOIN (
-                    SELECT kohir, ayat,
-                        MAX(tgl_bayar) AS tgl_bayar,
-                        SUM(IFNULL(jml_byr_pokok, 0)) AS jml_byr_pokok,
-                        SUM(IFNULL(denda, 0)) AS denda,
-                        SUM(IFNULL(byr_denda, 0)) AS byr_denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                    GROUP BY kohir, ayat
-                ) x ON x.kohir = p.kohir AND x.ayat = p.ayat
-                WHERE p.NPWPD = ?
-
-                UNION ALL
-
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.no_reg AS kohir,
-                    p.masa_ref AS masa_awal, p.jatuh_tempo AS masa_akhir,
-                    x.tgl_bayar, p.pokok_pajak_kurang_bayar AS jmlsptpd,
-                    x.jml_byr_pokok, x.byr_denda, x.denda, 'SKPDKB' AS ket
-                FROM dat_skpdkb p
-                LEFT JOIN (
-                    SELECT kohir, ayat,
-                        MAX(tgl_bayar) AS tgl_bayar,
-                        SUM(IFNULL(jml_byr_pokok, 0)) AS jml_byr_pokok,
-                        SUM(IFNULL(denda, 0)) AS denda,
-                        SUM(IFNULL(byr_denda, 0)) AS byr_denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                    GROUP BY kohir, ayat
-                ) x ON x.kohir = p.no_reg AND x.ayat = p.ayat
-                WHERE p.NPWPD = ?
-            ) r ON r.npwpd = {$npwpdCol} AND r.nop = s.NOP
-            WHERE {$npwpdCol} = ?
-              AND r.ayat = ?
-              AND YEAR(r.masa_awal) = ?
-            ORDER BY s.nop, r.masa_awal
-        ", [$npwpd, $npwpd, $npwpd, $npwpd, $npwpd, $ayat, $tahun]));
-    }
-
-    /** Reklame */
-    private function queryReklame(string $npwpd, string $tahun): Collection
-    {
-        return collect(DB::connection('simpadunew')->select("
-            SELECT
-                s.npwpd,
-                s.nop,
-                s.`NAME` AS nama_op,
-                r.kohir,
-                r.masa_awal,
-                r.masa_akhir AS jatuh_tempo,
-                r.tgl_bayar,
-                r.jmlsptpd AS jml_sptpd,
-                IFNULL(r.jml_byr_pokok, 0) AS bayar_pokok,
-                IFNULL(r.byr_denda, 0) AS bayar_denda,
-                IFNULL(r.jmlsptpd - r.jml_byr_pokok, r.jmlsptpd) AS sisa_pokok,
-                GREATEST(IFNULL(r.denda, 0) - IFNULL(r.byr_denda, 0), 0) AS sisa_denda,
-                GREATEST(
-                    IFNULL(r.jmlsptpd - r.jml_byr_pokok, r.jmlsptpd)
-                    + IFNULL(r.denda, 0) - IFNULL(r.byr_denda, 0),
-                    0
-                ) AS sisa,
-                r.ket
-            FROM dat_objek_pajak s
-            INNER JOIN dat_subjek_pajak sp ON sp.NPWPD = s.NPWPD
-            INNER JOIN (
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.kohir,
-                    p.tgl_awal AS masa_awal, p.tgl_akhirketetapan AS masa_akhir,
-                    x.tgl_bayar, p.total AS jmlsptpd,
-                    x.jml_byr_pokok, x.byr_denda, x.denda, '-' AS ket
-                FROM dat_sptpd_reklame p
-                LEFT JOIN (
-                    SELECT kohir, ayat,
-                        MAX(tgl_bayar) AS tgl_bayar,
-                        SUM(IFNULL(jml_byr_pokok, 0)) AS jml_byr_pokok,
-                        SUM(IFNULL(denda, 0)) AS denda,
-                        SUM(IFNULL(byr_denda, 0)) AS byr_denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                    GROUP BY kohir, ayat
-                ) x ON x.kohir = p.kohir AND x.ayat = p.ayat
-                WHERE p.NPWPD = ?
-
-                UNION ALL
-
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.no_reg AS kohir,
-                    p.masa_ref AS masa_awal, p.jatuh_tempo AS masa_akhir,
-                    x.tgl_bayar, p.pajak_yg_harus_dibayar AS jmlsptpd,
-                    x.jml_byr_pokok, x.byr_denda, x.denda, 'SKPDKB' AS ket
-                FROM dat_skpdkb p
-                LEFT JOIN (
-                    SELECT kohir, ayat,
-                        MAX(tgl_bayar) AS tgl_bayar,
-                        SUM(IFNULL(jml_byr_pokok, 0)) AS jml_byr_pokok,
-                        SUM(IFNULL(denda, 0)) AS denda,
-                        SUM(IFNULL(byr_denda, 0)) AS byr_denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                    GROUP BY kohir, ayat
-                ) x ON x.kohir = p.no_reg AND x.ayat = '41104'
-                WHERE p.NPWPD = ?
-            ) r ON r.npwpd = s.npwpd AND r.nop = s.NOP
-            WHERE s.NPWPD = ?
-              AND r.ayat = '41104'
-              AND YEAR(r.masa_awal) = ?
-              AND r.kohir IS NOT NULL
-            ORDER BY r.masa_awal
-        ", [$npwpd, $npwpd, $npwpd, $npwpd, $npwpd, $tahun]));
-    }
-
-    /** PPJ */
-    private function queryPpj(string $npwpd, string $tahun): Collection
-    {
-        return collect(DB::connection('simpadunew')->select("
-            SELECT
-                s.npwpd,
-                s.nop,
-                s.`NAME` AS nama_op,
-                r.kohir,
-                r.masa_awal,
-                r.masa_akhir AS jatuh_tempo,
-                IFNULL(r.tgl_bayar, '-') AS tgl_bayar,
-                r.jmlsptpd AS jml_sptpd,
-                IFNULL(r.jml_byr_pokok, 0) AS bayar_pokok,
-                IFNULL(r.byr_denda, 0) AS bayar_denda,
-                IFNULL(r.jmlsptpd - r.jml_byr_pokok, r.jmlsptpd) AS sisa_pokok,
-                GREATEST(IFNULL(r.denda, 0) - IFNULL(r.byr_denda, 0), 0) AS sisa_denda,
-                GREATEST(
-                    IFNULL(r.jmlsptpd - r.jml_byr_pokok, r.jmlsptpd)
-                    + IFNULL(r.denda, 0) - IFNULL(r.byr_denda, 0),
-                    0
-                ) AS sisa,
-                r.ket
-            FROM dat_objek_pajak s
-            INNER JOIN dat_subjek_pajak sp ON sp.NPWPD = s.NPWPD
-            INNER JOIN (
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.kohir,
-                    p.masa_awal, p.masa_akhir,
-                    x.tgl_bayar, p.pajak AS jmlsptpd,
-                    x.jml_byr_pokok, x.byr_denda, x.denda, '-' AS ket
-                FROM dat_sptpd_ppj p
-                LEFT JOIN (
-                    SELECT kohir, ayat, tgl_bayar, jml_byr_pokok, denda, byr_denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                ) x ON x.kohir = p.kohir AND x.ayat = p.ayat
-                WHERE p.NPWPD = ?
-
-                UNION ALL
-
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.no_reg AS kohir,
-                    p.masa_ref AS masa_awal, p.jatuh_tempo AS masa_akhir,
-                    x.tgl_bayar, p.pajak_yg_harus_dibayar AS jmlsptpd,
-                    x.jml_byr_pokok, x.byr_denda, x.denda, 'SKPDKB' AS ket
-                FROM dat_skpdkb p
-                LEFT JOIN (
-                    SELECT kohir, ayat, tgl_bayar, jml_byr_pokok, denda, byr_denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                ) x ON x.kohir = p.no_reg AND x.ayat = p.ayat
-                WHERE p.NPWPD = ?
-            ) r ON r.npwpd = s.npwpd AND r.nop = s.NOP
-            WHERE s.NPWPD = ?
-              AND r.ayat = '41105'
-              AND YEAR(r.masa_awal) = ?
-            ORDER BY s.npwpd, r.masa_awal
-        ", [$npwpd, $npwpd, $npwpd, $npwpd, $npwpd, $tahun]));
-    }
-
-    /** Air Tanah */
-    private function queryAirTanah(string $npwpd, string $tahun): Collection
-    {
-        return collect(DB::connection('simpadunew')->select("
-            SELECT
-                s.npwpd,
-                s.nop,
-                s.`NAME` AS nama_op,
-                r.kohir,
-                r.masa_awal,
-                r.masa_akhir AS jatuh_tempo,
-                IFNULL(r.tgl_bayar, '-') AS tgl_bayar,
-                r.jmlsptpd AS jml_sptpd,
-                IFNULL(r.jml_byr_pokok, 0) AS bayar_pokok,
-                IFNULL(r.byr_denda, 0) AS bayar_denda,
-                (r.jmlsptpd - IFNULL(r.jml_byr_pokok, 0)) AS sisa_pokok,
-                GREATEST(r.denda - IFNULL(r.byr_denda, 0), 0) AS sisa_denda,
-                GREATEST(
-                    (r.jmlsptpd - IFNULL(r.jml_byr_pokok, 0))
-                    + (r.denda - IFNULL(r.byr_denda, 0)),
-                    0
-                ) AS sisa,
-                r.ket
-            FROM dat_objek_pajak s
-            INNER JOIN dat_subjek_pajak sp ON sp.NPWPD = s.NPWPD
-            INNER JOIN (
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.kohir,
-                    p.masa_awal, p.tgl_batas AS masa_akhir,
-                    pay.tgl_bayar, p.jmlsptpd,
-                    pay.jml_byr_pokok, pay.byr_denda, pay.denda,
-                    CONCAT('SUMUR ', p.kd_sumur) AS ket
-                FROM dat_sptpd_at p
-                LEFT JOIN (
-                    SELECT kohir, ayat,
-                        MAX(tgl_bayar) AS tgl_bayar,
-                        SUM(IFNULL(jml_byr_pokok, 0)) AS jml_byr_pokok,
-                        SUM(IFNULL(byr_denda, 0)) AS byr_denda,
-                        SUM(IFNULL(denda, 0)) AS denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                    GROUP BY kohir, ayat
-                ) pay ON pay.kohir = p.kohir AND pay.ayat = p.ayat
-                WHERE p.NPWPD = ?
-
-                UNION ALL
-
-                SELECT
-                    p.ayat, p.npwpd, p.nop, p.no_reg AS kohir,
-                    p.tgl_reg AS masa_awal, p.jatuh_tempo AS masa_akhir,
-                    pay.tgl_bayar, p.pajak_yg_harus_dibayar AS jmlsptpd,
-                    pay.jml_byr_pokok, pay.byr_denda, pay.denda, 'SKPDKB' AS ket
-                FROM dat_skpdkb2 p
-                LEFT JOIN (
-                    SELECT kohir, ayat,
-                        MAX(tgl_bayar) AS tgl_bayar,
-                        SUM(IFNULL(jml_byr_pokok, 0)) AS jml_byr_pokok,
-                        SUM(IFNULL(byr_denda, 0)) AS byr_denda,
-                        SUM(IFNULL(denda, 0)) AS denda
-                    FROM pembayaran
-                    WHERE NPWPD = ?
-                    GROUP BY kohir, ayat
-                ) pay ON pay.kohir = p.no_reg AND pay.ayat = p.ayat
-                WHERE p.NPWPD = ?
-            ) r ON r.npwpd = s.npwpd AND r.nop = s.NOP
-            WHERE s.NPWPD = ?
-              AND r.ayat = '41108'
-              AND YEAR(r.masa_awal) = ?
-            ORDER BY s.nop, r.masa_awal, r.ket
-        ", [$npwpd, $npwpd, $npwpd, $npwpd, $npwpd, $tahun]));
-    }
-
-    /** BPHTB — input berupa no_register (kohir), bukan NPWPD */
-    private function queryBphtb(string $noReg, string $tahun): Collection
-    {
-        return collect(DB::connection('simpadunew')->select("
-            SELECT
-                t.KOHIR AS npwpd,
-                t.nop,
-                t.NAMA_WP AS nama_op,
-                t.KOHIR AS kohir,
-                CONCAT(t.TAHUN_PAJAK, '-01-01') AS masa_awal,
-                NULL AS jatuh_tempo,
-                p.tgl_bayar,
-                t.pajak_bphtb AS jml_sptpd,
-                IFNULL(p.jml_byr_pokok, 0) AS bayar_pokok,
-                IFNULL(p.byr_denda, 0) AS bayar_denda,
-                IFNULL(t.pajak_bphtb, 0) - IFNULL(p.jml_byr_pokok, 0) AS sisa_pokok,
-                GREATEST(IFNULL(p.denda, 0) - IFNULL(p.byr_denda, 0), 0) AS sisa_denda,
-                GREATEST(
-                    IFNULL(t.pajak_bphtb, 0) - IFNULL(p.jml_byr_pokok, 0)
-                    + IFNULL(p.denda, 0) - IFNULL(p.byr_denda, 0),
-                    0
-                ) AS sisa,
-                NULL AS ket
-            FROM dat_bphtb t
-            LEFT JOIN pembayaran p ON t.kohir = p.kohir AND p.ayat = '41113'
-            WHERE t.tahun_pajak = ?
-              AND t.kohir = ?
-        ", [$tahun, $noReg]));
     }
 }

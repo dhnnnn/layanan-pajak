@@ -43,9 +43,66 @@ class RoleController extends Controller
     {
         $role->load('users');
         $allPermissions = Permission::query()->orderBy('group')->orderBy('name')->get()->groupBy('group');
-        $rolePermissionIds = $role->permissions->pluck('id')->toArray();
 
-        return view('admin.roles.show', compact('role', 'allPermissions', 'rolePermissionIds'));
+        // Flat map untuk lookup cepat di view: ['nama-permission' => Permission]
+        $permissionMap = Permission::query()->get()->keyBy('name');
+
+        $featureMatrix = $this->buildFeatureMatrix();
+        $rolePermissionNames = $role->permissions->pluck('name')->toArray();
+
+        return view('admin.roles.show', compact(
+            'role',
+            'allPermissions',
+            'permissionMap',
+            'featureMatrix',
+            'rolePermissionNames',
+        ));
+    }
+
+    /**
+     * Mapping fitur ke permission dalam format tabel.
+     * Kolom: lihat, kelola (create+update), hapus
+     *
+     * @return array<int, array{group: string, features: array<int, array{label: string, permissions: array{lihat: string|null, kelola: string|null, hapus: string|null}}>}>
+     */
+    private function buildFeatureMatrix(): array
+    {
+        return [
+            [
+                'group' => 'Master Data',
+                'features' => [
+                    ['label' => 'Kategori Pajak',      'permissions' => ['lihat' => 'view tax-types',    'kelola' => 'manage tax-types',          'hapus' => 'delete tax-types']],
+                    ['label' => 'Data Wilayah',         'permissions' => ['lihat' => 'view districts',    'kelola' => 'manage districts',          'hapus' => 'delete districts']],
+                    ['label' => 'Data Petugas',         'permissions' => ['lihat' => 'view employees',    'kelola' => 'manage employees',          'hapus' => 'delete employees']],
+                    ['label' => 'Unit Pelayanan (UPP)', 'permissions' => ['lihat' => 'view upts',         'kelola' => 'manage upts',               'hapus' => 'delete upts']],
+                    ['label' => 'Target Tambahan APBD', 'permissions' => ['lihat' => null, 'kelola' => 'manage additional-targets', 'hapus' => 'delete additional-targets']],
+                ],
+            ],
+            [
+                'group' => 'Laporan & Pantauan',
+                'features' => [
+                    ['label' => 'Prediksi Penerimaan',  'permissions' => ['lihat' => 'view forecasting',             'kelola' => null,                          'hapus' => null]],
+                    ['label' => 'Laporan Anggaran',     'permissions' => ['lihat' => 'view tax-targets',             'kelola' => 'manage tax-targets',           'hapus' => null]],
+                    ['label' => 'Realisasi Penerimaan', 'permissions' => ['lihat' => 'view realization-monitoring',  'kelola' => 'export realization-monitoring', 'hapus' => null]],
+                    ['label' => 'Import Data',          'permissions' => ['lihat' => null,                           'kelola' => 'import data',                  'hapus' => null]],
+                ],
+            ],
+            [
+                'group' => 'Manajemen Akses',
+                'features' => [
+                    ['label' => 'Role',          'permissions' => ['lihat' => 'view roles',        'kelola' => 'manage roles',       'hapus' => 'delete roles']],
+                    ['label' => 'Permission',    'permissions' => ['lihat' => 'view permissions',  'kelola' => 'manage permissions', 'hapus' => null]],
+                    ['label' => 'Kelola User',   'permissions' => ['lihat' => 'view rbac-users',   'kelola' => 'manage rbac-users',  'hapus' => 'delete rbac-users']],
+                    ['label' => 'Monitor Akses', 'permissions' => ['lihat' => 'view access-monitoring', 'kelola' => null,            'hapus' => null]],
+                ],
+            ],
+            [
+                'group' => 'Petugas Lapangan',
+                'features' => [
+                    ['label' => 'Akses Petugas', 'permissions' => ['lihat' => 'view field-officer', 'kelola' => null, 'hapus' => null]],
+                ],
+            ],
+        ];
     }
 
     public function edit(Role $role): View

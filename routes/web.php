@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TaxPayerMonitoringController;
 use App\Http\Controllers\Admin\TaxTargetController;
 use App\Http\Controllers\Admin\TaxTypeController;
+use App\Http\Controllers\Admin\UptAdditionalTargetController;
 use App\Http\Controllers\Admin\UptController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FieldOfficer\DashboardController as FieldOfficerDashboardController;
@@ -64,6 +65,16 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         // Forecasting (prediksi)
         Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index')->middleware('permission:view forecasting');
         Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data')->middleware('permission:view forecasting');
+
+        // Target Tambahan APBD — tidak ada halaman index, akses via Laporan Anggaran
+        Route::middleware('permission:manage additional-targets')->group(function (): void {
+            Route::get('upt-additional-targets/create', [UptAdditionalTargetController::class, 'create'])->name('upt-additional-targets.create');
+            Route::get('upt-additional-targets/preview', [UptAdditionalTargetController::class, 'preview'])->name('upt-additional-targets.preview');
+            Route::get('upt-additional-targets/ai-recommendation', [UptAdditionalTargetController::class, 'aiRecommendation'])->name('upt-additional-targets.ai-recommendation');
+            Route::get('upt-additional-targets/pct', [UptAdditionalTargetController::class, 'getPct'])->name('upt-additional-targets.pct');
+            Route::post('upt-additional-targets', [UptAdditionalTargetController::class, 'store'])->name('upt-additional-targets.store');
+            Route::delete('upt-additional-targets/{uptAdditionalTarget}', [UptAdditionalTargetController::class, 'destroy'])->name('upt-additional-targets.destroy');
+        });
 
         // Laporan Realisasi
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');

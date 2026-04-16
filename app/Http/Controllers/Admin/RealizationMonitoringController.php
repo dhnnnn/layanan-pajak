@@ -318,8 +318,13 @@ class RealizationMonitoringController extends Controller
                 $prevMonth = (int) $r->month;
             }
 
-            // Tidak potong bulan terakhir berdasarkan threshold — biarkan semua bulan
-            // yang ada datanya masuk, termasuk bulan yang sedang berjalan (nilai kecil wajar)
+            // Potong bulan-bulan di akhir yang nilainya < 50% rata-rata historis
+            if ($validRows->count() >= 2) {
+                $avg = $validRows->avg(fn ($r) => (float) $r->total_bayar);
+                while ($validRows->count() >= 2 && (float) $validRows->last()->total_bayar < $avg * 0.50) {
+                    $validRows->pop();
+                }
+            }
 
             $historisData = $validRows->map(fn ($r) => [
                 'periode' => sprintf('%d-%02d', $r->year, $r->month),

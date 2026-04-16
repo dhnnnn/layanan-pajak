@@ -9,7 +9,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Bersihkan file log setiap tengah malam agar tidak membengkak
+// Bersihkan file log setiap tengah malam
 Schedule::call(function () {
     foreach ([
         storage_path('logs/scheduler.log'),
@@ -34,45 +34,31 @@ Schedule::call(function () {
 Schedule::command('simpadu:sync --skip-wp')
     ->hourly()
     ->when(fn () => (int) now()->hour % 6 !== 0)
+    ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
 
 // Sync WP lengkap (berat ~25 detik) — setiap 6 jam (00, 06, 12, 18)
 Schedule::command('simpadu:sync')
     ->everySixHours()
-    ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
-
-// Sync data historis 3 tahun ke belakang untuk keperluan forecasting ARIMA.
-// Dijadwalkan sekali di awal tahun (1 Januari jam 03:00) agar data historis
-// selalu tersedia tanpa perlu sync manual.
-Schedule::call(function () {
-    $currentYear = (int) now()->year;
-    foreach (range(1, 3) as $offset) {
-        $year = $currentYear - $offset;
-        Artisan::call('simpadu:sync', ['--year' => $year, '--skip-wp' => true]);
-        Log::info("Historical sync completed for year {$year}.");
-    }
-})
-    ->yearlyOn(1, 1, '03:00')
-    ->name('sync-historical-realizations')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/simpadu_sync.log'));
 
+// Sync payer realizations — dikurangi dari 6 jam ke 12 jam agar tidak membebani SIMPADU
 Schedule::command('simpadu:sync-payers')
-    ->everySixHours()
+    ->twiceDaily(6, 18)
+    ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/simpadu_payers_sync.log'));
 
-// Sync tax payer data per bulan — setiap 2 jam
+// Sync tax payer data per bulan — dikurangi dari 2 jam ke 6 jam, hanya bulan berjalan
+// Bulan lalu tidak perlu di-sync ulang karena data historis tidak berubah
 Schedule::call(function () {
     $year = (int) now()->year;
     $currentMonth = (int) now()->month;
 
     Artisan::call('sync:tax-payers', ['--year' => $year, '--month' => $currentMonth]);
-
-    if ($currentMonth > 1) {
-        Artisan::call('sync:tax-payers', ['--year' => $year, '--month' => $currentMonth - 1]);
-    }
+    Log::info("Tax payer sync completed for {$year}-{$currentMonth}.");
 })
-    ->everyTwoHours()
+    ->everySixHours()
     ->name('sync:tax-payers-monthly')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/sync_tax_payers.log'));

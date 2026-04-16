@@ -4,6 +4,7 @@ namespace App\Actions\Tax;
 
 use App\Models\SimpaduMonthlyRealization;
 use App\Models\SimpaduTarget;
+use App\Models\UptAdditionalTarget;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -48,6 +49,14 @@ class GenerateTaxDashboardAction
             ->get()
             ->groupBy('ayat');
 
+        // Target tambahan per ayat (sum dari semua, sudah dipecah per quarter)
+        $additionalTargets = UptAdditionalTarget::query()
+            ->where('year', $year)
+            ->selectRaw('no_ayat, SUM(additional_target) as total_additional, SUM(q1_additional) as q1_add, SUM(q2_additional) as q2_add, SUM(q3_additional) as q3_add, SUM(q4_additional) as q4_add')
+            ->groupBy('no_ayat')
+            ->get()
+            ->keyBy('no_ayat');
+
         // Tentukan quarter terakhir yang boleh ditampilkan:
         // Tampilkan quarter jika sudah ada data pembayaran di quarter tersebut,
         // ATAU jika quarter tersebut sudah selesai secara kalender.
@@ -81,13 +90,15 @@ class GenerateTaxDashboardAction
         $nonPbjtItems = collect();
 
         foreach ($targets as $target) {
-            $item = $this->buildItem($target, $realizations, $lastDataQuarter, $year);
+            $item = $this->buildItem($target, $realizations, $lastDataQuarter, $year, $additionalTargets);
 
             if (in_array((string) $target->no_ayat, self::PBJT_AYAT)) {
                 $pbjt['target_total'] += $item['target_total'];
+                $pbjt['additional_target'] += $item['additional_target'];
                 $pbjt['total_realization'] += $item['total_realization'];
                 foreach (['q1', 'q2', 'q3', 'q4'] as $q) {
                     $pbjt['targets'][$q] += $item['targets'][$q];
+                    $pbjt['targets_base'][$q] = ($pbjt['targets_base'][$q] ?? 0.0) + ($item['targets_base'][$q] ?? 0.0);
                     $pbjt['realizations'][$q] += $item['realizations'][$q];
                 }
                 $item['is_child'] = true;
@@ -101,6 +112,7 @@ class GenerateTaxDashboardAction
         // Pass 2: bangun $data — PBJT parent+children dulu, lalu non-PBJT
         $data = collect();
         if (! empty($pbjt['_children'])) {
+            $pbjt['target_with_additional'] = $pbjt['target_total'] + $pbjt['additional_target'];
             $data = $this->flushPbjt($data, $pbjt);
         }
         foreach ($nonPbjtItems as $item) {
@@ -115,11 +127,21 @@ class GenerateTaxDashboardAction
                         $item['realizations'][$q],
                         $item['targets'][$q]
                     );
+                    $item['percentages_base'][$q] = ($this->calculateAchievementPercentage)(
+                        $item['realizations'][$q],
+                        $item['targets_base'][$q] ?? $item['targets'][$q]
+                    );
                 }
+                $item['target_with_additional'] = $item['target_total'] + $item['additional_target'];
                 $item['more_less'] = $item['total_realization'] - $item['target_total'];
+                $item['more_less_with_additional'] = $item['total_realization'] - $item['target_with_additional'];
                 $item['achievement_percentage'] = ($this->calculateAchievementPercentage)(
                     $item['total_realization'],
                     $item['target_total']
+                );
+                $item['achievement_percentage_with_additional'] = ($this->calculateAchievementPercentage)(
+                    $item['total_realization'],
+                    $item['target_with_additional']
                 );
             }
 
@@ -129,6 +151,7 @@ class GenerateTaxDashboardAction
         // Grand totals — hanya dari baris top-level (bukan child)
         $topLevel = $data->where('is_child', false);
         $grandTotalTarget = $topLevel->sum('target_total');
+        $grandTotalAdditional = $topLevel->sum('additional_target');
         $grandTotalRealization = $topLevel->sum('total_realization');
 
         $quarterTotals = collect(['q1', 'q2', 'q3', 'q4'])->mapWithKeys(function ($q) use ($topLevel) {
@@ -146,15 +169,19 @@ class GenerateTaxDashboardAction
             'data' => $data,
             'totals' => [
                 'target' => $grandTotalTarget,
+                'additional_target' => $grandTotalAdditional,
+                'target_with_additional' => $grandTotalTarget + $grandTotalAdditional,
                 'realization' => $grandTotalRealization,
                 'more_less' => $grandTotalRealization - $grandTotalTarget,
+                'more_less_with_additional' => $grandTotalRealization - ($grandTotalTarget + $grandTotalAdditional),
                 'percentage' => ($this->calculateAchievementPercentage)($grandTotalRealization, $grandTotalTarget),
+                'percentage_with_additional' => ($this->calculateAchievementPercentage)($grandTotalRealization, $grandTotalTarget + $grandTotalAdditional),
                 'quarters' => $quarterTotals,
             ],
         ];
     }
 
-    private function buildItem(SimpaduTarget $target, Collection $realizations, int $lastDataQuarter, int $year): array
+    private function buildItem(SimpaduTarget $target, Collection $realizations, int $lastDataQuarter, int $year, Collection $additionalTargets): array
     {
         $ayatRealizations = $realizations->get((string) $target->no_ayat, collect());
 
@@ -171,10 +198,20 @@ class GenerateTaxDashboardAction
         $rq4 = (float) ($byQuarter->get('q4')?->sum('total_bayar') ?? 0);
 
         $totalTarget = (float) $target->total_target;
+        $additionalRow = $additionalTargets->get((string) $target->no_ayat);
+        $additionalTarget = $additionalRow ? (float) $additionalRow->total_additional : 0.0;
+        $targetWithAdditional = $totalTarget + $additionalTarget;
+
         $tq1 = $totalTarget * ((float) $target->q1_pct / 100);
         $tq2 = $totalTarget * ((float) $target->q2_pct / 100);
         $tq3 = $totalTarget * ((float) $target->q3_pct / 100);
         $tq4 = $totalTarget * ((float) $target->q4_pct / 100);
+
+        // Tambahkan prorata target tambahan ke masing-masing tribulan
+        $tq1 += $additionalRow ? (float) $additionalRow->q1_add : 0.0;
+        $tq2 += $additionalRow ? (float) $additionalRow->q2_add : 0.0;
+        $tq3 += $additionalRow ? (float) $additionalRow->q3_add : 0.0;
+        $tq4 += $additionalRow ? (float) $additionalRow->q4_add : 0.0;
 
         // Per-quarter, hanya tampilkan jika quarter tersebut sudah ada datanya
         $cq1 = $rq1;
@@ -190,7 +227,15 @@ class GenerateTaxDashboardAction
             'year' => $year,
             'is_parent' => false,
             'target_total' => $totalTarget,
+            'additional_target' => $additionalTarget,
+            'target_with_additional' => $targetWithAdditional,
             'targets' => ['q1' => $tq1, 'q2' => $tq2, 'q3' => $tq3, 'q4' => $tq4],
+            'targets_base' => [
+                'q1' => $totalTarget * ((float) $target->q1_pct / 100),
+                'q2' => $totalTarget * ((float) $target->q2_pct / 100),
+                'q3' => $totalTarget * ((float) $target->q3_pct / 100),
+                'q4' => $totalTarget * ((float) $target->q4_pct / 100),
+            ],
             'realizations' => ['q1' => $cq1, 'q2' => $cq2, 'q3' => $cq3, 'q4' => $cq4],
             'percentages' => [
                 'q1' => ($this->calculateAchievementPercentage)($cq1, $tq1),
@@ -198,9 +243,17 @@ class GenerateTaxDashboardAction
                 'q3' => ($this->calculateAchievementPercentage)($cq3, $tq3),
                 'q4' => ($this->calculateAchievementPercentage)($cq4, $tq4),
             ],
+            'percentages_base' => [
+                'q1' => ($this->calculateAchievementPercentage)($cq1, $totalTarget * ((float) $target->q1_pct / 100)),
+                'q2' => ($this->calculateAchievementPercentage)($cq2, $totalTarget * ((float) $target->q2_pct / 100)),
+                'q3' => ($this->calculateAchievementPercentage)($cq3, $totalTarget * ((float) $target->q3_pct / 100)),
+                'q4' => ($this->calculateAchievementPercentage)($cq4, $totalTarget * ((float) $target->q4_pct / 100)),
+            ],
             'total_realization' => $totalRealization,
             'more_less' => $totalRealization - $totalTarget,
+            'more_less_with_additional' => $totalRealization - $targetWithAdditional,
             'achievement_percentage' => ($this->calculateAchievementPercentage)($totalRealization, $totalTarget),
+            'achievement_percentage_with_additional' => ($this->calculateAchievementPercentage)($totalRealization, $targetWithAdditional),
         ];
     }
 
@@ -213,12 +266,18 @@ class GenerateTaxDashboardAction
             'is_parent' => true,
             'is_child' => false,
             'target_total' => 0.0,
+            'additional_target' => 0.0,
+            'target_with_additional' => 0.0,
             'targets' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
+            'targets_base' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
             'realizations' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
             'percentages' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
+            'percentages_base' => ['q1' => 0.0, 'q2' => 0.0, 'q3' => 0.0, 'q4' => 0.0],
             'total_realization' => 0.0,
             'more_less' => 0.0,
+            'more_less_with_additional' => 0.0,
             'achievement_percentage' => 0.0,
+            'achievement_percentage_with_additional' => 0.0,
         ];
     }
 

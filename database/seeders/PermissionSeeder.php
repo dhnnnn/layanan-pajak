@@ -18,12 +18,18 @@ class PermissionSeeder extends Seeder
             'master-data' => [
                 'view tax-types',
                 'manage tax-types',
+                'delete tax-types',
                 'view districts',
                 'manage districts',
+                'delete districts',
                 'view employees',
                 'manage employees',
+                'delete employees',
                 'view upts',
                 'manage upts',
+                'delete upts',
+                'manage additional-targets',
+                'delete additional-targets',
             ],
             'monitoring' => [
                 'view forecasting',
@@ -39,10 +45,12 @@ class PermissionSeeder extends Seeder
             'rbac' => [
                 'view roles',
                 'manage roles',
+                'delete roles',
                 'view permissions',
                 'manage permissions',
                 'view rbac-users',
                 'manage rbac-users',
+                'delete rbac-users',
                 'view access-monitoring',
             ],
         ];
@@ -55,17 +63,18 @@ class PermissionSeeder extends Seeder
     {
         return [
             'admin' => [
-                'view tax-types', 'manage tax-types',
-                'view districts', 'manage districts',
-                'view employees', 'manage employees',
-                'view upts', 'manage upts',
+                'view tax-types', 'manage tax-types', 'delete tax-types',
+                'view districts', 'manage districts', 'delete districts',
+                'view employees', 'manage employees', 'delete employees',
+                'view upts', 'manage upts', 'delete upts',
+                'manage additional-targets', 'delete additional-targets',
                 'view forecasting',
                 'view tax-targets', 'manage tax-targets',
                 'view realization-monitoring', 'export realization-monitoring',
                 'import data',
-                'view roles', 'manage roles',
+                'view roles', 'manage roles', 'delete roles',
                 'view permissions', 'manage permissions',
-                'view rbac-users', 'manage rbac-users',
+                'view rbac-users', 'manage rbac-users', 'delete rbac-users',
                 'view access-monitoring',
             ],
             'kepala_upt' => [

@@ -73,8 +73,14 @@ class GetDistrictForecastAction
             $prevMonth = (int) $r->month;
         }
 
-        // Tidak potong bulan terakhir berdasarkan threshold — biarkan semua bulan
-        // yang ada datanya masuk, termasuk bulan yang sedang berjalan (nilai kecil wajar)
+        // Potong bulan-bulan di akhir yang nilainya < 50% rata-rata historis
+        // (bulan yang belum selesai lapor / data belum lengkap)
+        if ($validRows->count() >= 2) {
+            $avg = $validRows->avg(fn ($r) => (float) $r->total_bayar);
+            while ($validRows->count() >= 2 && (float) $validRows->last()->total_bayar < $avg * 0.50) {
+                $validRows->pop();
+            }
+        }
 
         if ($validRows->count() < 2) {
             return null;

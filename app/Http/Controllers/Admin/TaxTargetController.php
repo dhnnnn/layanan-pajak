@@ -6,9 +6,10 @@ use App\Actions\Tax\GenerateTaxDashboardAction;
 use App\Actions\Tax\ShowTaxTargetDetailAction;
 use App\Exports\TaxTargetExport;
 use App\Http\Controllers\Controller;
-use App\Models\SimpaduTarget;
 use App\Models\SimpaduMonthlyRealization;
+use App\Models\SimpaduTarget;
 use App\Models\TaxType;
+use App\Models\UptAdditionalTarget;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -25,7 +26,7 @@ class TaxTargetController extends Controller
             ->orderByDesc('year')
             ->pluck('year')
             ->merge(
-                \App\Models\SimpaduMonthlyRealization::query()
+                SimpaduMonthlyRealization::query()
                     ->distinct()
                     ->pluck('year')
             )
@@ -42,11 +43,23 @@ class TaxTargetController extends Controller
             search: $search
         );
 
+        $additionalTargets = UptAdditionalTarget::query()
+            ->with('creator')
+            ->where('year', $selectedYear)
+            ->orderBy('no_ayat')
+            ->get();
+
+        $ayatLabels = SimpaduTarget::query()
+            ->where('year', $selectedYear)
+            ->pluck('keterangan', 'no_ayat');
+
         return view('admin.tax-targets.report', [
             'dashboard' => $result['data'],
             'totals' => $result['totals'],
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
+            'additionalTargets' => $additionalTargets,
+            'ayatLabels' => $ayatLabels,
         ]);
     }
 

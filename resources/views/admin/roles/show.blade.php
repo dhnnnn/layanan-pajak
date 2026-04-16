@@ -9,6 +9,7 @@
     </x-slot:headerActions>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         {{-- Permission Assignment --}}
         <div class="lg:col-span-2 space-y-4">
             @if($role->isSystemRole() && $role->name === 'admin')
@@ -22,34 +23,64 @@
 
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200">
-                    <h2 class="text-sm font-semibold text-slate-800">Kelola Permission</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Centang permission yang ingin diberikan ke role ini.</p>
+                    <h2 class="text-sm font-semibold text-slate-800">Kelola Hak Akses</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Centang akses yang ingin diberikan ke role ini.</p>
                 </div>
+
                 <form action="{{ route('admin.roles.permissions.sync', $role) }}" method="POST">
                     @csrf
                     @method('PUT')
-                    <div class="p-6 space-y-6">
-                        @forelse($allPermissions as $group => $permissions)
-                            <div>
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{{ $group }}</h3>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    @foreach($permissions as $permission)
-                                        <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-colors cursor-pointer">
-                                            <input type="checkbox" name="permissions[]" value="{{ $permission->id }}"
-                                                @checked(in_array($permission->id, $rolePermissionIds))
-                                                class="rounded text-blue-600 focus:ring-2 focus:ring-blue-500">
-                                            <span class="text-sm text-slate-700">{{ $permission->name }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
+
+                    {{-- Hidden inputs untuk semua permission yang dicentang --}}
+                    {{-- Diisi via JS saat submit --}}
+
+                    <div class="divide-y divide-slate-100">
+                        @foreach($featureMatrix as $group)
+                            <div class="px-6 py-4">
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{{ $group['group'] }}</p>
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="text-xs text-slate-500">
+                                            <th class="text-left font-medium pb-2 w-1/2">Fitur</th>
+                                            <th class="text-center font-medium pb-2 w-1/6">Lihat</th>
+                                            <th class="text-center font-medium pb-2 w-1/6">Kelola</th>
+                                            <th class="text-center font-medium pb-2 w-1/6">Hapus</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-50">
+                                        @foreach($group['features'] as $feature)
+                                            <tr class="hover:bg-slate-50/60 transition-colors">
+                                                <td class="py-2.5 pr-4 font-medium text-slate-700">{{ $feature['label'] }}</td>
+
+                                                @foreach(['lihat', 'kelola', 'hapus'] as $col)
+                                                    @php
+                                                        $permName = $feature['permissions'][$col] ?? null;
+                                                        $perm = $permName ? $permissionMap->get($permName) : null;
+                                                    @endphp
+                                                    <td class="py-2.5 text-center">
+                                                        @if($perm)
+                                                            <input type="checkbox"
+                                                                name="permissions[]"
+                                                                value="{{ $perm->id }}"
+                                                                @checked(in_array($permName, $rolePermissionNames))
+                                                                class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                                                title="{{ $permName }}">
+                                                        @else
+                                                            <span class="inline-block w-4 h-px bg-slate-200 mx-auto"></span>
+                                                        @endif
+                                                    </td>
+                                                @endforeach
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
-                        @empty
-                            <p class="text-sm text-slate-500 text-center py-4">Belum ada permission. Jalankan <code>php artisan db:seed --class=PermissionSeeder</code> terlebih dahulu.</p>
-                        @endforelse
+                        @endforeach
                     </div>
+
                     <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end">
                         <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-                            Simpan Permission
+                            Simpan Hak Akses
                         </button>
                     </div>
                 </form>
@@ -77,6 +108,23 @@
                     @empty
                         <div class="px-6 py-6 text-center text-sm text-slate-400">Belum ada user dengan role ini.</div>
                     @endforelse
+                </div>
+            </div>
+
+            {{-- Legend --}}
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2">
+                <p class="text-xs font-semibold text-slate-600 mb-2">Keterangan Kolom</p>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span class="font-semibold text-slate-700 w-12">Lihat</span>
+                    <span>Hanya bisa melihat data</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span class="font-semibold text-slate-700 w-12">Kelola</span>
+                    <span>Bisa tambah & ubah data</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span class="font-semibold text-slate-700 w-12">Hapus</span>
+                    <span>Bisa menghapus data</span>
                 </div>
             </div>
         </div>

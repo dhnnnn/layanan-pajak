@@ -46,7 +46,7 @@
                     Dashboard
                 </x-layouts.sidebar-item>
 
-                {{-- Admin: Master Data --}}
+                {{-- Admin --}}
                 @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kelola Data</p>
 
