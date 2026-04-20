@@ -75,7 +75,7 @@ class RoleController extends Controller
                     ['label' => 'Data Wilayah',         'permissions' => ['lihat' => 'view districts',    'kelola' => 'manage districts',          'hapus' => 'delete districts']],
                     ['label' => 'Data Petugas',         'permissions' => ['lihat' => 'view employees',    'kelola' => 'manage employees',          'hapus' => 'delete employees']],
                     ['label' => 'Unit Pelayanan (UPP)', 'permissions' => ['lihat' => 'view upts',         'kelola' => 'manage upts',               'hapus' => 'delete upts']],
-                    ['label' => 'Target Tambahan APBD', 'permissions' => ['lihat' => null, 'kelola' => 'manage additional-targets', 'hapus' => 'delete additional-targets']],
+                    ['label' => 'Target Tambahan APBD', 'permissions' => ['lihat' => 'view additional-targets', 'kelola' => 'manage additional-targets', 'hapus' => 'delete additional-targets']],
                 ],
             ],
             [
