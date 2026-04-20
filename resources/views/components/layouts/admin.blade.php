@@ -79,8 +79,16 @@
                     Unit Pelayanan
                 </x-layouts.sidebar-item>
 
-                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan & Pantauan</p>
+                @can('view additional-targets')
+                <x-layouts.sidebar-item route="admin.upt-additional-targets.index" :active="request()->routeIs('admin.upt-additional-targets.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Target Tambahan
+                </x-layouts.sidebar-item>
+                @endcan
 
+                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan & Pantauan</p>
                 <x-layouts.sidebar-item route="admin.forecasting.index" :active="request()->routeIs('admin.forecasting.*')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>

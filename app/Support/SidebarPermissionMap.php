@@ -52,6 +52,12 @@ class SidebarPermissionMap
                         'routePattern' => 'admin.forecasting.*',
                     ],
                     [
+                        'permission' => 'view additional-targets',
+                        'route' => 'admin.upt-additional-targets.index',
+                        'label' => 'Target Tambahan',
+                        'routePattern' => 'admin.upt-additional-targets.*',
+                    ],
+                    [
                         'permission' => 'view tax-targets',
                         'route' => 'admin.tax-targets.report',
                         'label' => 'Target APBD',

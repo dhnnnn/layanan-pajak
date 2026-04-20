@@ -137,25 +137,30 @@
             <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest">Realisasi Per-Tribulan {{ $selectedYear }}</h3>
         </div>
 
-        {{-- Table: scrollable on all screen sizes --}}
+        {{-- Table --}}
         <div class="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
-            {{-- Scroll hint on mobile --}}
             <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full text-[11px] border-collapse bg-white">
-                    <thead class="bg-slate-50 text-slate-900 uppercase font-bold border-b-2 border-slate-300">
+                    <thead class="bg-slate-50 text-slate-900 uppercase font-bold sticky top-0 z-30 border-b-2 border-slate-300">
                         <tr>
-                            <th rowspan="2" class="px-3 py-3 border border-slate-300 text-left min-w-[160px] sticky left-0 bg-slate-50 z-10">Nama Pajak</th>
-                            <th rowspan="2" class="px-3 py-3 border border-slate-300 text-right min-w-[130px]">Target Total</th>
-                            @foreach($quarters as $qKey => $qLabel)
-                                <th colspan="3" class="px-3 py-2 border border-slate-300 text-center {{ $loop->odd ? 'bg-slate-100' : 'bg-slate-50' }}">{{ $qLabel }}</th>
-                            @endforeach
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-left min-w-[200px] sticky left-0 bg-slate-50 z-40 shadow-[1px_0_0_rgba(0,0,0,0.1)]">Nama Pajak</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-right min-w-[140px]">Target APBD</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-right min-w-[140px] bg-amber-50 text-amber-800">Target Tambahan</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-right min-w-[140px] bg-blue-50 text-blue-800">Total Target</th>
+                            <th colspan="5" class="px-3 py-3 border border-slate-300 text-center bg-slate-100">Tribulan 1</th>
+                            <th colspan="5" class="px-3 py-3 border border-slate-300 text-center bg-slate-200/50">Tribulan 2</th>
+                            <th colspan="5" class="px-3 py-3 border border-slate-300 text-center bg-slate-100">Tribulan 3</th>
+                            <th colspan="5" class="px-3 py-3 border border-slate-300 text-center bg-slate-200/50">Tribulan 4</th>
+                            <th rowspan="2" class="px-3 py-4 border border-slate-300 text-right min-w-[140px] bg-slate-50">Lebih/(Kurang)</th>
                         </tr>
                         <tr>
-                            @foreach($quarters as $qKey => $qLabel)
-                                <th class="px-2 py-2 border border-slate-300 text-right min-w-[100px] bg-slate-50">Target</th>
-                                <th class="px-2 py-2 border border-slate-300 text-right min-w-[100px] bg-slate-50">Realisasi</th>
-                                <th class="px-2 py-2 border border-slate-300 text-center min-w-[40px] bg-slate-50">%</th>
-                            @endforeach
+                            @for($i = 1; $i <= 4; $i++)
+                                <th class="px-3 py-3 border border-slate-300 text-right min-w-[110px] bg-slate-50 font-bold">Target</th>
+                                <th class="px-3 py-3 border border-slate-300 text-right min-w-[90px] bg-amber-50 text-amber-700 font-bold">+Tambahan</th>
+                                <th class="px-3 py-3 border border-slate-300 text-right min-w-[110px] bg-slate-50 font-bold">Realisasi</th>
+                                <th class="px-3 py-3 border border-slate-300 text-center min-w-[50px] bg-slate-50 font-bold">% Awal</th>
+                                <th class="px-3 py-3 border border-slate-300 text-center min-w-[50px] bg-emerald-50 text-emerald-700 font-bold">% Naik</th>
+                            @endfor
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -164,54 +169,98 @@
                                 $isParent = $item['is_parent'] ?? false;
                                 $isChild  = $item['is_child'] ?? false;
                             @endphp
-                            <tr class="{{ $isParent ? 'bg-blue-50 font-extrabold' : 'hover:bg-slate-50' }} transition-colors">
-                                <td class="px-3 py-3 border-x border-slate-200 sticky left-0 z-10 whitespace-nowrap
-                                    {{ $isParent ? 'bg-blue-50 text-blue-900 font-black' : ($isChild ? 'bg-white pl-7 text-slate-600 font-medium' : 'bg-white font-black text-slate-900') }}
-                                    hover:bg-slate-50 transition-colors">
-                                    {{ $isChild ? '– ' : '' }}{{ $item['tax_type_name'] }}
+                            <tr class="{{ $isParent ? 'bg-blue-50 font-extrabold' : 'hover:bg-slate-50' }} transition-colors group">
+                                <td class="px-4 py-3 border-x border-slate-200 sticky left-0 {{ $isParent ? 'bg-blue-50' : 'bg-white group-hover:bg-slate-50' }} z-10 transition-colors shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                                    <div class="{{ $isChild ? 'pl-6 text-slate-600 font-medium' : 'text-slate-900 font-black' }} whitespace-nowrap">
+                                        {{ $isChild ? '– ' : '' }}{{ $item['tax_type_name'] }}
+                                    </div>
                                 </td>
-                                <td class="px-3 py-3 border-r border-slate-200 text-right font-bold {{ $isParent ? 'text-blue-900' : 'text-slate-700' }}">
+                                <td class="px-4 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-blue-900 bg-blue-50' : 'text-slate-700' }} font-bold">
                                     {{ number_format($item['target_total'], 0, ',', '.') }}
                                 </td>
-                                @foreach(array_keys($quarters) as $q)
-                                    <td class="px-2 py-3 border-r border-slate-200 text-right text-slate-500 text-[10px] {{ $isParent ? 'bg-blue-50' : '' }}">
-                                        {{ number_format($item['targets'][$q], 0, ',', '.') }}
+                                <td class="px-4 py-3 border-r border-slate-200 text-right {{ $isParent ? 'bg-blue-50' : '' }} {{ ($item['additional_target'] ?? 0) > 0 ? 'text-amber-700 font-bold' : 'text-slate-400' }}">
+                                    {{ ($item['additional_target'] ?? 0) > 0 ? '+'.number_format($item['additional_target'], 0, ',', '.') : '—' }}
+                                </td>
+                                <td class="px-4 py-3 border-r border-slate-200 text-right font-bold {{ $isParent ? 'bg-blue-100 text-blue-900' : 'bg-blue-50/50 text-blue-800' }}">
+                                    {{ number_format($item['target_with_additional'] ?? $item['target_total'], 0, ',', '.') }}
+                                </td>
+                                @foreach(['q1', 'q2', 'q3', 'q4'] as $q)
+                                    @php
+                                        $targetBase    = (float) ($item['targets_base'][$q] ?? $item['targets'][$q] ?? 0);
+                                        $tambQ         = ($item['targets'][$q] ?? 0) - $targetBase;
+                                        $pctBase       = $item['percentages_base'][$q] ?? 0;
+                                        $hasAdd        = $tambQ > 0;
+                                        $pctNaikTarget = $targetBase > 0 && $hasAdd ? ($tambQ / $targetBase) * 100 : 0;
+                                    @endphp
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right text-slate-600 {{ $isParent ? 'bg-blue-50' : '' }}">
+                                        {{ number_format($targetBase, 0, ',', '.') }}
                                     </td>
-                                    <td class="px-2 py-3 border-r border-slate-200 text-right font-bold {{ $isParent ? 'text-blue-900 bg-blue-50' : 'text-slate-900' }}">
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'bg-blue-50' : '' }} {{ $hasAdd ? 'text-amber-700 font-bold' : 'text-slate-300' }}">
+                                        {{ $hasAdd ? '+'.number_format($tambQ, 0, ',', '.') : '—' }}
+                                    </td>
+                                    <td class="px-3 py-3 border-r border-slate-200 text-right {{ $isParent ? 'text-blue-900 bg-blue-50' : 'text-slate-900 font-bold' }}">
                                         {{ number_format($item['realizations'][$q], 0, ',', '.') }}
                                     </td>
-                                    <td class="px-2 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-blue-50' : '' }}
-                                        {{ $item['percentages'][$q] >= 100 ? 'text-emerald-600' : ($item['percentages'][$q] >= 50 ? 'text-amber-500' : 'text-slate-700') }}">
-                                        {{ number_format($item['percentages'][$q], 1, ',', '.') }}%
+                                    <td class="px-3 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-blue-50' : '' }}
+                                        {{ $pctBase >= 100 ? 'text-emerald-600' : ($pctBase >= 50 ? 'text-amber-500' : 'text-slate-800') }}">
+                                        {{ number_format($pctBase, 1, ',', '.') }}%
+                                    </td>
+                                    <td class="px-3 py-3 border-r border-slate-200 text-center font-black {{ $isParent ? 'bg-emerald-50/40' : 'bg-emerald-50/20' }}
+                                        {{ !$hasAdd ? 'text-slate-300' : 'text-amber-600' }}">
+                                        {{ $hasAdd ? '+'.number_format($pctNaikTarget, 1, ',', '.').'%' : '—' }}
                                     </td>
                                 @endforeach
+                                <td class="px-4 py-3 border-r border-slate-200 text-right font-black {{ $isParent ? 'bg-blue-50' : '' }} {{ $item['more_less'] >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">
+                                    {{ number_format($item['more_less'], 0, ',', '.') }}
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="14" class="px-6 py-12 text-center text-slate-400">Belum ada data untuk tahun {{ $selectedYear }}</td>
+                                <td colspan="23" class="px-6 py-16 text-center text-slate-500 bg-white">
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-16 h-16 text-slate-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        <p class="text-base font-medium text-slate-400">Belum ada data realisasi untuk tahun {{ $selectedYear }}</p>
+                                    </div>
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                     @if($dashboard->isNotEmpty())
-                    <tfoot class="bg-slate-200 font-black border-t-2 border-slate-400 text-[11px]">
+                    <tfoot class="bg-slate-200 text-slate-900 font-black border-t-2 border-slate-400">
                         <tr>
-                            <td class="px-3 py-3 border-x border-slate-300 sticky left-0 bg-slate-200 z-10">JUMLAH TOTAL</td>
-                            <td class="px-3 py-3 border-r border-slate-300 text-right">{{ number_format($totalTarget, 0, ',', '.') }}</td>
-                            @foreach(array_keys($quarters) as $q)
-                                <td class="px-2 py-3 border-r border-slate-300 text-right text-slate-600 font-bold">
+                            <td class="px-4 py-4 border-x border-slate-300 sticky left-0 bg-slate-200 z-10 text-[12px] shadow-[1px_0_0_rgba(0,0,0,0.1)]">JUMLAH TOTAL</td>
+                            <td class="px-4 py-4 border-r border-slate-300 text-right text-[12px]">{{ number_format($totalTarget, 0, ',', '.') }}</td>
+                            <td class="px-4 py-4 border-r border-slate-300 text-right text-[12px] text-amber-700">
+                                {{ $totals['additional_target'] > 0 ? '+'.number_format($totals['additional_target'], 0, ',', '.') : '—' }}
+                            </td>
+                            <td class="px-4 py-4 border-r border-slate-300 text-right text-[12px] text-blue-800">
+                                {{ number_format($totals['target_with_additional'], 0, ',', '.') }}
+                            </td>
+                            @foreach(['q1', 'q2', 'q3', 'q4'] as $q)
+                                <td class="px-3 py-4 border-r border-slate-300 text-right text-slate-700 font-bold">
                                     {{ number_format($totals['quarters'][$q]['target'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-2 py-3 border-r border-slate-300 text-right underline">
+                                <td class="px-3 py-4 border-r border-slate-300 text-right text-amber-700 font-bold bg-amber-50/50">—</td>
+                                <td class="px-3 py-4 border-r border-slate-300 text-right text-slate-900 underline">
                                     {{ number_format($totals['quarters'][$q]['realization'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-2 py-3 border-r border-slate-300 text-center">
-                                    {{ number_format($totals['quarters'][$q]['percentage'], 1, ',', '.') }}%
+                                <td class="px-3 py-4 border-r border-slate-300 text-center">
+                                    {{ number_format($totals['quarters'][$q]['percentage'], 0, ',', '.') }}%
                                 </td>
+                                <td class="px-3 py-4 border-r border-slate-300 text-center bg-emerald-50/50 text-emerald-700">—</td>
                             @endforeach
+                            <td class="px-4 py-4 border-r border-slate-300 text-right underline">
+                                {{ number_format($totalMoreLess, 0, ',', '.') }}
+                            </td>
                         </tr>
                     </tfoot>
                     @endif
                 </table>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-400 italic">
+                * Angka Target dan Realisasi pada kolom Tribulan bersifat kumulatif (contoh: Tribulan 2 adalah akumulasi T1 + T2).
             </div>
         </div>
 
@@ -381,7 +430,7 @@
                 filteredH = data.historis.filter(h => h.periode >= `${thisYear - 2}-01`);
             }
 
-            const forecast = (dashCurrentRange === 'year' && SELECTED_YEAR < thisYear) ? [] : (data.forecast ?? []);
+            const forecast = (data.forecast ?? []);
             const fitted   = data.fitted ?? [];
 
             if (filteredH.length === 0) {
@@ -394,21 +443,17 @@
             document.getElementById('dashChartLoading').classList.add('hidden');
             document.getElementById('dashChartWrapper').classList.remove('hidden');
 
-            // Filter forecast: hanya tampilkan prediksi untuk range 'year' (tahun ini)
-            // Untuk 1y dan 2y, tidak tampilkan prediksi — hanya historis
-            let filteredForecast = [];
-            let filteredTarget = (data.target_bulanan ?? []);
+            // Batasi forecast hingga Desember tahun ini (SELECTED_YEAR)
+            const endPeriode = `${SELECTED_YEAR}-12`;
+            const filteredForecast = forecast.filter(f => f.periode <= endPeriode);
 
+            let filteredTarget = (data.target_bulanan ?? []);
             if (dashCurrentRange === 'year') {
-                const endPeriode = `${SELECTED_YEAR}-12`;
-                filteredForecast = forecast.filter(f => f.periode <= endPeriode);
                 filteredTarget = filteredTarget.filter(t => t.periode.startsWith(SELECTED_YEAR + '-'));
             } else if (dashCurrentRange === '1y') {
                 filteredTarget = filteredTarget.filter(t => t.periode >= `${thisYear - 1}-01`);
-                // tidak tampilkan prediksi
             } else {
                 filteredTarget = filteredTarget.filter(t => t.periode >= `${thisYear - 2}-01`);
-                // tidak tampilkan prediksi
             }
 
             const hMap      = Object.fromEntries(filteredH.map(h => [h.periode, h.nilai]));

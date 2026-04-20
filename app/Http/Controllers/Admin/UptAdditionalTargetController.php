@@ -15,6 +15,42 @@ use Illuminate\View\View;
 
 class UptAdditionalTargetController extends Controller
 {
+    public function index(Request $request): View
+    {
+        $currentYear = (int) now()->year;
+
+        $availableYears = UptAdditionalTarget::query()
+            ->distinct()->orderByDesc('year')->pluck('year')
+            ->merge([SimpaduTarget::query()->distinct()->orderByDesc('year')->pluck('year')->first()])
+            ->unique()->sortDesc()->values();
+
+        $selectedYear = (int) $request->query('year', $currentYear);
+
+        $additionalTargets = UptAdditionalTarget::query()
+            ->with('creator')
+            ->where('year', $selectedYear)
+            ->orderBy('no_ayat')
+            ->get();
+
+        $ayatLabels = SimpaduTarget::query()
+            ->where('year', $selectedYear)
+            ->pluck('keterangan', 'no_ayat');
+
+        $baseTargetMap = SimpaduTarget::query()
+            ->where('year', $selectedYear)
+            ->pluck('total_target', 'no_ayat')
+            ->map(fn ($v) => (float) $v);
+
+        return view('admin.upt-additional-targets.index', compact(
+            'additionalTargets',
+            'ayatLabels',
+            'baseTargetMap',
+            'selectedYear',
+            'availableYears',
+            'currentYear',
+        ));
+    }
+
     public function create(Request $request): View
     {
         $availableAyat = SimpaduTarget::query()

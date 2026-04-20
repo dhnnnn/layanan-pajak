@@ -66,7 +66,10 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index')->middleware('permission:view forecasting');
         Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data')->middleware('permission:view forecasting');
 
-        // Target Tambahan APBD — tidak ada halaman index, akses via Laporan Anggaran
+        // Target Tambahan APBD
+        Route::middleware('permission:view additional-targets')->group(function (): void {
+            Route::get('upt-additional-targets', [UptAdditionalTargetController::class, 'index'])->name('upt-additional-targets.index');
+        });
         Route::middleware('permission:manage additional-targets')->group(function (): void {
             Route::get('upt-additional-targets/create', [UptAdditionalTargetController::class, 'create'])->name('upt-additional-targets.create');
             Route::get('upt-additional-targets/preview', [UptAdditionalTargetController::class, 'preview'])->name('upt-additional-targets.preview');
@@ -79,6 +82,8 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         // Laporan Realisasi
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
+        Route::get('tax-targets/daily-realization', [TaxTargetController::class, 'dailyRealization'])->name('tax-targets.daily-realization');
+        Route::get('tax-targets/weekly-realization', [TaxTargetController::class, 'weeklyRealization'])->name('tax-targets.weekly-realization');
         Route::get('tax-targets/{taxType}/show', [TaxTargetController::class, 'show'])->name('tax-targets.show');
 
         // Monitoring Realisasi per UPT

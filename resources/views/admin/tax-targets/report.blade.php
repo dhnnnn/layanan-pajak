@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    {{-- Section: Target Tambahan APBD --}}
+    {{-- Section: Success Flash --}}
     @if(session('success'))
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2 mt-4">
             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -253,135 +253,10 @@
             {{ session('success') }}
         </div>
     @endif
-
-    @if($additionalTargets->isNotEmpty() || auth()->user()->can('manage additional-targets'))
-    @php
-        // Buat lookup target awal per no_ayat dari dashboard data
-        $baseTargetMap = collect($dashboard)->filter(fn($i) => !($i['is_parent'] ?? false))
-            ->pluck('target_total', 'no_ayat');
-    @endphp
-    <div class="bg-white rounded-xl border border-amber-200 overflow-hidden mt-4">
-        <div class="px-5 py-3 border-b border-amber-100 bg-amber-50 flex items-center justify-between">
-            <div>
-                <p class="text-sm font-semibold text-amber-900">Target Tambahan APBD — {{ $selectedYear }}</p>
-                <p class="text-xs text-amber-600 mt-0.5">Target di luar APBD awal, bersifat global untuk semua UPP.</p>
-            </div>
-            @if($additionalTargets->isNotEmpty())
-                <p class="text-xs text-amber-700 font-semibold">
-                    Total: +Rp {{ number_format($additionalTargets->sum('additional_target'), 0, ',', '.') }}
-                </p>
-            @endif
-        </div>
-        @if($additionalTargets->isNotEmpty())
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-100">
-                    <tr>
-                        <th class="px-4 py-2.5 text-left">Jenis Pajak</th>
-                        <th class="px-4 py-2.5 text-right">Target Awal</th>
-                        <th class="px-4 py-2.5 text-right">Target Tambahan</th>
-                        <th class="px-4 py-2.5 text-center">% Kenaikan</th>
-                        <th class="px-4 py-2.5 text-right">Total Target Baru</th>
-                        <th class="px-4 py-2.5 text-left">Catatan</th>
-                        <th class="px-4 py-2.5 text-left">Diperbarui Oleh</th>
-                        @can('manage additional-targets')
-                        <th class="px-4 py-2.5 text-center">Aksi</th>
-                        @endcan
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach($additionalTargets as $at)
-                        @php
-                            $baseTarget = (float) ($baseTargetMap[$at->no_ayat] ?? 0);
-                            $addTarget  = (float) $at->additional_target;
-                            $pctNaik    = $baseTarget > 0 ? ($addTarget / $baseTarget) * 100 : 0;
-                        @endphp
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-4 py-2.5 font-medium text-slate-800">
-                                <span class="text-xs font-mono text-slate-400 mr-1">{{ $at->no_ayat }}</span>
-                                {{ $ayatLabels[$at->no_ayat] ?? $at->no_ayat }}
-                            </td>
-                            <td class="px-4 py-2.5 text-right font-mono text-slate-500">
-                                Rp {{ number_format($baseTarget, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-2.5 text-right font-mono font-semibold text-amber-700">
-                                +Rp {{ number_format($addTarget, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-2.5 text-center">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-                                    {{ $pctNaik >= 20 ? 'bg-rose-100 text-rose-700' : ($pctNaik >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') }}">
-                                    ↑ {{ number_format($pctNaik, 1, ',', '.') }}%
-                                </span>
-                            </td>
-                            <td class="px-4 py-2.5 text-right font-mono font-bold text-blue-700">
-                                Rp {{ number_format($baseTarget + $addTarget, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-2.5 text-slate-500 text-xs max-w-xs truncate">{{ $at->notes ?? '—' }}</td>
-                            <td class="px-4 py-2.5 text-slate-400 text-xs">{{ $at->creator->name ?? '—' }}</td>
-                            @can('manage additional-targets')
-                            <td class="px-4 py-2.5 text-center">
-                                <div class="flex items-center justify-center gap-3">
-                                    <a href="{{ route('admin.upt-additional-targets.create', ['no_ayat' => $at->no_ayat, 'year' => $at->year]) }}"
-                                        class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</a>
-                                    <form method="POST" action="{{ route('admin.upt-additional-targets.destroy', $at) }}"
-                                        onsubmit="return confirm('Hapus target tambahan ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium">Hapus</button>
-                                    </form>
-                                </div>
-                            </td>
-                            @endcan
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot class="bg-slate-50 border-t-2 border-slate-200 text-xs font-bold text-slate-700">
-                    <tr>
-                        <td class="px-4 py-2.5">Total</td>
-                        <td class="px-4 py-2.5 text-right font-mono text-slate-600">
-                            Rp {{ number_format($baseTargetMap->only($additionalTargets->pluck('no_ayat'))->sum(), 0, ',', '.') }}
-                        </td>
-                        <td class="px-4 py-2.5 text-right font-mono text-amber-700">
-                            +Rp {{ number_format($additionalTargets->sum('additional_target'), 0, ',', '.') }}
-                        </td>
-                        <td class="px-4 py-2.5 text-center">
-                            @php
-                                $totalBase = $baseTargetMap->only($additionalTargets->pluck('no_ayat'))->sum();
-                                $totalAdd  = $additionalTargets->sum('additional_target');
-                                $totalPct  = $totalBase > 0 ? ($totalAdd / $totalBase) * 100 : 0;
-                            @endphp
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-                                {{ $totalPct >= 20 ? 'bg-rose-100 text-rose-700' : ($totalPct >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') }}">
-                                ↑ {{ number_format($totalPct, 1, ',', '.') }}%
-                            </span>
-                        </td>
-                        <td class="px-4 py-2.5 text-right font-mono text-blue-700">
-                            Rp {{ number_format($totalBase + $totalAdd, 0, ',', '.') }}
-                        </td>
-                        <td colspan="{{ auth()->user()->can('manage additional-targets') ? 3 : 2 }}"></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-        @else
-        <div class="px-5 py-6 text-center text-sm text-slate-400">
-            Belum ada target tambahan untuk tahun {{ $selectedYear }}.
-        </div>
-        @endif
-    </div>
-    @endif
-
     <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            height: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 4px;
-        }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
     </style>
 
     <script>
@@ -421,5 +296,164 @@
                 });
             }
         });
+    </script>
+
+    {{-- Tabel Penerimaan 6 Hari Terakhir --}}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6" id="dailySection">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-amber-500 text-base">★</span>
+                <h3 class="font-bold text-slate-800 text-sm">Penerimaan Pajak Daerah 6 Hari Terakhir</h3>
+            </div>
+            <div id="dailyLoading" class="text-xs text-slate-400">Memuat...</div>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-[11px] border-collapse bg-white" id="dailyTable">
+                <thead id="dailyThead" class="bg-slate-50 text-slate-900 uppercase font-bold border-b-2 border-slate-300"></thead>
+                <tbody id="dailyTbody" class="divide-y divide-slate-100"></tbody>
+                <tfoot id="dailyTfoot" class="bg-slate-200 text-slate-900 font-black border-t-2 border-slate-400"></tfoot>
+            </table>
+        </div>
+    </div>
+
+    {{-- Tabel Realisasi Bulan Ini per Minggu --}}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6" id="weeklySection">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                </svg>
+                <h3 class="font-bold text-slate-800 text-sm" id="weeklyTitle">Realisasi Penerimaan Pajak Daerah Bulan Ini</h3>
+            </div>
+            <div id="weeklyLoading" class="text-xs text-slate-400">Memuat...</div>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-[11px] border-collapse bg-white" id="weeklyTable">
+                <thead id="weeklyThead" class="bg-slate-50 text-slate-900 uppercase font-bold border-b-2 border-slate-300"></thead>
+                <tbody id="weeklyTbody" class="divide-y divide-slate-100"></tbody>
+                <tfoot id="weeklyTfoot" class="bg-slate-200 text-slate-900 font-black border-t-2 border-slate-400"></tfoot>
+            </table>
+        </div>
+    </div>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    </style>
+
+    <script>
+    (function() {
+        const YEAR = {{ $selectedYear }};
+        const MONTH = {{ now()->month }};
+        const DAILY_URL  = '{{ route('admin.tax-targets.daily-realization') }}';
+        const WEEKLY_URL = '{{ route('admin.tax-targets.weekly-realization') }}';
+
+        const fmt = v => v > 0 ? Math.round(v).toLocaleString('id-ID') : '0';
+        const fmtDate = d => {
+            const [y, m, day] = d.split('-');
+            const months = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+            return `${parseInt(day)} ${months[parseInt(m)]}`;
+        };
+        const pctColor = p => p >= 100 ? 'text-emerald-600' : p >= 50 ? 'text-amber-500' : 'text-rose-600';
+
+        // ── Daily Table ──────────────────────────────────────────────────
+        fetch(`${DAILY_URL}?year=${YEAR}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('dailyLoading').textContent = '';
+                if (!data.dates || data.dates.length === 0) {
+                    document.getElementById('dailyLoading').textContent = 'Tidak ada data.';
+                    return;
+                }
+
+                // Header
+                const thead = document.getElementById('dailyThead');
+                thead.innerHTML = `<tr>
+                    <th class="px-3 py-3 border border-slate-300 text-left min-w-[160px] sticky left-0 bg-slate-50 z-10">Nama Pajak</th>
+                    <th class="px-3 py-3 border border-slate-300 text-right min-w-[130px]">Target Total</th>
+                    ${data.dates.map(d => `<th class="px-3 py-3 border border-slate-300 text-right min-w-[110px] bg-slate-50">${fmtDate(d)}</th>`).join('')}
+                    <th class="px-3 py-3 border border-slate-300 text-right min-w-[120px] bg-blue-50 text-blue-800">Jumlah 6 Hari</th>
+                    <th class="px-3 py-3 border border-slate-300 text-right min-w-[130px]">Sisa Target</th>
+                    <th class="px-3 py-3 border border-slate-300 text-center min-w-[70px]">Prosen(%)</th>
+                </tr>`;
+
+                // Body
+                const tbody = document.getElementById('dailyTbody');
+                tbody.innerHTML = data.rows.map(row => `
+                    <tr class="${row.is_parent ? 'bg-blue-50 font-extrabold' : (row.is_child ? '' : 'font-bold')} hover:bg-slate-50 transition-colors">
+                        <td class="px-3 py-2.5 border-r border-slate-200 sticky left-0 z-10 whitespace-nowrap ${row.is_parent ? 'bg-blue-50 text-blue-900 font-black' : (row.is_child ? 'bg-white pl-7 text-slate-600 font-normal' : 'bg-white text-slate-900 font-black')}">${row.is_child ? '– ' : ''}${row.keterangan}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'text-blue-900 bg-blue-50' : 'text-slate-700'}">${fmt(row.target_total)}</td>
+                        ${data.dates.map(d => `<td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'bg-blue-50 text-blue-900' : (row.dates[d] > 0 ? 'text-slate-900' : 'text-slate-300')}">${fmt(row.dates[d] ?? 0)}</td>`).join('')}
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'text-blue-900 bg-blue-50' : 'text-blue-700'} font-bold">${fmt(row.jumlah_6hari)}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'bg-blue-50' : ''} text-slate-600">${fmt(row.sisa_target)}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-center font-black ${row.is_parent ? 'bg-blue-50' : ''} ${pctColor(row.persen)}">${row.persen.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+                // Footer
+                const t = data.totals;
+                document.getElementById('dailyTfoot').innerHTML = `<tr>
+                    <td class="px-3 py-3 border-r border-slate-300 sticky left-0 bg-slate-200 z-10">JUMLAH TOTAL</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.target)}</td>
+                    ${data.dates.map(d => `<td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.dates[d] ?? 0)}</td>`).join('')}
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.jumlah_6hari)}</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.sisa_target)}</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-center">—</td>
+                </tr>`;
+            })
+            .catch(() => { document.getElementById('dailyLoading').textContent = 'Gagal memuat.'; });
+
+        // ── Weekly Table ─────────────────────────────────────────────────
+        fetch(`${WEEKLY_URL}?year=${YEAR}&month=${MONTH}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('weeklyLoading').textContent = '';
+                document.getElementById('weeklyTitle').textContent =
+                    `Realisasi Penerimaan Pajak Daerah Bulan ${data.month_name} Tahun ${data.year}`;
+
+                const thead = document.getElementById('weeklyThead');
+                thead.innerHTML = `<tr>
+                    <th rowspan="2" class="px-3 py-3 border border-slate-300 text-left min-w-[160px] sticky left-0 bg-slate-50 z-10">Jenis Pajak</th>
+                    <th rowspan="2" class="px-3 py-3 border border-slate-300 text-right min-w-[130px]">Jumlah Target</th>
+                    <th colspan="5" class="px-3 py-2 border border-slate-300 text-center bg-slate-100">Realisasi ${data.month_name}</th>
+                    <th rowspan="2" class="px-3 py-3 border border-slate-300 text-right min-w-[130px] bg-blue-50 text-blue-800">Total Realisasi</th>
+                    <th rowspan="2" class="px-3 py-3 border border-slate-300 text-right min-w-[130px]">Sisa Target</th>
+                    <th rowspan="2" class="px-3 py-3 border border-slate-300 text-center min-w-[70px]">Prosen(%)</th>
+                </tr>
+                <tr>
+                    <th class="px-3 py-2 border border-slate-300 text-right min-w-[110px] bg-slate-50">Minggu I</th>
+                    <th class="px-3 py-2 border border-slate-300 text-right min-w-[110px] bg-slate-50">Minggu II</th>
+                    <th class="px-3 py-2 border border-slate-300 text-right min-w-[110px] bg-slate-50">Minggu III</th>
+                    <th class="px-3 py-2 border border-slate-300 text-right min-w-[110px] bg-slate-50">Minggu IV</th>
+                    <th class="px-3 py-2 border border-slate-300 text-right min-w-[110px] bg-blue-50 text-blue-700">Total</th>
+                </tr>`;
+
+                const tbody = document.getElementById('weeklyTbody');
+                tbody.innerHTML = data.rows.map(row => `
+                    <tr class="${row.is_parent ? 'bg-blue-50 font-extrabold' : (row.is_child ? '' : 'font-bold')} hover:bg-slate-50 transition-colors">
+                        <td class="px-3 py-2.5 border-r border-slate-200 sticky left-0 z-10 whitespace-nowrap ${row.is_parent ? 'bg-blue-50 text-blue-900 font-black' : (row.is_child ? 'bg-white pl-7 text-slate-600 font-normal' : 'bg-white text-slate-900 font-black')}">${row.is_child ? '– ' : ''}${row.keterangan}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'text-blue-900 bg-blue-50' : 'text-slate-700'}">${fmt(row.target_total)}</td>
+                        ${['I','II','III','IV'].map(w => `<td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'bg-blue-50 text-blue-900' : (row.weeks[w] > 0 ? 'text-slate-900' : 'text-slate-300')}">${fmt(row.weeks[w])}</td>`).join('')}
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'text-blue-900 bg-blue-50' : 'text-blue-700'} font-bold">${fmt(row.total_bulan)}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'text-blue-800 bg-blue-50' : 'text-blue-800'} font-bold">${fmt(row.total_realisasi)}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-right ${row.is_parent ? 'bg-blue-50' : ''} text-slate-600">${fmt(row.sisa_target)}</td>
+                        <td class="px-3 py-2.5 border-r border-slate-200 text-center font-black ${row.is_parent ? 'bg-blue-50' : ''} ${pctColor(row.persen)}">${row.persen.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+                const t = data.totals;
+                document.getElementById('weeklyTfoot').innerHTML = `<tr>
+                    <td class="px-3 py-3 border-r border-slate-300 sticky left-0 bg-slate-200 z-10">JUMLAH TOTAL</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.target)}</td>
+                    ${['I','II','III','IV'].map(w => `<td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.weeks[w])}</td>`).join('')}
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.total_bulan)}</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">—</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-right">${fmt(t.sisa_target)}</td>
+                    <td class="px-3 py-3 border-r border-slate-300 text-center">—</td>
+                </tr>`;
+            })
+            .catch(() => { document.getElementById('weeklyLoading').textContent = 'Gagal memuat.'; });
+    })();
     </script>
 </x-layouts.admin>
