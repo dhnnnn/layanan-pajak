@@ -343,13 +343,16 @@
                 if (!res.ok) {
                     aiRecError.textContent = data.error ?? 'Prediksi tidak tersedia.';
                     aiRecError.classList.remove('hidden');
+                } else if (data.no_recommendation) {
+                    aiRecError.textContent = `Prediksi ${data.model_used} menunjukkan realisasi (Rp ${Math.round(data.detail.prediksi_sisa_tahun).toLocaleString('id-ID')}) tidak melebihi sisa target (Rp ${Math.round(data.detail.sisa_target).toLocaleString('id-ID')}). Tidak ada rekomendasi tambahan.`;
+                    aiRecError.classList.remove('hidden');
                 } else {
                     // Update Alpine via dispatchEvent ke form element
                     document.getElementById('targetForm').dispatchEvent(
                         new CustomEvent('set-total', { detail: data.recommendation })
                     );
 
-                    aiRecInfo.textContent = `✨ Berdasarkan prediksi ${data.model_used} — total estimasi penerimaan ${data.horizon_months} bulan tersisa (${new Date().toLocaleString('id-ID', {month:'long'})} s/d Des ${new Date().getFullYear()})`;
+                    aiRecInfo.textContent = `✨ Prediksi ${data.model_used}: estimasi sisa tahun Rp ${Math.round(data.detail.prediksi_sisa_tahun).toLocaleString('id-ID')} vs sisa target Rp ${Math.round(data.detail.sisa_target).toLocaleString('id-ID')} → selisih +Rp ${Math.round(data.recommendation).toLocaleString('id-ID')}`;
                     aiRecInfo.classList.remove('hidden');
                 }
             } catch (e) {

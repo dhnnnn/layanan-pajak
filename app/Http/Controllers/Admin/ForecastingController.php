@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Tax\GetTaxForecastAction;
 use App\Http\Controllers\Controller;
 use App\Models\SimpaduTarget;
+use App\Models\UptAdditionalTarget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -55,7 +56,9 @@ class ForecastingController extends Controller
 
         // Tambahkan data target bulanan (spread dari tribulan ke per-bulan)
         $targetData = $this->buildMonthlyTargetData($ayat);
+        $targetTambahanData = $this->buildMonthlyAdditionalTargetData($ayat);
         $result['target_bulanan'] = $targetData;
+        $result['target_tambahan_bulanan'] = $targetTambahanData;
 
         return response()->json($result);
     }
@@ -96,6 +99,60 @@ class ForecastingController extends Controller
                 foreach ($months as $m) {
                     $result[] = [
                         'periode' => sprintf('%d-%02d', $t->year, $m),
+                        'nilai' => round($perMonth, 2),
+                    ];
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Spread target tambahan per tribulan ke data per-bulan.
+     *
+     * @return array<int, array{periode: string, nilai: float}>
+     */
+    private function buildMonthlyAdditionalTargetData(string $ayat): array
+    {
+        $currentYear = (int) now()->year;
+
+        $quarterMonths = [
+            'q1' => [1, 2, 3],
+            'q2' => [4, 5, 6],
+            'q3' => [7, 8, 9],
+            'q4' => [10, 11, 12],
+        ];
+
+        $query = UptAdditionalTarget::query()
+            ->where('year', $currentYear)
+            ->selectRaw('year, SUM(q1_additional) as q1, SUM(q2_additional) as q2, SUM(q3_additional) as q3, SUM(q4_additional) as q4')
+            ->groupBy('year');
+
+        if ($ayat !== 'all') {
+            $query->where('no_ayat', $ayat);
+        }
+
+        $rows = $query->get();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rows as $r) {
+            $qAdditionals = [
+                'q1' => (float) $r->q1,
+                'q2' => (float) $r->q2,
+                'q3' => (float) $r->q3,
+                'q4' => (float) $r->q4,
+            ];
+
+            foreach ($quarterMonths as $q => $months) {
+                $perMonth = $qAdditionals[$q] / 3;
+                foreach ($months as $m) {
+                    $result[] = [
+                        'periode' => sprintf('%d-%02d', $r->year, $m),
                         'nilai' => round($perMonth, 2),
                     ];
                 }

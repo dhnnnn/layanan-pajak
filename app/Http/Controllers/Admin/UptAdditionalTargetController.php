@@ -179,7 +179,7 @@ class UptAdditionalTargetController extends Controller
     {
         $noAyat = $request->query('no_ayat');
         $currentYear = (int) now()->year;
-        $currentQuarter = (int) ceil(now()->month / 3);
+        $currentMonth = (int) now()->month;
 
         if (! $noAyat) {
             return response()->json(['error' => 'Parameter no_ayat diperlukan.'], 422);
@@ -201,32 +201,50 @@ class UptAdditionalTargetController extends Controller
             return response()->json(['error' => 'Data prediksi tidak tersedia untuk jenis pajak ini.'], 503);
         }
 
-        // Ambil semua forecast yang ada (bisa tahun ini atau tahun depan)
-        // Hitung total dari bulan sekarang ke depan (sisa tribulan aktif hingga T4 tahun ini)
-        $currentMonth = (int) now()->month;
-        $endMonth = 12; // sampai Desember tahun ini
+        $totalTarget = (float) $target->total_target;
 
-        $total = collect($result['forecast'])
-            ->filter(function ($f) use ($currentYear, $currentMonth, $endMonth) {
+        // Realisasi yang sudah masuk (bulan-bulan sebelum bulan ini di tahun ini)
+        $realisasiSudahMasuk = collect($result['historis'] ?? [])
+            ->filter(function ($h) use ($currentYear, $currentMonth) {
+                $hYear = (int) substr($h['periode'], 0, 4);
+                $hMonth = (int) substr($h['periode'], 5, 2);
+
+                return $hYear === $currentYear && $hMonth < $currentMonth;
+            })
+            ->sum(fn ($h) => max(0.0, (float) $h['nilai']));
+
+        // Sisa target yang belum tercapai
+        $sisaTarget = $totalTarget - $realisasiSudahMasuk;
+
+        // Total prediksi dari bulan ini hingga Desember tahun ini
+        $prediksiSisaTahun = collect($result['forecast'])
+            ->filter(function ($f) use ($currentYear, $currentMonth) {
                 $fYear = (int) substr($f['periode'], 0, 4);
                 $fMonth = (int) substr($f['periode'], 5, 2);
 
-                return $fYear === $currentYear && $fMonth >= $currentMonth && $fMonth <= $endMonth;
+                return $fYear === $currentYear && $fMonth >= $currentMonth && $fMonth <= 12;
             })
             ->sum(fn ($f) => max(0.0, (float) $f['nilai']));
 
-        // Jika tidak ada forecast untuk tahun ini, ambil semua forecast yang tersedia
-        if ($total <= 0) {
-            $total = collect($result['forecast'])
-                ->sum(fn ($f) => max(0.0, (float) $f['nilai']));
-        }
+        // Rekomendasi = selisih prediksi vs sisa target
+        // Hanya rekomendasikan jika prediksi MELEBIHI sisa target (ada potensi kelebihan)
+        $selisih = $prediksiSisaTahun - $sisaTarget;
+        $recommendation = max(0, round($selisih));
 
-        $remainingMonths = $endMonth - $currentMonth + 1;
+        $remainingMonths = 12 - $currentMonth + 1;
 
         return response()->json([
-            'recommendation' => round($total),
+            'recommendation' => $recommendation,
             'model_used' => $result['model_used'] ?? 'SARIMA',
             'horizon_months' => $remainingMonths,
+            'detail' => [
+                'total_target' => round($totalTarget),
+                'realisasi_sudah_masuk' => round($realisasiSudahMasuk),
+                'sisa_target' => round($sisaTarget),
+                'prediksi_sisa_tahun' => round($prediksiSisaTahun),
+                'selisih' => round($selisih),
+            ],
+            'no_recommendation' => $recommendation <= 0,
         ]);
     }
 

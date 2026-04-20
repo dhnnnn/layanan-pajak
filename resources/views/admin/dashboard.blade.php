@@ -394,23 +394,39 @@
             document.getElementById('dashChartLoading').classList.add('hidden');
             document.getElementById('dashChartWrapper').classList.remove('hidden');
 
-            // Filter forecast: untuk range 'year', potong di Desember SELECTED_YEAR
-            let filteredForecast = forecast;
+            // Filter forecast: hanya tampilkan prediksi untuk range 'year' (tahun ini)
+            // Untuk 1y dan 2y, tidak tampilkan prediksi — hanya historis
+            let filteredForecast = [];
             let filteredTarget = (data.target_bulanan ?? []);
+
             if (dashCurrentRange === 'year') {
                 const endPeriode = `${SELECTED_YEAR}-12`;
                 filteredForecast = forecast.filter(f => f.periode <= endPeriode);
                 filteredTarget = filteredTarget.filter(t => t.periode.startsWith(SELECTED_YEAR + '-'));
             } else if (dashCurrentRange === '1y') {
                 filteredTarget = filteredTarget.filter(t => t.periode >= `${thisYear - 1}-01`);
+                // tidak tampilkan prediksi
             } else {
                 filteredTarget = filteredTarget.filter(t => t.periode >= `${thisYear - 2}-01`);
+                // tidak tampilkan prediksi
             }
 
             const hMap      = Object.fromEntries(filteredH.map(h => [h.periode, h.nilai]));
             const fMap      = Object.fromEntries(filteredForecast.map(f => [f.periode, f.nilai]));
             const fittedMap = Object.fromEntries(fitted.map(f => [f.periode, f.nilai]));
             const targetMap = Object.fromEntries(filteredTarget.map(t => [t.periode, t.nilai]));
+            const tambahanMap = Object.fromEntries(
+                ((data.target_tambahan_bulanan ?? [])
+                    .filter(t => {
+                        if (dashCurrentRange === 'year') return t.periode.startsWith(SELECTED_YEAR + '-');
+                        if (dashCurrentRange === '1y') return t.periode >= `${thisYear - 1}-01`;
+                        return t.periode >= `${thisYear - 2}-01`;
+                    }))
+                .map(t => [t.periode, t.nilai])
+            );
+
+            // Cek apakah ada data tambahan sama sekali
+            const hasTambahan = Object.keys(tambahanMap).some(k => tambahanMap[k] > 0);
 
             const allPeriodes = [...new Set([
                 ...filteredH.map(h => h.periode),
@@ -455,6 +471,23 @@
                             fill: false,
                             spanGaps: false,
                         },
+                        ...(hasTambahan ? [{
+                            // Target + Tambahan — amber putus-putus
+                            label: 'Target + Tambahan',
+                            data: allPeriodes.map(p => {
+                                const base = targetMap[p];
+                                const add = tambahanMap[p] ?? 0;
+                                return base !== undefined ? base + add : null;
+                            }),
+                            borderColor: '#d97706',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            tension: 0.3,
+                            fill: false,
+                            spanGaps: false,
+                        }] : []),
                         {
                             // Realisasi Aktual — biru solid dengan fill
                             label: 'Realisasi Aktual',
