@@ -46,7 +46,7 @@ class DashboardController extends Controller
         $priorityDistrictId = $request->query('priority_district_id'); // filter khusus prioritas penagihan
 
         if ($isKepalaUpt) {
-            $uptId = $user->upt_id;
+            $uptId = $user->upt()?->id;
             $assignedDistricts = $user->accessibleDistricts()->orderBy('name')->get();
 
             // Handle district selection for kepala_upt

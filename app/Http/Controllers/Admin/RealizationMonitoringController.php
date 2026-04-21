@@ -37,7 +37,7 @@ class RealizationMonitoringController extends Controller
     {
         // Kepala UPT hanya boleh akses UPT-nya sendiri
         $user = auth()->user();
-        if ($user->hasRole('kepala_upt') && $user->upt_id !== $upt->id) {
+        if ($user->hasRole('kepala_upt') && $user->upt()?->id !== $upt->id) {
             abort(403, 'Anda tidak memiliki akses ke UPT ini.');
         }
 
@@ -63,7 +63,7 @@ class RealizationMonitoringController extends Controller
 
         // Kepala UPT hanya boleh akses UPT-nya sendiri
         $user = auth()->user();
-        if ($user->hasRole('kepala_upt') && $user->upt_id !== $upt->id) {
+        if ($user->hasRole('kepala_upt') && $user->upt()?->id !== $upt->id) {
             abort(403, 'Anda tidak memiliki akses ke UPT ini.');
         }
 
