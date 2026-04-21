@@ -542,4 +542,140 @@
             }
         });
     </script>
+
+    {{-- Section: Target Tambahan per Kecamatan --}}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-1 h-5 bg-blue-500 rounded-full"></div>
+                <h3 class="font-bold text-slate-800 text-sm">Target Tambahan per Kecamatan</h3>
+                <span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{{ $year }}</span>
+            </div>
+            @can('manage additional-targets')
+            <div class="relative" id="addTargetDropdownWrapper">
+                <button type="button" id="addTargetDropdownBtn"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Tambah Target
+                </button>
+                <div id="addTargetDropdownMenu" class="hidden absolute right-0 z-20 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 max-h-56 overflow-y-auto">
+                    @foreach($assignedDistricts->sortBy('name') as $dist)
+                        <a href="{{ route('admin.district-additional-targets.create', [$dist, 'year' => $year]) }}"
+                            class="block px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors">
+                            {{ $dist->name }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+            @endcan
+        </div>
+
+        @if($districtAdditionalTargets->isNotEmpty())
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left">Kecamatan</th>
+                        <th class="px-4 py-2.5 text-left">Jenis Pajak</th>
+                        <th class="px-4 py-2.5 text-right">Target Awal</th>
+                        <th class="px-4 py-2.5 text-right">Target Tambahan</th>
+                        <th class="px-4 py-2.5 text-center">% Kenaikan</th>
+                        <th class="px-4 py-2.5 text-right">Total Target Baru</th>
+                        <th class="px-4 py-2.5 text-left">Catatan</th>
+                        @can('manage additional-targets')
+                        <th class="px-4 py-2.5 text-center">Aksi</th>
+                        @endcan
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach($districtAdditionalTargets as $dat)
+                        @php
+                            $baseTarget = (float) ($baseTargetMap[$dat->no_ayat] ?? 0);
+                            $addTarget  = (float) $dat->additional_target;
+                            $pctNaik    = $baseTarget > 0 ? ($addTarget / $baseTarget) * 100 : 0;
+                        @endphp
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-2.5 font-semibold text-slate-800">{{ $dat->district->name }}</td>
+                            <td class="px-4 py-2.5 text-slate-600">
+                                <span class="font-mono text-slate-400 mr-1">{{ $dat->no_ayat }}</span>
+                                {{ $ayatLabels[$dat->no_ayat] ?? $dat->no_ayat }}
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-mono text-slate-500">
+                                Rp {{ number_format($baseTarget, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-mono font-bold text-amber-700">
+                                +Rp {{ number_format($addTarget, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-2.5 text-center">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold
+                                    {{ $pctNaik >= 20 ? 'bg-rose-100 text-rose-700' : ($pctNaik >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') }}">
+                                    ↑ {{ number_format($pctNaik, 1, ',', '.') }}%
+                                </span>
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-mono font-bold text-blue-700">
+                                Rp {{ number_format($baseTarget + $addTarget, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-2.5 text-slate-400 max-w-xs truncate">{{ $dat->notes ?? '—' }}</td>
+                            @can('manage additional-targets')
+                            <td class="px-4 py-2.5 text-center">
+                                <div class="flex items-center justify-center gap-3">
+                                    <a href="{{ route('admin.district-additional-targets.create', [$dat->district, 'no_ayat' => $dat->no_ayat, 'year' => $dat->year]) }}"
+                                        class="text-blue-600 hover:text-blue-800 font-semibold transition-colors">Edit</a>
+                                    <form method="POST" action="{{ route('admin.district-additional-targets.destroy', [$dat->district, $dat]) }}"
+                                        onsubmit="return confirm('Hapus target tambahan ini?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="text-rose-500 hover:text-rose-700 font-semibold transition-colors">Hapus</button>
+                                    </form>
+                                </div>
+                            </td>
+                            @endcan
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-slate-100 border-t-2 border-slate-200 font-bold text-slate-700">
+                    <tr>
+                        <td class="px-4 py-2.5" colspan="3">Total ({{ $districtAdditionalTargets->count() }} entri)</td>
+                        <td class="px-4 py-2.5 text-right font-mono text-amber-700">
+                            +Rp {{ number_format($districtAdditionalTargets->sum('additional_target'), 0, ',', '.') }}
+                        </td>
+                        <td colspan="{{ auth()->user()->can('manage additional-targets') ? 4 : 3 }}"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        @else
+        <div class="px-5 py-8 text-center text-slate-400 text-sm">
+            Belum ada target tambahan untuk kecamatan yang ditugaskan ke petugas ini.
+            @can('manage additional-targets')
+            <div class="mt-3 flex flex-wrap justify-center gap-2">
+                @foreach($assignedDistricts->sortBy('name') as $dist)
+                    <a href="{{ route('admin.district-additional-targets.create', [$dist, 'year' => $year]) }}"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors border border-blue-200">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        {{ $dist->name }}
+                    </a>
+                @endforeach
+            </div>
+            @endcan
+        </div>
+        @endif
+    </div>
+
+    <script>
+        // Dropdown tambah target per kecamatan
+        const addBtn  = document.getElementById('addTargetDropdownBtn');
+        const addMenu = document.getElementById('addTargetDropdownMenu');
+        if (addBtn && addMenu) {
+            addBtn.addEventListener('click', () => addMenu.classList.toggle('hidden'));
+            document.addEventListener('click', e => {
+                if (!document.getElementById('addTargetDropdownWrapper').contains(e.target)) {
+                    addMenu.classList.add('hidden');
+                }
+            });
+        }
+    </script>
 </x-layouts.admin>

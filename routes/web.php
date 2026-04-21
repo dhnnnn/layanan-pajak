@@ -125,6 +125,16 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         Route::resource('districts', DistrictController::class)->except(['show']);
 
         // Target Tambahan per Kecamatan
+        Route::middleware('permission:manage additional-targets')->prefix('districts/{district}/additional-targets')->name('district-additional-targets.')->group(function (): void {
+            Route::get('create', [DistrictAdditionalTargetController::class, 'create'])->name('create');
+            Route::post('/', [DistrictAdditionalTargetController::class, 'store'])->name('store');
+            Route::get('preview', [DistrictAdditionalTargetController::class, 'preview'])->name('preview');
+            Route::get('pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('pct');
+            Route::get('ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('ai-recommendation');
+            Route::delete('{districtAdditionalTarget}', [DistrictAdditionalTargetController::class, 'destroy'])->name('destroy');
+        });
+
+        // Target Tambahan per Kecamatan
         Route::middleware('permission:manage additional-targets')
             ->prefix('districts/{district}/additional-targets')
             ->name('district-additional-targets.')

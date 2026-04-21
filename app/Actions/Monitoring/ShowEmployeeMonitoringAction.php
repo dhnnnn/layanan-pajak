@@ -2,24 +2,22 @@
 
 namespace App\Actions\Monitoring;
 
-use App\Models\TaxTarget;
+use App\Models\DistrictAdditionalTarget;
+use App\Models\SimpaduTarget;
+use App\Models\TaxType;
 use App\Models\Upt;
 use App\Models\User;
-use App\Models\TaxType;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ShowEmployeeMonitoringAction
 {
-    /**
-     * @return array
-     */
     public function __invoke(
-        Upt $upt, 
-        User $employee, 
-        int $year, 
-        int $month, 
+        Upt $upt,
+        User $employee,
+        int $year,
+        int $month,
         ?string $search = null,
         ?string $sortBy = 'tunggakan',
         ?string $sortDir = 'desc',
@@ -34,8 +32,8 @@ class ShowEmployeeMonitoringAction
 
         // Determine which district codes to filter by
         $selectedDistrict = $districtId ? $assignedDistricts->firstWhere('id', $districtId) : null;
-        $activeDistrictCodes = $selectedDistrict 
-            ? [$selectedDistrict->simpadu_code] 
+        $activeDistrictCodes = $selectedDistrict
+            ? [$selectedDistrict->simpadu_code]
             : $allAssignedDistrictCodes;
 
         if (empty($allAssignedDistrictCodes)) {
@@ -60,7 +58,7 @@ class ShowEmployeeMonitoringAction
         if ($statusFilter !== 'all') {
             $summaryQuery->where('status', (string) $statusFilter);
         }
-        
+
         if ($selectedTaxType) {
             $summaryQuery->where('ayat', $selectedTaxType->simpadu_code);
         }
@@ -81,7 +79,7 @@ class ShowEmployeeMonitoringAction
             'total_sptpd' => $totalSptpd,
             'total_bayar' => $totalBayar,
             'total_tunggakan' => $totalTunggakan,
-            'attainment' => $totalSptpd > 0 ? ($totalBayar / $totalSptpd) * 100 : 0
+            'attainment' => $totalSptpd > 0 ? ($totalBayar / $totalSptpd) * 100 : 0,
         ];
 
         // 3. WP Data Query
@@ -89,7 +87,7 @@ class ShowEmployeeMonitoringAction
 
         // Map sort columns to database expressions
         if ($sortBy === 'selisih') {
-            $orderBy = DB::raw('(SUM(stp.total_bayar) - SUM(stp.total_ketetapan)) ' . $orderDir);
+            $orderBy = DB::raw('(SUM(stp.total_bayar) - SUM(stp.total_ketetapan)) '.$orderDir);
         } elseif ($sortBy === 'name') {
             $orderBy = 'stp.nm_wp';
         } elseif ($sortBy === 'sptpd') {
@@ -107,17 +105,17 @@ class ShowEmployeeMonitoringAction
             ->where('stp.year', $year)
             ->where('stp.month', 0)
             ->whereIn('stp.kd_kecamatan', $activeDistrictCodes)
-            ->when($statusFilter !== 'all', fn($q) => $q->where('stp.status', (string) $statusFilter))
-            ->when($selectedTaxType, fn($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
+            ->when($statusFilter !== 'all', fn ($q) => $q->where('stp.status', (string) $statusFilter))
+            ->when($selectedTaxType, fn ($q) => $q->where('stp.ayat', $selectedTaxType->simpadu_code))
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->where('stp.nm_wp', 'like', "%{$search}%")
-                      ->orWhere('stp.npwpd', 'like', "%{$search}%")
-                      ->orWhere('stp.nop', 'like', "%{$search}%");
+                        ->orWhere('stp.npwpd', 'like', "%{$search}%")
+                        ->orWhere('stp.nop', 'like', "%{$search}%");
                 });
             })
             ->groupBy('stp.npwpd', 'stp.nop', 'stp.nm_wp', 'stp.nm_op', 'stp.almt_op',
-                      'stp.kd_kecamatan', 'stp.ayat', 'stp.status', 'tax_types.name')
+                'stp.kd_kecamatan', 'stp.ayat', 'stp.status', 'tax_types.name')
             ->selectRaw('
                 stp.npwpd, stp.nop, stp.nm_wp, stp.nm_op, stp.almt_op,
                 stp.kd_kecamatan, stp.ayat, stp.status,
@@ -127,7 +125,7 @@ class ShowEmployeeMonitoringAction
                 (CASE WHEN SUM(stp.total_ketetapan) > SUM(stp.total_bayar) THEN SUM(stp.total_ketetapan) - SUM(stp.total_bayar) ELSE 0 END) as total_tunggakan
             ');
 
-        if ($orderBy instanceof \Illuminate\Database\Query\Expression) {
+        if ($orderBy instanceof Expression) {
             $query->orderByRaw($orderBy);
         } else {
             $query->orderBy($orderBy, $orderDir);
@@ -135,6 +133,7 @@ class ShowEmployeeMonitoringAction
 
         $wpData = $query->paginate(15)->through(function ($row) {
             $statusStr = (string) ($row->status ?? '0');
+
             return [
                 'npwpd' => $row->npwpd,
                 'nop' => $row->nop,
@@ -156,6 +155,25 @@ class ShowEmployeeMonitoringAction
             ->orderByDesc('year')
             ->pluck('year');
 
+        // Target tambahan per kecamatan untuk kecamatan yang ditugaskan ke petugas ini
+        $districtIds = $assignedDistricts->pluck('id');
+        $districtAdditionalTargets = DistrictAdditionalTarget::query()
+            ->with(['district', 'creator'])
+            ->whereIn('district_id', $districtIds)
+            ->where('year', $year)
+            ->orderBy('district_id')
+            ->orderBy('no_ayat')
+            ->get();
+
+        $ayatLabels = SimpaduTarget::query()
+            ->where('year', $year)
+            ->pluck('keterangan', 'no_ayat');
+
+        $baseTargetMap = SimpaduTarget::query()
+            ->where('year', $year)
+            ->pluck('total_target', 'no_ayat')
+            ->map(fn ($v) => (float) $v);
+
         return [
             'upt' => $upt,
             'employee' => $employee,
@@ -164,6 +182,9 @@ class ShowEmployeeMonitoringAction
             'availableYears' => $availableYears,
             'taxTypes' => $taxTypes,
             'assignedDistricts' => $assignedDistricts,
+            'districtAdditionalTargets' => $districtAdditionalTargets,
+            'ayatLabels' => $ayatLabels,
+            'baseTargetMap' => $baseTargetMap,
             'year' => $year,
             'month' => $month,
             'sortBy' => $sortBy,
@@ -189,6 +210,9 @@ class ShowEmployeeMonitoringAction
             'availableYears' => collect([$year]),
             'taxTypes' => collect(),
             'assignedDistricts' => $employee->districts ?? collect(),
+            'districtAdditionalTargets' => collect(),
+            'ayatLabels' => collect(),
+            'baseTargetMap' => collect(),
             'year' => $year,
             'month' => $month,
             'sortBy' => 'tunggakan',
