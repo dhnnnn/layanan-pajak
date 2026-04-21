@@ -288,7 +288,7 @@
         // ── Forecast ──────────────────────────────────────────────────────
         const forecastUrl   = '{{ route('admin.realization-monitoring.district-forecast', $upt) }}';
         const selectedYear  = {{ $year }};
-        const CACHE_VERSION = 'v4';
+        const CACHE_VERSION = 'v5';
         let chartInstance = null;
         let currentRange  = 'year';
         let lastRawData   = null;
@@ -344,10 +344,19 @@
             lastRawData = data;
 
             // Filter historis & ketetapan berdasarkan selectedYear, hanya nilai > 0
-            const filteredH = filterByRange(data.historis ?? [], currentRange).filter(h => h.nilai > 0);
+            let filteredH = filterByRange(data.historis ?? [], currentRange).filter(h => h.nilai > 0);
+
+            // Jika filter 'year' menghasilkan < 3 bulan data, fallback ke '1y' agar grafik tetap informatif
+            if (currentRange === 'year' && filteredH.length < 3) {
+                filteredH = filterByRange(data.historis ?? [], '1y').filter(h => h.nilai > 0);
+            }
+
             const forecast  = data.forecast ?? [];
             const fitted    = data.fitted ?? [];
-            const ketetapan = filterByRange(data.total_ketetapan ?? [], currentRange).filter(k => k.nilai > 0);
+            let ketetapan = filterByRange(data.total_ketetapan ?? [], currentRange).filter(k => k.nilai > 0);
+            if (currentRange === 'year' && ketetapan.length < 3) {
+                ketetapan = filterByRange(data.total_ketetapan ?? [], '1y').filter(k => k.nilai > 0);
+            }
 
             const hMap      = Object.fromEntries(filteredH.map(h => [h.periode, h.nilai]));
             const fMap      = Object.fromEntries(forecast.map(f => [f.periode, f.nilai]));
@@ -365,8 +374,10 @@
             const showForecast = lastHPeriode && globalLastH && lastHPeriode === globalLastH;
 
             // Forecast hanya dari bulan setelah historis terakhir, dan hanya jika relevan
+            // Batasi forecast hingga Desember selectedYear
+            const endPeriode = `${selectedYear}-12`;
             const forecastVisible = showForecast
-                ? forecast.filter(f => f.periode > lastHPeriode)
+                ? forecast.filter(f => f.periode > lastHPeriode && f.periode <= endPeriode)
                 : [];
 
             // Gabungkan semua periode: historis + forecast yang relevan
