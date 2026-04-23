@@ -63,30 +63,36 @@
                 <div class="w-1 h-5 bg-orange-400 rounded-full"></div>
                 <h3 class="text-sm font-semibold text-slate-800">Prediksi Pendapatan per Kecamatan</h3>
             </div>
-            {{-- Dropdown Kecamatan --}}
-            <div class="relative" id="districtDropdownWrapper">
-                <button type="button" id="districtDropdownBtn"
-                    class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    <span id="districtDropdownLabel">Semua Kecamatan</span>
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-                <div id="districtDropdownMenu" class="hidden absolute right-0 z-20 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1 max-h-64 overflow-y-auto">
-                    <button type="button" data-id="all" data-label="Semua Kecamatan"
-                        class="district-opt w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 font-black text-blue-600 bg-blue-50/50">
-                        Semua Kecamatan
-                    </button>
-                    @foreach($upt->districts->sortBy('name') as $district)
-                        <button type="button" data-id="{{ $district->id }}" data-label="{{ $district->name }}"
-                            class="district-opt w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 text-slate-700 font-bold">
-                            {{ $district->name }}
-                        </button>
-                    @endforeach
+            
+            <div class="flex items-center gap-3">
+                {{-- Hidden inputs for forecast --}}
+                <input type="hidden" id="districtHidden" value="all">
+                <input type="hidden" id="taxTypeHidden" value="all">
+                
+                {{-- Dropdown Kecamatan dengan Search --}}
+                <div class="w-52 [&_button]:min-h-[38px] [&_button]:items-center">
+                    <x-searchable-select 
+                        target-input-id="districtHidden"
+                        :value="'all'" 
+                        placeholder="Semua Kecamatan"
+                        :options="array_merge(
+                            [['id' => 'all', 'name' => 'Semua Kecamatan']],
+                            $upt->districts->sortBy('name')->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->toArray()
+                        )"
+                    />
+                </div>
+
+                {{-- Dropdown Jenis Pajak dengan Search --}}
+                <div class="w-64 [&_button]:min-h-[38px] [&_button]:items-center">
+                    <x-searchable-select 
+                        target-input-id="taxTypeHidden"
+                        :value="'all'" 
+                        placeholder="Semua Jenis Pajak"
+                        :options="array_merge(
+                            [['id' => 'all', 'name' => 'Semua Jenis Pajak']],
+                            $taxTypes->map(fn($t) => ['id' => $t->simpadu_code, 'name' => $t->name])->toArray()
+                        )"
+                    />
                 </div>
             </div>
         </div>
@@ -276,23 +282,17 @@
             });
         });
 
-        // ── District dropdown ──────────────────────────────────────────────
-        const distMenu = document.getElementById('districtDropdownMenu');
-        const distLbl  = document.getElementById('districtDropdownLabel');
-
-        document.getElementById('districtDropdownBtn').addEventListener('click', () => distMenu.classList.toggle('hidden'));
-        document.addEventListener('click', e => {
-            if (!document.getElementById('districtDropdownWrapper').contains(e.target)) distMenu.classList.add('hidden');
-        });
-
         // ── Forecast ──────────────────────────────────────────────────────
         const forecastUrl   = '{{ route('admin.realization-monitoring.district-forecast', $upt) }}';
         const selectedYear  = {{ $year }};
-        const CACHE_VERSION = 'v5';
+        const CACHE_VERSION = 'v8'; // Updated cache version
         let chartInstance = null;
         let currentRange  = 'year';
         let lastRawData   = null;
         let resizeTimer   = null;
+
+        let selectedDistrictId = 'all';
+        let selectedTaxTypeId  = 'all';
 
         const elLoading   = document.getElementById('forecastLoading');
         const elError     = document.getElementById('forecastError');
@@ -396,7 +396,6 @@
 
             // Dataset prediksi: fitted untuk historis + forecast untuk masa depan
             // Fitted hanya untuk periode dalam range historis yang dipilih
-            const fittedCutoff = `${selectedYear - 2}-01`;
             const predDataset  = allPeriods.map(p => {
                 if (fMap[p] !== undefined && p > (lastHPeriode ?? '')) return fMap[p]; // forecast
                 if (p === lastHPeriode) return fittedMap[p] ?? hMap[p];               // titik sambung
@@ -405,16 +404,27 @@
             });
 
             // Bridge: isi gap antara akhir historis dan awal forecast agar garis tidak putus
+            // Gunakan interpolasi linear untuk mengisi gap
             if (lastHPeriode && forecastVisible.length > 0) {
                 const lastHIdx  = allPeriods.indexOf(lastHPeriode);
-                const firstFIdx = allPeriods.findIndex(p => fMap[p] !== undefined);
+                const firstFIdx = allPeriods.findIndex(p => fMap[p] !== undefined && p > lastHPeriode);
+                
                 if (firstFIdx > lastHIdx + 1) {
                     const startVal = predDataset[lastHIdx] ?? hMap[lastHPeriode];
                     const endVal   = predDataset[firstFIdx];
                     const steps    = firstFIdx - lastHIdx;
+                    
+                    // Interpolasi linear untuk mengisi gap
                     for (let i = 1; i < steps; i++) {
                         predDataset[lastHIdx + i] = startVal + (endVal - startVal) * (i / steps);
                     }
+                }
+            }
+            
+            // Isi gap di dalam data historis juga (jika ada bulan yang hilang)
+            for (let i = 1; i < predDataset.length - 1; i++) {
+                if (predDataset[i] === null && predDataset[i - 1] !== null && predDataset[i + 1] !== null) {
+                    predDataset[i] = (predDataset[i - 1] + predDataset[i + 1]) / 2;
                 }
             }
 
@@ -457,9 +467,9 @@
                             borderWidth: 2,
                             borderDash: [6, 4],
                             pointRadius: 3,
-                            tension: 0.3,
+                            tension: 0.4,
                             fill: true,
-                            spanGaps: false,
+                            spanGaps: true,
                         },
                     ],
                 },
@@ -483,9 +493,13 @@
             });
 
             const kec = data.kecamatan ?? 'Kecamatan';
+            // Get label dari hidden input value
+            const taxTypeVal = taxTypeHidden.value;
+            const taxTypeOpt = document.querySelector(`[x-data*="taxTypeHidden"] button span`);
+            const ayat = taxTypeOpt ? taxTypeOpt.textContent.trim() : (taxTypeVal === 'all' ? 'Semua Jenis Pajak' : taxTypeVal);
             const firstP = filteredH[0]?.periode ?? '';
             const lastFP = forecastVisible.length > 0 ? forecastVisible[forecastVisible.length - 1].periode : (lastHPeriode ?? '');
-            document.getElementById('forecastChartTitle').textContent    = `Prediksi Realisasi Pendapatan — ${kec}`;
+            document.getElementById('forecastChartTitle').textContent    = `Prediksi Realisasi — ${kec} (${ayat})`;
             document.getElementById('forecastChartSubtitle').textContent =
                 `${firstP ? fmtPeriode(firstP) : ''} s/d ${lastFP ? fmtPeriode(lastFP) : ''} · ${filteredH.length} bulan historis · garis oranye = prediksi realisasi`;
             document.getElementById('forecastModelUsed').textContent     = data.model_used ?? '-';
@@ -497,59 +511,92 @@
             document.getElementById('forecastMae').textContent = fmtFull(Math.round(data.mae ?? 0));
         }
 
-        async function loadForecast(districtId) {
-            const cacheKey = `forecast_${CACHE_VERSION}_{{ $upt->id }}_${districtId}_{{ $year }}`;
+        async function loadForecast() {
+            console.log('loadForecast called with:', { selectedDistrictId, selectedTaxTypeId });
+            
+            const cacheKey = `forecast_${CACHE_VERSION}_{{ $upt->id }}_${selectedDistrictId}_${selectedTaxTypeId}_{{ $year }}`;
             const cached   = sessionStorage.getItem(cacheKey);
 
             if (cached) {
                 try {
+                    console.log('Using cached data');
                     renderChart(JSON.parse(cached));
                     showState('chart');
                     return;
                 } catch (e) {
+                    console.error('Cache parse error:', e);
                     sessionStorage.removeItem(cacheKey);
+                    // fall through to fetch fresh data
                 }
             }
 
             showState('loading');
+            console.log('Fetching forecast from:', `${forecastUrl}?district_id=${selectedDistrictId}&tax_type_id=${selectedTaxTypeId}`);
+            
             try {
-                const res = await fetch(`${forecastUrl}?district_id=${districtId}`);
+                const res = await fetch(`${forecastUrl}?district_id=${selectedDistrictId}&tax_type_id=${selectedTaxTypeId}`);
+                console.log('Fetch response:', res.status, res.statusText);
+                
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    elErrorMsg.textContent = err.error ?? `Error ${res.status}: Gagal memuat prediksi.`;
+                    console.error('Forecast error:', err);
+                    
+                    // Pesan error yang lebih informatif
+                    let errorMsg = err.error ?? `Error ${res.status}: Gagal memuat prediksi.`;
+                    if (err.data_count !== undefined) {
+                        errorMsg += ` (Data tersedia: ${err.data_count} bulan)`;
+                    }
+                    
+                    elErrorMsg.textContent = errorMsg;
                     showState('error');
                     return;
                 }
                 const data = await res.json();
+                console.log('Forecast data received:', data);
                 sessionStorage.setItem(cacheKey, JSON.stringify(data));
                 renderChart(data);
                 showState('chart');
             } catch (e) {
-                elErrorMsg.textContent = 'Forecasting service tidak dapat dijangkau.';
+                console.error('Fetch exception:', e);
+                elErrorMsg.textContent = 'Forecasting service tidak dapat dijangkau. Pastikan service ARIMA sedang berjalan.';
                 showState('error');
             }
         }
 
-        document.querySelectorAll('.district-opt').forEach(opt => {
-            opt.addEventListener('click', function () {
-                document.querySelectorAll('.district-opt').forEach(o => {
-                    o.classList.remove('font-black', 'text-blue-600', 'bg-blue-50/50');
-                    o.classList.add('text-slate-700', 'font-bold');
-                });
-                this.classList.add('font-black', 'text-blue-600', 'bg-blue-50/50');
-                this.classList.remove('text-slate-700', 'font-bold');
-                distLbl.textContent = this.dataset.label;
-                distMenu.classList.add('hidden');
-                loadForecast(this.dataset.id);
+        // ── District & Tax Type Select (searchable-select) ───────────────
+        const districtHidden = document.getElementById('districtHidden');
+        const taxTypeHidden = document.getElementById('taxTypeHidden');
+
+        if (!districtHidden || !taxTypeHidden) {
+            console.error('Hidden inputs not found!', {
+                districtHidden: !!districtHidden,
+                taxTypeHidden: !!taxTypeHidden
             });
-        });
+            showState('error');
+            elErrorMsg.textContent = 'Komponen dropdown tidak ditemukan. Silakan refresh halaman.';
+        } else {
+            // Listen to change events from searchable-select component
+            districtHidden.addEventListener('change', function() {
+                selectedDistrictId = this.value || 'all';
+                console.log('District changed:', selectedDistrictId);
+                loadForecast();
+            });
 
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => { if (lastRawData) renderChart(lastRawData); }, 300);
-        });
+            taxTypeHidden.addEventListener('change', function() {
+                selectedTaxTypeId = this.value || 'all';
+                console.log('Tax type changed:', selectedTaxTypeId);
+                loadForecast();
+            });
 
-        loadForecast('all');
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => { if (lastRawData) renderChart(lastRawData); }, 300);
+            });
+
+            // Initial load
+            console.log('Initial load forecast with:', { selectedDistrictId, selectedTaxTypeId });
+            loadForecast();
+        }
     })();
     </script>
 

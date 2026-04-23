@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -267,18 +268,34 @@ class RealizationMonitoringController extends Controller
     public function districtForecast(Request $request, Upt $upt, GetDistrictForecastAction $getForecast): JsonResponse
     {
         $districtId = $request->query('district_id');
+        $noAyat = $request->query('tax_type_id'); // Using no_ayat as the filter
+
+        Log::info('District forecast request', [
+            'upt' => $upt->name,
+            'district_id' => $districtId,
+            'tax_type_id' => $noAyat,
+        ]);
+
+        if ($noAyat === 'all') {
+            $noAyat = null;
+        }
 
         if ($districtId === 'all') {
             // Aggregate semua kecamatan di UPT
             $districts = $upt->districts()->get();
             if ($districts->isEmpty()) {
+                Log::warning('No districts found for UPT', ['upt' => $upt->name]);
+
                 return response()->json(['error' => 'Tidak ada kecamatan di UPT ini.'], 404);
             }
 
             $codes = $districts->pluck('simpadu_code')->filter()->toArray();
 
+            Log::info('Fetching data for districts', ['codes' => $codes]);
+
             $rows = DB::table('simpadu_tax_payers')
                 ->whereIn('kd_kecamatan', $codes)
+                ->when($noAyat, fn ($q) => $q->where('ayat', $noAyat))
                 ->where('status', '1')
                 ->where('month', '>', 0)
                 ->selectRaw('year, month, SUM(total_bayar) as total_bayar, SUM(total_ketetapan) as total_ketetapan')
@@ -287,8 +304,13 @@ class RealizationMonitoringController extends Controller
                 ->orderBy('month')
                 ->get();
 
+            Log::info('Data rows fetched', ['count' => $rows->count()]);
+
             if ($rows->count() < 2) {
-                return response()->json(['error' => 'Data tidak tersedia.'], 503);
+                return response()->json([
+                    'error' => 'Data historis tidak cukup. Minimal 2 bulan data berurutan diperlukan untuk prediksi.',
+                    'data_count' => $rows->count(),
+                ], 503);
             }
 
             // Potong data di gap pertama agar ARIMA tidak terpengaruh data acak
@@ -344,7 +366,7 @@ class RealizationMonitoringController extends Controller
             try {
                 $response = Http::timeout(config('forecasting.timeout', 60))
                     ->post(config('forecasting.url').'/forecast/from-data', [
-                        'jenis_pajak' => 'realisasi_all',
+                        'jenis_pajak' => 'realisasi_all'.($noAyat ? "_{$noAyat}" : ''),
                         'data' => $historisData,
                         'horizon' => 12,
                     ]);
@@ -368,7 +390,7 @@ class RealizationMonitoringController extends Controller
             return response()->json(['error' => 'Kecamatan tidak ditemukan.'], 404);
         }
 
-        $result = $getForecast($district);
+        $result = $getForecast($district, $noAyat);
 
         if ($result === null) {
             return response()->json(['error' => 'Data tidak tersedia atau forecasting service tidak dapat dijangkau.'], 503);

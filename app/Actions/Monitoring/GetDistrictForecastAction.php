@@ -16,9 +16,9 @@ class GetDistrictForecastAction
      *
      * @return array{kecamatan: string, historis: array, forecast: array, model_used: string, mae: float, mape: float, aic: float|null}|null
      */
-    public function __invoke(District $district, int $horizon = 12): ?array
+    public function __invoke(District $district, ?string $noAyat = null, int $horizon = 12): ?array
     {
-        $cacheKey = "forecast:district:{$district->id}:{$horizon}";
+        $cacheKey = "forecast:district:{$district->id}:".($noAyat ?? 'all').":{$horizon}";
         $cacheTtl = (int) config('forecasting.cache_ttl', 3600);
 
         if ($cacheTtl > 0) {
@@ -32,6 +32,7 @@ class GetDistrictForecastAction
         // Gunakan month > 0 (data per bulan, bukan summary month=0)
         $rows = DB::table('simpadu_tax_payers')
             ->where('kd_kecamatan', $district->simpadu_code)
+            ->when($noAyat, fn ($q) => $q->where('ayat', $noAyat))
             ->where('status', '1')
             ->where('month', '>', 0)
             ->selectRaw('year, month, SUM(total_bayar) as total_bayar, SUM(total_ketetapan) as total_ketetapan')
@@ -102,7 +103,7 @@ class GetDistrictForecastAction
         try {
             $response = Http::timeout(config('forecasting.timeout', 60))
                 ->post(config('forecasting.url').'/forecast/from-data', [
-                    'jenis_pajak' => 'realisasi_'.$district->simpadu_code,
+                    'jenis_pajak' => 'realisasi_'.$district->simpadu_code.($noAyat ? "_{$noAyat}" : ''),
                     'data' => $historisData,
                     'horizon' => $horizon,
                 ]);

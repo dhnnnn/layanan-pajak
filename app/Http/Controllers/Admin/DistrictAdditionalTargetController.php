@@ -13,12 +13,54 @@ use App\Models\SimpaduTarget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class DistrictAdditionalTargetController extends Controller
 {
-    public function create(Request $request, District $district, GetAyatPctAction $getAyatPct): View
+    public function index(Request $request): View
     {
+        $currentYear = (int) now()->year;
+
+        $availableYears = DistrictAdditionalTarget::query()
+            ->distinct()->orderByDesc('year')->pluck('year')
+            ->merge([SimpaduTarget::query()->distinct()->orderByDesc('year')->pluck('year')->first()])
+            ->unique()->sortDesc()->values();
+
+        $selectedYear = (int) $request->query('year', $currentYear);
+
+        $additionalTargets = DistrictAdditionalTarget::query()
+            ->with(['district', 'creator'])
+            ->where('year', $selectedYear)
+            ->orderBy('district_id')
+            ->orderBy('no_ayat')
+            ->get();
+
+        $ayatLabels = SimpaduTarget::query()
+            ->where('year', $selectedYear)
+            ->pluck('keterangan', 'no_ayat');
+
+        $baseTargetMap = SimpaduTarget::query()
+            ->where('year', $selectedYear)
+            ->pluck('total_target', 'no_ayat')
+            ->map(fn ($v) => (float) $v);
+
+        return view('admin.district-additional-targets.index', compact(
+            'additionalTargets',
+            'ayatLabels',
+            'baseTargetMap',
+            'selectedYear',
+            'availableYears',
+            'currentYear',
+        ));
+    }
+
+    public function create(Request $request, ?District $district, GetAyatPctAction $getAyatPct): View
+    {
+        if (! $district?->exists && $request->filled('district_id')) {
+            $district = District::find($request->query('district_id'));
+        }
+
         $currentYear = (int) now()->year;
         $currentQuarter = (int) ceil(now()->month / 3);
 
@@ -31,7 +73,7 @@ class DistrictAdditionalTargetController extends Controller
             ->mapWithKeys(fn ($t) => [$t->no_ayat => $t->keterangan]);
 
         $existing = null;
-        if ($request->filled('no_ayat')) {
+        if ($district?->exists && $request->filled('no_ayat')) {
             $existing = DistrictAdditionalTarget::query()
                 ->where('district_id', $district->id)
                 ->where('no_ayat', $request->query('no_ayat'))
@@ -44,11 +86,13 @@ class DistrictAdditionalTargetController extends Controller
             ? $getAyatPct($selectedAyat, $currentYear)
             : ['pcts' => [1 => 25.0, 2 => 25.0, 3 => 25.0, 4 => 25.0], 'base_target' => 0.0];
 
-        $upt = $district->upts()->first();
+        $upt = $district?->exists ? $district->upts()->first() : null;
+        $districts = ! $district?->exists ? District::orderBy('name')->get() : [];
 
         return view('admin.district-additional-targets.create', [
             'district' => $district,
             'upt' => $upt,
+            'districts' => $districts,
             'availableAyat' => $availableAyat,
             'currentYear' => $currentYear,
             'currentQuarter' => $currentQuarter,
@@ -60,9 +104,13 @@ class DistrictAdditionalTargetController extends Controller
 
     public function store(
         Request $request,
-        District $district,
+        ?District $district,
         StoreDistrictAdditionalTargetAction $storeAction,
     ): RedirectResponse {
+        if (! $district?->exists) {
+            $district = District::findOrFail($request->input('district_id'));
+        }
+
         $data = $request->validate([
             'no_ayat' => ['required', 'string', 'max:20'],
             'start_quarter' => ['required', 'integer', 'min:1', 'max:4'],
@@ -76,7 +124,7 @@ class DistrictAdditionalTargetController extends Controller
             total: (float) $data['additional_target'],
             startQ: (int) $data['start_quarter'],
             notes: $data['notes'] ?? null,
-            createdBy: auth()->id(),
+            createdBy: Auth::id(),
         );
 
         $upt = $district->upts()->first();
@@ -106,9 +154,20 @@ class DistrictAdditionalTargetController extends Controller
 
     public function preview(
         Request $request,
-        District $district,
+        ?District $district,
         DistributeDistrictTargetByPctAction $distribute,
     ): JsonResponse {
+        if (! $district?->exists) {
+            $districtId = $request->query('district_id');
+            if (! $districtId) {
+                return response()->json(['error' => 'Kecamatan harus dipilih.'], 422);
+            }
+            $district = District::find($districtId);
+            if (! $district) {
+                return response()->json(['error' => 'Kecamatan tidak ditemukan.'], 404);
+            }
+        }
+
         $noAyat = $request->query('no_ayat');
         $additionalTarget = (float) $request->query('additional_target', 0);
         $currentYear = (int) now()->year;
@@ -165,7 +224,7 @@ class DistrictAdditionalTargetController extends Controller
         ]);
     }
 
-    public function getPct(Request $request, District $district, GetAyatPctAction $getAyatPct): JsonResponse
+    public function getPct(Request $request, ?District $district, GetAyatPctAction $getAyatPct): JsonResponse
     {
         $noAyat = $request->query('no_ayat');
         $currentYear = (int) now()->year;
@@ -179,9 +238,20 @@ class DistrictAdditionalTargetController extends Controller
 
     public function aiRecommendation(
         Request $request,
-        District $district,
+        ?District $district,
         GetDistrictAiRecommendationAction $getRecommendation,
     ): JsonResponse {
+        if (! $district?->exists) {
+            $districtId = $request->query('district_id');
+            if (! $districtId) {
+                return response()->json(['error' => 'Kecamatan harus dipilih.'], 422);
+            }
+            $district = District::find($districtId);
+            if (! $district) {
+                return response()->json(['error' => 'Kecamatan tidak ditemukan.'], 404);
+            }
+        }
+
         $noAyat = $request->query('no_ayat');
 
         if (! $noAyat) {

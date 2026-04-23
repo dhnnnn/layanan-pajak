@@ -553,21 +553,40 @@
             </div>
             @can('manage additional-targets')
             <div class="relative" id="addTargetDropdownWrapper">
-                <button type="button" id="addTargetDropdownBtn"
-                    class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Tambah Target
-                </button>
-                <div id="addTargetDropdownMenu" class="hidden absolute right-0 z-20 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 max-h-56 overflow-y-auto">
-                    @foreach($assignedDistricts->sortBy('name') as $dist)
-                        <a href="{{ route('admin.district-additional-targets.create', [$dist, 'year' => $year]) }}"
-                            class="block px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors">
-                            {{ $dist->name }}
-                        </a>
-                    @endforeach
-                </div>
+                @if($assignedDistricts->count() === 1)
+                    <a href="{{ route('admin.district-additional-targets.create-specific', [$assignedDistricts->first(), 'year' => $year]) }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Tambah Target
+                    </a>
+                @else
+                    <button type="button" id="addTargetDropdownBtn"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Tambah Target
+                        <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div id="addTargetDropdownMenu" class="hidden absolute right-0 z-20 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 overflow-hidden">
+                        <div class="px-4 py-2 border-b border-slate-50 mb-1">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Kecamatan</p>
+                        </div>
+                        @foreach($assignedDistricts->sortBy('name') as $dist)
+                            <a href="{{ route('admin.district-additional-targets.create-specific', [$dist, 'year' => $year]) }}"
+                                class="flex items-center justify-between px-4 py-2.5 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-bold transition-all group">
+                                <span>{{ $dist->name }}</span>
+                                <svg class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
             </div>
             @endcan
         </div>
@@ -621,7 +640,7 @@
                             @can('manage additional-targets')
                             <td class="px-4 py-2.5 text-center">
                                 <div class="flex items-center justify-center gap-3">
-                                    <a href="{{ route('admin.district-additional-targets.create', [$dat->district, 'no_ayat' => $dat->no_ayat, 'year' => $dat->year]) }}"
+                                    <a href="{{ route('admin.district-additional-targets.create-specific', [$dat->district, 'no_ayat' => $dat->no_ayat, 'year' => $dat->year]) }}"
                                         class="text-blue-600 hover:text-blue-800 font-semibold transition-colors">Edit</a>
                                     <form method="POST" action="{{ route('admin.district-additional-targets.destroy', [$dat->district, $dat]) }}"
                                         onsubmit="return confirm('Hapus target tambahan ini?')">
@@ -646,20 +665,35 @@
             </table>
         </div>
         @else
-        <div class="px-5 py-8 text-center text-slate-400 text-sm">
-            Belum ada target tambahan untuk kecamatan yang ditugaskan ke petugas ini.
+        <div class="flex flex-col items-center justify-center py-16 px-5 text-center">
+            <div class="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-4 ring-8 ring-slate-50/50">
+                <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+            </div>
+            <h4 class="text-slate-900 font-bold text-base mb-1">Belum Ada Target Tambahan</h4>
+            <p class="text-slate-400 text-sm max-w-xs mx-auto mb-8 leading-relaxed">
+                Petugas ini belum memiliki target tambahan untuk tahun {{ $year }} pada kecamatan yang ditugaskan.
+            </p>
+            
             @can('manage additional-targets')
-            <div class="mt-3 flex flex-wrap justify-center gap-2">
-                @foreach($assignedDistricts->sortBy('name') as $dist)
-                    <a href="{{ route('admin.district-additional-targets.create', [$dist, 'year' => $year]) }}"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors border border-blue-200">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                @if($assignedDistricts->count() === 1)
+                    <a href="{{ route('admin.district-additional-targets.create-specific', [$assignedDistricts->first(), 'year' => $year]) }}"
+                        class="inline-flex items-center gap-2.5 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl transition-all shadow-xl shadow-blue-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        {{ $dist->name }}
+                        Buat Target Sekarang
                     </a>
-                @endforeach
-            </div>
+                @else
+                    <button type="button" onclick="document.getElementById('addTargetDropdownBtn').click()"
+                        class="inline-flex items-center gap-2.5 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl transition-all shadow-xl shadow-blue-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Pilih Kecamatan & Tambah Target
+                    </button>
+                @endif
             @endcan
         </div>
         @endif

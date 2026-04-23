@@ -3,6 +3,7 @@
 namespace App\Actions\Monitoring;
 
 use App\Models\TaxTarget;
+use App\Models\TaxType;
 use App\Models\Upt;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +21,7 @@ class ShowUptMonitoringAction
      *     months: array<int, string>,
      *     year: int,
      *     month: int,
+     *     taxTypes: Collection,
      * }
      */
     public function __invoke(Upt $upt, int $year, int $month): array
@@ -35,6 +37,13 @@ class ShowUptMonitoringAction
             ->unique()
             ->sortDesc()
             ->values();
+
+        $result['taxTypes'] = TaxType::query()
+            ->whereNull('parent_id')
+            ->whereNotNull('simpadu_code')
+            ->where('simpadu_code', 'not like', '41407%')
+            ->orderBy('name')
+            ->get(['id', 'name', 'simpadu_code']);
 
         return $result;
     }

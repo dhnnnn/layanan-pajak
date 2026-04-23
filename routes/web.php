@@ -80,6 +80,19 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
             Route::delete('upt-additional-targets/{uptAdditionalTarget}', [UptAdditionalTargetController::class, 'destroy'])->name('upt-additional-targets.destroy');
         });
 
+        // Target Tambahan Kecamatan (Global Index)
+        Route::middleware('permission:view additional-targets')->group(function (): void {
+            Route::get('district-additional-targets', [DistrictAdditionalTargetController::class, 'index'])->name('district-additional-targets.index');
+        });
+
+        Route::middleware('permission:manage additional-targets')->group(function (): void {
+            Route::get('district-additional-targets/create', [DistrictAdditionalTargetController::class, 'create'])->name('district-additional-targets.create');
+            Route::post('district-additional-targets', [DistrictAdditionalTargetController::class, 'store'])->name('district-additional-targets.store');
+            Route::get('district-additional-targets/preview', [DistrictAdditionalTargetController::class, 'preview'])->name('district-additional-targets.preview');
+            Route::get('district-additional-targets/pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('district-additional-targets.pct');
+            Route::get('district-additional-targets/ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('district-additional-targets.ai-recommendation');
+        });
+
         // Laporan Realisasi
         Route::get('tax-targets/report', [TaxTargetController::class, 'report'])->name('tax-targets.report');
         Route::get('tax-targets/export', [TaxTargetController::class, 'export'])->name('tax-targets.export');
@@ -124,28 +137,15 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
         // Kecamatan
         Route::resource('districts', DistrictController::class)->except(['show']);
 
-        // Target Tambahan per Kecamatan
+        // Target Tambahan per Kecamatan (Per District)
         Route::middleware('permission:manage additional-targets')->prefix('districts/{district}/additional-targets')->name('district-additional-targets.')->group(function (): void {
-            Route::get('create', [DistrictAdditionalTargetController::class, 'create'])->name('create');
-            Route::post('/', [DistrictAdditionalTargetController::class, 'store'])->name('store');
-            Route::get('preview', [DistrictAdditionalTargetController::class, 'preview'])->name('preview');
-            Route::get('pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('pct');
-            Route::get('ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('ai-recommendation');
+            Route::get('create', [DistrictAdditionalTargetController::class, 'create'])->name('create-specific');
+            Route::post('/', [DistrictAdditionalTargetController::class, 'store'])->name('store-specific');
+            Route::get('preview', [DistrictAdditionalTargetController::class, 'preview'])->name('preview-specific');
+            Route::get('pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('pct-specific');
+            Route::get('ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('ai-recommendation-specific');
             Route::delete('{districtAdditionalTarget}', [DistrictAdditionalTargetController::class, 'destroy'])->name('destroy');
         });
-
-        // Target Tambahan per Kecamatan
-        Route::middleware('permission:manage additional-targets')
-            ->prefix('districts/{district}/additional-targets')
-            ->name('district-additional-targets.')
-            ->group(function (): void {
-                Route::get('create', [DistrictAdditionalTargetController::class, 'create'])->name('create');
-                Route::post('/', [DistrictAdditionalTargetController::class, 'store'])->name('store');
-                Route::get('preview', [DistrictAdditionalTargetController::class, 'preview'])->name('preview');
-                Route::get('pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('pct');
-                Route::get('ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('ai-recommendation');
-                Route::delete('{districtAdditionalTarget}', [DistrictAdditionalTargetController::class, 'destroy'])->name('destroy');
-            });
 
         // Pegawai
         Route::resource('employees', EmployeeController::class);
