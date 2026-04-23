@@ -74,7 +74,6 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::middleware('permission:manage additional-targets')->group(function (): void {
             Route::get('upt-additional-targets/create', [UptAdditionalTargetController::class, 'create'])->name('upt-additional-targets.create');
             Route::get('upt-additional-targets/preview', [UptAdditionalTargetController::class, 'preview'])->name('upt-additional-targets.preview');
-            Route::get('upt-additional-targets/ai-recommendation', [UptAdditionalTargetController::class, 'aiRecommendation'])->name('upt-additional-targets.ai-recommendation');
             Route::get('upt-additional-targets/pct', [UptAdditionalTargetController::class, 'getPct'])->name('upt-additional-targets.pct');
             Route::post('upt-additional-targets', [UptAdditionalTargetController::class, 'store'])->name('upt-additional-targets.store');
             Route::delete('upt-additional-targets/{uptAdditionalTarget}', [UptAdditionalTargetController::class, 'destroy'])->name('upt-additional-targets.destroy');
@@ -90,7 +89,6 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
             Route::post('district-additional-targets', [DistrictAdditionalTargetController::class, 'store'])->name('district-additional-targets.store');
             Route::get('district-additional-targets/preview', [DistrictAdditionalTargetController::class, 'preview'])->name('district-additional-targets.preview');
             Route::get('district-additional-targets/pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('district-additional-targets.pct');
-            Route::get('district-additional-targets/ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('district-additional-targets.ai-recommendation');
         });
 
         // Laporan Realisasi
@@ -143,7 +141,6 @@ Route::middleware(['auth', 'role:admin|kepala_upt'])
             Route::post('/', [DistrictAdditionalTargetController::class, 'store'])->name('store-specific');
             Route::get('preview', [DistrictAdditionalTargetController::class, 'preview'])->name('preview-specific');
             Route::get('pct', [DistrictAdditionalTargetController::class, 'getPct'])->name('pct-specific');
-            Route::get('ai-recommendation', [DistrictAdditionalTargetController::class, 'aiRecommendation'])->name('ai-recommendation-specific');
             Route::delete('{districtAdditionalTarget}', [DistrictAdditionalTargetController::class, 'destroy'])->name('destroy');
         });
 

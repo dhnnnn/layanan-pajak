@@ -152,17 +152,9 @@
                                 class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 pl-3 pr-8 text-sm border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">%</span>
                         </div>
-                        {{-- Tombol AI --}}
-                        <button type="button" id="btnAiRec"
-                            class="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                            title="Isi otomatis berdasarkan prediksi AI">
-                            <span id="aiRecIcon">✨</span>
-                            <span id="aiRecLabel">Rekomendasi AI</span>
-                        </button>
+
                     </div>
                     <div class="flex items-center gap-2 mt-1.5">
-                        <p id="aiRecInfo" class="hidden text-[11px] text-violet-600 font-medium"></p>
-                        <p id="aiRecError" class="hidden text-[11px] text-rose-500 font-medium"></p>
                         <template x-if="baseTarget > 0 && pctInput > 0">
                             <p class="text-[11px] text-slate-400">
                                 Target awal: <span class="font-semibold text-slate-600" x-text="'Rp ' + Math.round(baseTarget).toLocaleString('id-ID')"></span>
@@ -279,27 +271,20 @@
 
     <script>
         const previewUrl        = '{{ route('admin.upt-additional-targets.preview') }}';
-        const aiRecUrl          = '{{ route('admin.upt-additional-targets.ai-recommendation') }}';
         const pctUrl            = '{{ route('admin.upt-additional-targets.pct') }}';
         const noAyatInput       = document.getElementById('no_ayat_input');
         const additionalInput   = document.getElementById('additional_target');
         const modal             = document.getElementById('previewModal');
         const form              = document.getElementById('targetForm');
-        const btnAiRec          = document.getElementById('btnAiRec');
-        const aiRecInfo         = document.getElementById('aiRecInfo');
-        const aiRecError        = document.getElementById('aiRecError');
-
         const fmt = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
         const qLabel = q => ['', 'Tribulan 1 (Jan–Mar)', 'Tribulan 2 (Apr–Jun)', 'Tribulan 3 (Jul–Sep)', 'Tribulan 4 (Okt–Des)'][q];
 
         // ── Update pcts saat jenis pajak berubah ──────────────────────────
         async function fetchAndSetPcts(noAyat) {
             if (!noAyat) return;
-            // Reset nominal & info AI saat ganti jenis pajak
+            // Reset nominal saat ganti jenis pajak
             form.dispatchEvent(new CustomEvent('set-total', { detail: 0 }));
             additionalInput.value = '';
-            aiRecInfo.classList.add('hidden');
-            aiRecError.classList.add('hidden');
 
             try {
                 const res = await fetch(`${pctUrl}?no_ayat=${encodeURIComponent(noAyat)}`);
@@ -318,51 +303,6 @@
         // Juga listen change event
         noAyatInput.addEventListener('change', () => {
             if (noAyatInput.value) fetchAndSetPcts(noAyatInput.value);
-        });
-
-        // ── Tombol Rekomendasi AI ─────────────────────────────────────────
-        btnAiRec.addEventListener('click', async () => {
-            const noAyat = noAyatInput.value;
-            if (!noAyat) {
-                aiRecError.textContent = 'Pilih jenis pajak terlebih dahulu.';
-                aiRecError.classList.remove('hidden');
-                aiRecInfo.classList.add('hidden');
-                return;
-            }
-
-            btnAiRec.disabled = true;
-            document.getElementById('aiRecIcon').textContent = '⏳';
-            document.getElementById('aiRecLabel').textContent = 'Memuat...';
-            aiRecInfo.classList.add('hidden');
-            aiRecError.classList.add('hidden');
-
-            try {
-                const res = await fetch(`${aiRecUrl}?no_ayat=${encodeURIComponent(noAyat)}`);
-                const data = await res.json();
-
-                if (!res.ok) {
-                    aiRecError.textContent = data.error ?? 'Prediksi tidak tersedia.';
-                    aiRecError.classList.remove('hidden');
-                } else if (data.no_recommendation) {
-                    aiRecError.textContent = `Prediksi ${data.model_used} menunjukkan realisasi (Rp ${Math.round(data.detail.prediksi_sisa_tahun).toLocaleString('id-ID')}) tidak melebihi sisa target (Rp ${Math.round(data.detail.sisa_target).toLocaleString('id-ID')}). Tidak ada rekomendasi tambahan.`;
-                    aiRecError.classList.remove('hidden');
-                } else {
-                    // Update Alpine via dispatchEvent ke form element
-                    document.getElementById('targetForm').dispatchEvent(
-                        new CustomEvent('set-total', { detail: data.recommendation })
-                    );
-
-                    aiRecInfo.textContent = `✨ Prediksi ${data.model_used}: estimasi sisa tahun Rp ${Math.round(data.detail.prediksi_sisa_tahun).toLocaleString('id-ID')} vs sisa target Rp ${Math.round(data.detail.sisa_target).toLocaleString('id-ID')} → selisih +Rp ${Math.round(data.recommendation).toLocaleString('id-ID')}`;
-                    aiRecInfo.classList.remove('hidden');
-                }
-            } catch (e) {
-                aiRecError.textContent = 'Gagal terhubung ke forecasting service.';
-                aiRecError.classList.remove('hidden');
-            } finally {
-                btnAiRec.disabled = false;
-                document.getElementById('aiRecIcon').textContent = '✨';
-                document.getElementById('aiRecLabel').textContent = 'Rekomendasi AI';
-            }
         });
 
         // ── Preview Modal ─────────────────────────────────────────────────

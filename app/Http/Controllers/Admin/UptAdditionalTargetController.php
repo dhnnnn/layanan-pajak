@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Upt\GetAyatPctAction;
-use App\Actions\Upt\GetUptAiRecommendationAction;
 use App\Actions\Upt\PreviewUptAdditionalTargetAction;
 use App\Actions\Upt\StoreUptAdditionalTargetAction;
 use App\Http\Controllers\Controller;
@@ -126,25 +125,6 @@ class UptAdditionalTargetController extends Controller
 
         if (isset($result['error'])) {
             return response()->json($result, 404);
-        }
-
-        return response()->json($result);
-    }
-
-    public function aiRecommendation(
-        Request $request,
-        GetUptAiRecommendationAction $getRecommendation,
-    ): JsonResponse {
-        $noAyat = $request->query('no_ayat');
-
-        if (! $noAyat) {
-            return response()->json(['error' => 'Parameter no_ayat diperlukan.'], 422);
-        }
-
-        $result = $getRecommendation($noAyat);
-
-        if (isset($result['error'])) {
-            return response()->json($result, 503);
         }
 
         return response()->json($result);

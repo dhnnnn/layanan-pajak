@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\District\DistributeDistrictTargetByPctAction;
-use App\Actions\District\GetDistrictAiRecommendationAction;
 use App\Actions\District\StoreDistrictAdditionalTargetAction;
 use App\Actions\Upt\GetAyatPctAction;
 use App\Http\Controllers\Controller;
@@ -236,34 +235,4 @@ class DistrictAdditionalTargetController extends Controller
         return response()->json($getAyatPct($noAyat, $currentYear));
     }
 
-    public function aiRecommendation(
-        Request $request,
-        ?District $district,
-        GetDistrictAiRecommendationAction $getRecommendation,
-    ): JsonResponse {
-        if (! $district?->exists) {
-            $districtId = $request->query('district_id');
-            if (! $districtId) {
-                return response()->json(['error' => 'Kecamatan harus dipilih.'], 422);
-            }
-            $district = District::find($districtId);
-            if (! $district) {
-                return response()->json(['error' => 'Kecamatan tidak ditemukan.'], 404);
-            }
-        }
-
-        $noAyat = $request->query('no_ayat');
-
-        if (! $noAyat) {
-            return response()->json(['error' => 'Parameter no_ayat diperlukan.'], 422);
-        }
-
-        $result = $getRecommendation($district, $noAyat);
-
-        if (isset($result['error'])) {
-            return response()->json($result, 503);
-        }
-
-        return response()->json($result);
-    }
 }

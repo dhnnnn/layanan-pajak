@@ -156,78 +156,8 @@
                                 class="w-full rounded-lg bg-slate-50 text-slate-700 py-2.5 pl-3 pr-8 text-sm border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">%</span>
                         </div>
-                        <button type="button" id="btnAiRec"
-                            class="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
-                            title="Rekomendasi AI berdasarkan prediksi SARIMA kecamatan ini">
-                            <span id="aiRecIcon">✨</span>
-                            <span id="aiRecLabel">Rekomendasi AI</span>
-                        </button>
                     </div>
                     <div class="mt-1.5 space-y-0.5">
-                        <p id="aiRecInfo" class="hidden text-[11px] text-violet-600 font-medium"></p>
-                        <p id="aiRecError" class="hidden text-[11px] text-rose-500 font-medium"></p>
-                        {{-- Panel AI Insight --}}
-                        <div id="aiInsightPanel" class="hidden mt-3 rounded-xl border border-violet-200 bg-violet-50/60 p-4 space-y-3">
-                            <div class="flex items-center gap-2 text-xs font-bold text-violet-700 uppercase tracking-wider">
-                                <span>✨</span>
-                                <span>Analisis Rekomendasi AI</span>
-                            </div>
-
-                            {{-- Stats Row: 4 kartu --}}
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                <div class="rounded-lg bg-white border border-slate-200 p-2.5 text-center">
-                                    <p class="text-[10px] text-slate-500 font-semibold mb-0.5">Estimasi Penerimaan</p>
-                                    <p id="aiStatSarima" class="text-xs font-bold text-slate-700 font-mono">—</p>
-                                    <p class="text-[9px] text-slate-400 mt-0.5">Prediksi sisa tahun ini</p>
-                                </div>
-                                <div class="rounded-lg bg-white border border-slate-200 p-2.5 text-center">
-                                    <p class="text-[10px] text-amber-600 font-semibold mb-0.5">WP Tidak Lapor</p>
-                                    <p id="aiStatGap" class="text-xs font-bold text-amber-600 font-mono">—</p>
-                                    <p class="text-[9px] text-slate-400 mt-0.5">Potensi dari WP yang absen</p>
-                                </div>
-                                <div class="rounded-lg bg-white border border-slate-200 p-2.5 text-center">
-                                    <p class="text-[10px] text-rose-500 font-semibold mb-0.5">WP Kurang Bayar</p>
-                                    <p id="aiStatAnomali" class="text-xs font-bold text-rose-600 font-mono">—</p>
-                                    <p class="text-[9px] text-slate-400 mt-0.5">Potensi dari WP belum lunas</p>
-                                </div>
-                                <div class="rounded-lg bg-violet-100 border border-violet-300 p-2.5 text-center">
-                                    <p class="text-[10px] text-violet-600 font-semibold mb-0.5">Total Rekomendasi</p>
-                                    <p id="aiStatTotal" class="text-xs font-bold text-violet-800 font-mono">—</p>
-                                    <p class="text-[9px] text-violet-400 mt-0.5">Target tambahan yang disarankan</p>
-                                </div>
-                            </div>
-
-                            {{-- Gap Table --}}
-                            <div id="aiGapTable" class="hidden">
-                                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">WP Tidak Lapor per Bulan</p>
-                                <div class="overflow-x-auto rounded-lg border border-slate-200">
-                                    <table class="w-full text-[11px] text-left">
-                                        <thead>
-                                            <tr class="bg-slate-50 border-b border-slate-200">
-                                                <th class="px-3 py-2 font-semibold text-slate-500">Bulan</th>
-                                                <th class="px-3 py-2 font-semibold text-slate-500 text-right">WP Hilang</th>
-                                                <th class="px-3 py-2 font-semibold text-slate-500 text-right">Rata-rata/WP</th>
-                                                <th class="px-3 py-2 font-semibold text-slate-500 text-right">Potensi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="aiGapTableBody" class="divide-y divide-slate-100"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {{-- Anomaly Summary --}}
-                            <div id="aiAnomalyRow" class="hidden rounded-lg bg-rose-50 border border-rose-200 px-3 py-2.5 text-[11px] text-rose-700 flex flex-wrap gap-x-4 gap-y-1">
-                                <span>Belum bayar sama sekali: <strong id="aiAnomalyBelumBayar">0</strong> WP</span>
-                                <span>Bayar kurang dari 50%: <strong id="aiAnomalyAnomali">0</strong> WP</span>
-                                <span>Total potensi tagihan: <strong id="aiAnomalyPotensi" class="font-mono">—</strong></span>
-                            </div>
-
-                            {{-- Action List --}}
-                            <div id="aiActionList" class="hidden">
-                                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Rekomendasi Tindakan</p>
-                                <ul id="aiActionItems" class="space-y-1 text-[11px] text-slate-600 list-none"></ul>
-                            </div>
-                        </div>
                         <template x-if="baseTarget > 0 && pctInput > 0">
                             <p class="text-[11px] text-slate-400">
                                 Target awal: <span class="font-semibold text-slate-600" x-text="'Rp ' + Math.round(baseTarget).toLocaleString('id-ID')"></span>
@@ -328,17 +258,12 @@
     <script>
     (function () {
         const previewUrl = '{{ route('admin.district-additional-targets.preview') }}';
-        const aiRecUrl   = '{{ route('admin.district-additional-targets.ai-recommendation') }}';
         const pctUrl     = '{{ route('admin.district-additional-targets.pct') }}';
         const districtInput  = document.getElementById('district_id_input');
         const noAyatInput    = document.getElementById('no_ayat_input');
         const additionalInput = document.getElementById('additional_target');
         const modal  = document.getElementById('previewModal');
         const form   = document.getElementById('targetForm');
-        const btnAiRec  = document.getElementById('btnAiRec');
-        const aiRecInfo = document.getElementById('aiRecInfo');
-        const aiRecError = document.getElementById('aiRecError');
-
         const fmt = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
         const qLabel = q => ['', 'Tribulan 1 (Jan–Mar)', 'Tribulan 2 (Apr–Jun)', 'Tribulan 3 (Jul–Sep)', 'Tribulan 4 (Okt–Des)'][q];
 
@@ -347,9 +272,6 @@
             if (!noAyat) return;
             form.dispatchEvent(new CustomEvent('set-total', { detail: 0 }));
             additionalInput.value = '';
-            aiRecInfo.classList.add('hidden');
-            aiRecError.classList.add('hidden');
-            document.getElementById('aiInsightPanel').classList.add('hidden');
             try {
                 const districtId = districtInput.value;
                 if (!districtId) return;
@@ -370,118 +292,6 @@
         });
         districtObserver.observe(districtInput, { attributes: true, attributeFilter: ['value'] });
         noAyatInput.addEventListener('change', () => { if (noAyatInput.value) fetchAndSetPcts(noAyatInput.value); });
-
-        function renderAiInsight(data) {
-            const detail = data.detail ?? {};
-            const gap    = data.gap_detail ?? [];
-            const anom   = data.anomaly_detail ?? {};
-            const fmt    = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
-            const monthNames = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-
-            // Stats row
-            document.getElementById('aiStatSarima').textContent  = fmt(detail.prediksi_sisa_tahun ?? 0);
-            document.getElementById('aiStatGap').textContent     = fmt(detail.total_potensi_gap ?? 0);
-            document.getElementById('aiStatAnomali').textContent = fmt(detail.total_potensi_anomali ?? 0);
-            document.getElementById('aiStatTotal').textContent   = fmt(data.recommendation ?? 0);
-
-            // Gap table
-            const gapRows = gap.filter(g => g.wp_hilang_count > 0);
-            const gapTable = document.getElementById('aiGapTable');
-            if (gapRows.length > 0) {
-                const tbody = document.getElementById('aiGapTableBody');
-                tbody.innerHTML = gapRows.map(g => `
-                    <tr>
-                        <td class="px-3 py-1.5 text-slate-600">${monthNames[g.month] ?? g.month}</td>
-                        <td class="px-3 py-1.5 text-right font-semibold text-amber-700">${g.wp_hilang_count}</td>
-                        <td class="px-3 py-1.5 text-right font-mono text-slate-500">${fmt(g.avg_bayar_per_wp)}</td>
-                        <td class="px-3 py-1.5 text-right font-mono font-bold text-amber-600">${fmt(g.potensi_gap)}</td>
-                    </tr>
-                `).join('');
-                gapTable.classList.remove('hidden');
-            } else {
-                gapTable.classList.add('hidden');
-            }
-
-            // Anomaly row
-            const anomalyRow = document.getElementById('aiAnomalyRow');
-            if ((anom.wp_belum_bayar_count ?? 0) > 0 || (anom.wp_anomali_count ?? 0) > 0) {
-                document.getElementById('aiAnomalyBelumBayar').textContent = anom.wp_belum_bayar_count ?? 0;
-                document.getElementById('aiAnomalyAnomali').textContent    = anom.wp_anomali_count ?? 0;
-                document.getElementById('aiAnomalyPotensi').textContent    = fmt(anom.total_potensi_anomali ?? 0);
-                anomalyRow.classList.remove('hidden');
-            } else {
-                anomalyRow.classList.add('hidden');
-            }
-
-            // Action list
-            const actions = [];
-            const totalWpHilang = gapRows.reduce((s, g) => s + g.wp_hilang_count, 0);
-            if (totalWpHilang > 0) {
-                actions.push(`📋 Lakukan kunjungan ke ${totalWpHilang} WP yang tidak lapor tahun ini`);
-            }
-            if ((anom.wp_anomali_count ?? 0) > 0) {
-                actions.push(`💰 Lakukan penagihan ke ${anom.wp_anomali_count} WP dengan pembayaran kurang dari 50%`);
-            }
-            if ((anom.wp_belum_bayar_count ?? 0) > 0) {
-                actions.push(`🔔 Lakukan penagihan ke ${anom.wp_belum_bayar_count} WP yang belum bayar sama sekali`);
-            }
-
-            const actionList = document.getElementById('aiActionList');
-            if (actions.length > 0) {
-                document.getElementById('aiActionItems').innerHTML = actions
-                    .map(a => `<li class="flex items-start gap-1.5"><span>${a}</span></li>`)
-                    .join('');
-                actionList.classList.remove('hidden');
-            } else {
-                actionList.classList.add('hidden');
-            }
-
-            document.getElementById('aiInsightPanel').classList.remove('hidden');
-        }
-
-        // Tombol Rekomendasi AI
-        btnAiRec.addEventListener('click', async () => {
-            const noAyat = noAyatInput.value;
-            if (!noAyat) {
-                aiRecError.textContent = 'Pilih jenis pajak terlebih dahulu.';
-                aiRecError.classList.remove('hidden');
-                aiRecInfo.classList.add('hidden');
-                return;
-            }
-            btnAiRec.disabled = true;
-            document.getElementById('aiRecIcon').textContent = '⏳';
-            document.getElementById('aiRecLabel').textContent = 'Memuat...';
-            aiRecInfo.classList.add('hidden');
-            aiRecError.classList.add('hidden');
-            document.getElementById('aiInsightPanel').classList.add('hidden');
-            try {
-                const districtId = districtInput.value;
-                if (!districtId) throw new Error('Pilih kecamatan terlebih dahulu.');
-                const res = await fetch(`${aiRecUrl}?district_id=${districtId}&no_ayat=${encodeURIComponent(noAyat)}`);
-                const data = await res.json();
-                if (!res.ok || data.error) {
-                    aiRecError.textContent = data.error ?? 'Prediksi tidak tersedia.';
-                    aiRecError.classList.remove('hidden');
-                } else {
-                    if (data.no_recommendation) {
-                        aiRecError.textContent = `Prediksi ${data.model_used}: estimasi (Rp ${Math.round(data.detail.prediksi_sisa_tahun).toLocaleString('id-ID')}) tidak melebihi sisa target. Tidak ada rekomendasi tambahan.`;
-                        aiRecError.classList.remove('hidden');
-                    } else {
-                        form.dispatchEvent(new CustomEvent('set-total', { detail: data.recommendation }));
-                        aiRecInfo.textContent = `✨ Prediksi ${data.model_used}: estimasi sisa tahun Rp ${Math.round(data.detail.prediksi_sisa_tahun).toLocaleString('id-ID')} → rekomendasi +Rp ${Math.round(data.recommendation).toLocaleString('id-ID')}`;
-                        aiRecInfo.classList.remove('hidden');
-                    }
-                    renderAiInsight(data);
-                }
-            } catch (e) {
-                aiRecError.textContent = e.message || 'Gagal terhubung ke forecasting service.';
-                aiRecError.classList.remove('hidden');
-            } finally {
-                btnAiRec.disabled = false;
-                document.getElementById('aiRecIcon').textContent = '✨';
-                document.getElementById('aiRecLabel').textContent = 'Rekomendasi AI';
-            }
-        });
 
         // Preview Modal
         document.getElementById('btnPreview').addEventListener('click', async () => {
