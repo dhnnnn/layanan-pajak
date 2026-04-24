@@ -34,6 +34,7 @@ class PermissionSeeder extends Seeder
             ],
             'monitoring' => [
                 'view forecasting',
+                'view maps-discovery',
                 'view tax-targets',
                 'manage tax-targets',
                 'view realization-monitoring',
@@ -70,6 +71,7 @@ class PermissionSeeder extends Seeder
                 'view upts', 'manage upts', 'delete upts',
                 'view additional-targets', 'manage additional-targets', 'delete additional-targets',
                 'view forecasting',
+                'view maps-discovery',
                 'view tax-targets', 'manage tax-targets',
                 'view realization-monitoring', 'export realization-monitoring',
                 'import data',
@@ -84,6 +86,7 @@ class PermissionSeeder extends Seeder
                 'view employees', 'manage employees',
                 'view upts', 'manage upts',
                 'view forecasting',
+                'view maps-discovery',
                 'view realization-monitoring', 'export realization-monitoring',
             ],
             'pegawai' => [
@@ -91,6 +94,7 @@ class PermissionSeeder extends Seeder
             ],
             'pemimpin' => [
                 'view forecasting',
+                'view maps-discovery',
                 'view tax-targets',
                 'view realization-monitoring', 'export realization-monitoring',
             ],

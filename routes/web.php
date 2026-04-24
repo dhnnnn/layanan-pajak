@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DistrictAdditionalTargetController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\ForecastingController;
+use App\Http\Controllers\Admin\MapsDiscoveryController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RbacUserController;
 use App\Http\Controllers\Admin\RealizationMonitoringController;
@@ -66,6 +67,12 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         // Forecasting (prediksi)
         Route::get('forecasting', [ForecastingController::class, 'index'])->name('forecasting.index')->middleware('permission:view forecasting');
         Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data')->middleware('permission:view forecasting');
+
+        // Maps WP Discovery
+        Route::get('maps-discovery', [MapsDiscoveryController::class, 'index'])->name('maps-discovery.index')->middleware('permission:view maps-discovery');
+        Route::post('maps-discovery/crawl', [MapsDiscoveryController::class, 'crawl'])->name('maps-discovery.crawl')->middleware('permission:view maps-discovery');
+        Route::get('maps-discovery/report', [MapsDiscoveryController::class, 'report'])->name('maps-discovery.report')->middleware('permission:view maps-discovery');
+        Route::get('maps-discovery/report/{sessionId}', [MapsDiscoveryController::class, 'reportDetail'])->name('maps-discovery.report-detail')->middleware('permission:view maps-discovery');
 
         // Target Tambahan APBD
         Route::middleware('permission:view additional-targets')->group(function (): void {
