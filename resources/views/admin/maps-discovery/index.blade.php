@@ -9,7 +9,7 @@
         </a>
     </x-slot:headerActions>
 
-    <div x-data="mapsDiscovery()" class="flex flex-col lg:flex-row gap-5 -mx-6 px-6" style="overflow: hidden;">
+    <div x-data="mapsDiscovery()" class="flex flex-col lg:flex-row gap-5 -mx-6 px-6 overflow-hidden" style="overflow: hidden;">
 
         {{-- Sidebar Kiri (w-1/3) — scrollable, no visible scrollbar --}}
         <div class="w-full lg:w-1/3 overflow-y-auto scrollbar-hide space-y-4 shrink-0">
@@ -148,10 +148,10 @@
         </div>
 
         {{-- Main Content Kanan (w-2/3) — fixed, no scroll --}}
-        <div class="w-full lg:w-2/3 flex flex-col gap-4 overflow-hidden relative">
+        <div class="w-full lg:w-2/3 flex flex-col gap-4 overflow-hidden relative" style="min-height: 0;">
 
             {{-- Stats Cards --}}
-            <div class="grid grid-cols-2 gap-4 shrink-0">
+            <div class="grid grid-cols-2 gap-4 shrink-0 z-10">
                 {{-- Terdaftar --}}
                 <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
@@ -180,8 +180,8 @@
             </div>
 
             {{-- Leaflet Map --}}
-            <div class="bg-white rounded-xl border border-slate-200 flex-1 overflow-hidden min-h-[400px]">
-                <div x-ref="mapContainer" class="w-full h-full"></div>
+            <div class="bg-white rounded-xl border border-slate-200 flex-1 overflow-hidden relative" style="min-height: 300px;">
+                <div x-ref="mapContainer" class="absolute inset-0"></div>
             </div>
 
             {{-- Loading Overlay — covers entire right panel, centered --}}
@@ -234,6 +234,9 @@
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     /* Override parent main scroll — maps page is full viewport */
     main.flex-1 { overflow: hidden !important; }
+    /* Prevent Leaflet popup from causing parent scroll */
+    .leaflet-container { overflow: hidden !important; }
+    .leaflet-popup-content-wrapper { overflow: hidden; }
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -460,7 +463,12 @@ function mapsDiscovery() {
                 popupContent += '</div>';
 
                 const marker = L.marker([item.latitude, item.longitude], { icon })
-                    .bindPopup(popupContent)
+                    .bindPopup(popupContent, {
+                        autoPan: true,
+                        autoPanPadding: [20, 20],
+                        keepInView: true,
+                        maxWidth: 260,
+                    })
                     .addTo(this.map);
 
                 marker._resultIndex = index;
