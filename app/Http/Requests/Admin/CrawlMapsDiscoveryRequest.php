@@ -32,6 +32,18 @@ class CrawlMapsDiscoveryRequest extends FormRequest
     }
 
     /**
+     * Sanitize input sebelum validasi.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('keyword') && is_string($this->keyword)) {
+            $this->merge([
+                'keyword' => strip_tags($this->keyword),
+            ]);
+        }
+    }
+
+    /**
      * Custom validation: tax_type_code atau keyword harus diisi minimal salah satu.
      */
     public function withValidator(Validator $validator): void

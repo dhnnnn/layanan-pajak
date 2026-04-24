@@ -67,9 +67,17 @@ class MapsDiscoveryController extends Controller
         }
 
         if (! empty($validated['keyword'])) {
-            $userKeyword = trim($validated['keyword']);
-            if (! in_array(strtolower($userKeyword), array_map('strtolower', $keywords))) {
-                $keywords[] = $userKeyword;
+            // Sanitize: strip HTML/script tags, lalu normalize separator (koma, titik, semicolon)
+            $rawKeyword = strip_tags($validated['keyword']);
+            $parts = preg_split('/[,;.]+/', $rawKeyword, -1, PREG_SPLIT_NO_EMPTY);
+
+            foreach ($parts as $part) {
+                // Bersihkan whitespace berlebih dan karakter non-alfanumerik (kecuali spasi)
+                $clean = trim(preg_replace('/[^\p{L}\p{N}\s\-]/u', '', $part));
+
+                if ($clean !== '' && ! in_array(strtolower($clean), array_map('strtolower', $keywords))) {
+                    $keywords[] = $clean;
+                }
             }
         }
 
