@@ -6,6 +6,7 @@ use App\Models\District;
 use App\Models\TaxType;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Extracts district filtering logic and view data building from TaxPayerMonitoringController.
@@ -51,7 +52,7 @@ class BuildTaxPayerFilterAction
             'selectedDistrict' => (string) $selectedDistrict,
             'selectedAyat' => $selectedAyat,
             'statusFilter' => $statusFilter,
-            'availableYears' => range((int) date('Y'), (int) date('Y') - 5),
+            'availableYears' => $this->getAvailableYears(),
         ];
     }
 
@@ -98,5 +99,21 @@ class BuildTaxPayerFilterAction
         }
 
         return $query;
+    }
+
+    /**
+     * Get available years from synced data, fallback to default range.
+     */
+    private function getAvailableYears(): array
+    {
+        $years = DB::table('simpadu_tax_payers')
+            ->distinct()
+            ->pluck('year')
+            ->sort()
+            ->reverse()
+            ->values()
+            ->toArray();
+
+        return ! empty($years) ? $years : range((int) date('Y'), (int) date('Y') - 5);
     }
 }

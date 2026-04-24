@@ -87,17 +87,15 @@ class GetTaxPayerMatrixAction
             return $paginated;
         }
 
-        // 4. Fetch Reports for these pairs in the selected range
+        // 4. Fetch Reports for these pairs in the selected range (using whereIn for performance)
+        $npwpdList = $pairs->pluck('npwpd')->unique()->values()->toArray();
+        $nopList = $pairs->pluck('nop')->unique()->values()->toArray();
+
         $reports = DB::table('simpadu_sptpd_reports')
             ->where('year', $year)
             ->whereBetween('month', [$startMonth, $endMonth])
-            ->where(function ($q) use ($pairs) {
-                foreach ($pairs as $pair) {
-                    $q->orWhere(function ($sq) use ($pair) {
-                        $sq->where('npwpd', $pair['npwpd'])->where('nop', $pair['nop']);
-                    });
-                }
-            })
+            ->whereIn('npwpd', $npwpdList)
+            ->whereIn('nop', $nopList)
             ->get()
             ->groupBy(fn ($r) => "{$r->npwpd}-{$r->nop}");
 
@@ -105,13 +103,8 @@ class GetTaxPayerMatrixAction
         $payments = DB::table('simpadu_tax_payers')
             ->where('year', $year)
             ->whereBetween('month', [$startMonth, $endMonth])
-            ->where(function ($q) use ($pairs) {
-                foreach ($pairs as $pair) {
-                    $q->orWhere(function ($sq) use ($pair) {
-                        $sq->where('npwpd', $pair['npwpd'])->where('nop', $pair['nop']);
-                    });
-                }
-            })
+            ->whereIn('npwpd', $npwpdList)
+            ->whereIn('nop', $nopList)
             ->get(['npwpd', 'nop', 'month', 'total_bayar'])
             ->groupBy(fn ($r) => "{$r->npwpd}-{$r->nop}");
 
