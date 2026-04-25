@@ -39,11 +39,11 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy application source
+# Copy application source (exclude vendor — already installed above)
 COPY . .
 
-# Finish composer install
-RUN composer dump-autoload --optimize
+# Re-run composer install to finalize (respects --no-dev from earlier layer)
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Build frontend assets
 RUN npm run build
