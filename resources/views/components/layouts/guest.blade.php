@@ -23,7 +23,7 @@
 
             {{-- Footer --}}
             <p class="mt-10 text-center text-slate-400 text-xs">
-                &copy; {{ date('Y') }} Pemerintah Kabupaten Pasuruan. All rights reserved.
+                &copy; {{ date('Y') }} Dinas Komunikasi dan Informatika Kabupaten Pasuruan. All rights reserved.
             </p>
         </div>
     </div>

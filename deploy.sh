@@ -3,27 +3,19 @@ set -e
 
 echo "=== Starting deployment ==="
 
-# Pull latest changes from main
+# Pull latest code — langsung ter-reflect di container via volume mount
 git pull origin main
 
-# Rebuild & restart Docker containers
-docker compose build app
-docker compose up -d
-
-# Wait for app container to be ready
-echo "Waiting for app container..."
-sleep 5
-
-# Run database migrations inside container
+# Run database migrations (jika ada)
 docker exec layanan_pajak_app php artisan migrate --force --no-interaction
 
-# Clear & rebuild caches
+# Clear & rebuild caches agar kode baru ter-load
 docker exec layanan_pajak_app php artisan config:cache
 docker exec layanan_pajak_app php artisan route:cache
 docker exec layanan_pajak_app php artisan view:cache
 docker exec layanan_pajak_app php artisan event:cache
 
-# Restart queue worker to pick up new code
+# Restart queue & scheduler agar pakai kode baru
 docker restart layanan_pajak_queue
 docker restart layanan_pajak_scheduler
 
