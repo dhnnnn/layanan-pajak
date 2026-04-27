@@ -6,26 +6,25 @@ echo "=== Starting deployment ==="
 # Pull latest changes from main
 git pull origin main
 
-# Install/update PHP dependencies (no dev) - Disabled by user request
-# composer install --no-dev --optimize-autoloader --no-interaction
+# Rebuild & restart Docker containers
+docker compose build app
+docker compose up -d
 
-# Install/update Node dependencies & build assets - Disabled by user request
-# npm ci
-# npm run build
+# Wait for app container to be ready
+echo "Waiting for app container..."
+sleep 5
 
-# Run database migrations
-php artisan migrate --force --no-interaction
+# Run database migrations inside container
+docker exec layanan_pajak_app php artisan migrate --force --no-interaction
 
-# Clear & cache config, routes, views
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
+# Clear & rebuild caches
+docker exec layanan_pajak_app php artisan config:cache
+docker exec layanan_pajak_app php artisan route:cache
+docker exec layanan_pajak_app php artisan view:cache
+docker exec layanan_pajak_app php artisan event:cache
 
-# Generate Swagger API docs
-php artisan l5-swagger:generate
-
-# Restart queue workers (jika pakai queue)
-# php artisan queue:restart
+# Restart queue worker to pick up new code
+docker restart layanan_pajak_queue
+docker restart layanan_pajak_scheduler
 
 echo "=== Deployment complete ==="

@@ -40,7 +40,7 @@ services:
       MYSQL_DATABASE: layanan_pajak
       MYSQL_ROOT_PASSWORD: secret
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - db_data:/var/lib/mysql
     networks:

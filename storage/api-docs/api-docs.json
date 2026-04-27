@@ -7,7 +7,7 @@
     },
     "servers": [
         {
-            "url": "https://upp.pendapatan.pasuruankab.go.id/api",
+            "url": "https://mantra.pasuruankab.go.id/api",
             "description": "Production Server"
         },
         {
