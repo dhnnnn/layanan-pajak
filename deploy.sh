@@ -3,13 +3,21 @@ set -e
 
 echo "=== Starting deployment ==="
 
-# Pull latest code — langsung ter-reflect di container via volume mount
+# Pull latest code
 git pull origin main
 
-# Run database migrations (jika ada)
+# Clear old caches dulu agar tidak load provider lama
+docker exec layanan_pajak_app rm -f bootstrap/cache/config.php
+docker exec layanan_pajak_app rm -f bootstrap/cache/packages.php
+docker exec layanan_pajak_app rm -f bootstrap/cache/services.php
+
+# Install dependencies tanpa dev packages
+docker exec layanan_pajak_app composer install --no-dev --optimize-autoloader --no-interaction
+
+# Run database migrations
 docker exec layanan_pajak_app php artisan migrate --force --no-interaction
 
-# Clear & rebuild caches agar kode baru ter-load
+# Rebuild caches
 docker exec layanan_pajak_app php artisan config:cache
 docker exec layanan_pajak_app php artisan route:cache
 docker exec layanan_pajak_app php artisan view:cache
