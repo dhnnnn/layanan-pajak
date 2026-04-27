@@ -1,8 +1,8 @@
 {
     "openapi": "3.0.0",
     "info": {
-        "title": "Layanan Pajak API",
-        "description": "REST API untuk data realisasi pajak daerah Kabupaten Pasuruan. Semua endpoint memerlukan Bearer Token pada header Authorization.",
+        "title": "MANTRA API",
+        "description": "REST API MANTRA (Monitoring Analitik Notifikasi Terpadu Retribusi dan Pajak) Kabupaten Pasuruan. Semua endpoint memerlukan Bearer Token pada header Authorization.",
         "version": "1.0.0"
     },
     "servers": [

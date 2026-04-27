@@ -27,9 +27,9 @@
 
             {{-- Logo --}}
             <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700">
-                <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">LP</div>
+                <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">M</div>
                 <div class="min-w-0">
-                    <p class="font-semibold text-sm leading-tight">Layanan Pajak</p>
+                    <p class="font-semibold text-sm leading-tight">MANTRA</p>
                     <p class="text-slate-400 text-xs">Kab. Pasuruan</p>
                 </div>
             </div>

@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title }} — Sistem Realisasi Pajak Kab. Pasuruan</title>
+    <title>{{ $title }} — MANTRA Kab. Pasuruan</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -43,9 +43,9 @@
         </button>
 
         <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700">
-            <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">LP</div>
+            <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">M</div>
             <div class="min-w-0">
-                <p class="font-semibold text-sm leading-tight">Layanan Pajak</p>
+                <p class="font-semibold text-sm leading-tight">MANTRA</p>
                 <p class="text-slate-400 text-xs">Kab. Pasuruan</p>
             </div>
         </div>

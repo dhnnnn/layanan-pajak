@@ -11,9 +11,9 @@ use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 #[OA\Info(
-    title: 'Layanan Pajak API',
+    title: 'MANTRA API',
     version: '1.0.0',
-    description: 'REST API untuk data realisasi pajak daerah Kabupaten Pasuruan. Semua endpoint memerlukan Bearer Token pada header Authorization.',
+    description: 'REST API MANTRA (Monitoring Analitik Notifikasi Terpadu Retribusi dan Pajak) Kabupaten Pasuruan. Semua endpoint memerlukan Bearer Token pada header Authorization.',
 )]
 #[OA\Server(url: 'https://upp.pendapatan.pasuruankab.go.id/api', description: 'Production Server')]
 #[OA\Server(url: 'http://localhost:8000/api', description: 'Local Development')]
