@@ -40,7 +40,6 @@
                             <th class="px-4 py-3 text-center">Status</th>
                             <th class="px-4 py-3 text-left">NPWPD Match</th>
                             <th class="px-4 py-3 text-left">Nama WP Match</th>
-                            <th class="px-4 py-3 text-center">Skor</th>
                             <th class="px-4 py-3 text-center">Maps</th>
                         </tr>
                     </thead>
@@ -61,7 +60,6 @@
                             </td>
                             <td class="px-4 py-3 text-slate-600 text-xs font-mono">{{ $item->matched_npwpd ?? '-' }}</td>
                             <td class="px-4 py-3 text-slate-600 text-xs">{{ $item->matched_name ?? '-' }}</td>
-                            <td class="px-4 py-3 text-center text-xs font-mono">{{ $item->similarity_score > 0 ? number_format($item->similarity_score * 100, 1) . '%' : '-' }}</td>
                             <td class="px-4 py-3 text-center">
                                 @if($item->url)
                                 <a href="{{ $item->url }}" target="_blank" class="text-blue-600 hover:text-blue-800">

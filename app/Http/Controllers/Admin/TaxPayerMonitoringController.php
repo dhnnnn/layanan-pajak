@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Simpadu\BuildTaxPayerFilterAction;
+use App\Actions\Simpadu\CreateOfficerTaskAction;
 use App\Actions\Simpadu\GetTaxPayerMatrixAction;
 use App\Actions\Simpadu\GetTaxPayerMatrixAllAction;
+use App\Actions\Simpadu\GetWpChartDataAction;
 use App\Actions\Simpadu\GetWpDetailAction;
+use App\Actions\Simpadu\ResolveDistrictCodesAction;
 use App\Exports\TaxPayerMonitoringExport;
 use App\Exports\WpDetailExport;
 use App\Http\Controllers\Controller;
-use App\Models\OfficerTask;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -45,8 +47,11 @@ class TaxPayerMonitoringController extends Controller
         return view('field-officer.tax-payers', $data);
     }
 
-    public function exportExcel(Request $request, GetTaxPayerMatrixAllAction $getAll): BinaryFileResponse
-    {
+    public function exportExcel(
+        Request $request,
+        GetTaxPayerMatrixAllAction $getAll,
+        ResolveDistrictCodesAction $resolveDistrictCodes,
+    ): BinaryFileResponse {
         // Increase limits for large dataset export
         ini_set('memory_limit', '512M');
         set_time_limit(300);
@@ -59,44 +64,13 @@ class TaxPayerMonitoringController extends Controller
         $ayat = $request->string('ayat')->toString() ?: null;
 
         $selectedDistrict = $request->string('district')->toString();
-        $districtCodes = $this->resolveDistrictCodesForExport($selectedDistrict);
+        $districtCodes = $resolveDistrictCodes($selectedDistrict, auth()->user());
 
         $taxPayers = $getAll($year, $monthFrom, $monthTo, $search ?: null, $districtCodes, $statusFilter, $ayat);
 
         $filename = "pemantau-wp-{$year}.xlsx";
 
         return Excel::download(new TaxPayerMonitoringExport($taxPayers, $year, $monthFrom, $monthTo), $filename);
-    }
-
-    private function resolveDistrictCodesForExport(string $selectedDistrict): ?array
-    {
-        $user = auth()->user();
-
-        if ($user->isKepalaUpt()) {
-            $uptCodes = $user->upt()?->districts->pluck('simpadu_code')->toArray() ?? [];
-
-            return ($selectedDistrict !== '' && in_array($selectedDistrict, $uptCodes))
-                ? [$selectedDistrict]
-                : $uptCodes;
-        }
-
-        if ($user->hasRole('pegawai')) {
-            $assignedCodes = $user->accessibleDistricts()->pluck('simpadu_code')->filter()->toArray();
-
-            return ($selectedDistrict !== '' && in_array($selectedDistrict, $assignedCodes))
-                ? [$selectedDistrict]
-                : $assignedCodes;
-        }
-
-        if ($selectedDistrict !== '') {
-            $code = (is_numeric($selectedDistrict) && strlen($selectedDistrict) < 3)
-                ? str_pad($selectedDistrict, 3, '0', STR_PAD_LEFT)
-                : $selectedDistrict;
-
-            return [$code];
-        }
-
-        return null;
     }
 
     public function wpDetailExportExcel(Request $request, string $npwpd, string $nop): BinaryFileResponse
@@ -189,7 +163,7 @@ class TaxPayerMonitoringController extends Controller
         ]));
     }
 
-    public function wpChart(Request $request): JsonResponse
+    public function wpChart(Request $request, GetWpChartDataAction $getWpChartData): JsonResponse
     {
         $validated = $request->validate([
             'npwpd' => 'required|string|max:50',
@@ -200,71 +174,17 @@ class TaxPayerMonitoringController extends Controller
             'multi_year' => 'nullable|boolean',
         ]);
 
-        $npwpd = $validated['npwpd'];
-        $nop = $validated['nop'];
-        $year = (int) $validated['year'];
-        $monthFrom = (int) $validated['month_from'];
-        $monthTo = (int) $validated['month_to'];
-        $multiYear = filter_var($validated['multi_year'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-        $years = $multiYear ? [$year, $year - 1, $year - 2] : [$year];
-
-        $bulanIndo = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        $labels = array_map(fn ($m) => $bulanIndo[$m], range($monthFrom, $monthTo));
-
-        $datasets = [];
-        $colors = [
-            ['border' => '#3b82f6', 'bg' => 'rgba(59,130,246,0.08)'],
-            ['border' => '#f59e0b', 'bg' => 'rgba(245,158,11,0.08)'],
-            ['border' => '#10b981', 'bg' => 'rgba(16,185,129,0.08)'],
-        ];
-
-        foreach ($years as $i => $y) {
-            $rows = DB::table('simpadu_tax_payers')
-                ->where('year', $y)
-                ->where('npwpd', $npwpd)
-                ->where('nop', $nop)
-                ->whereBetween('month', [$monthFrom, $monthTo])
-                ->orderBy('month')
-                ->get(['month', 'total_ketetapan', 'total_bayar'])
-                ->keyBy('month');
-
-            $sptpd = [];
-            $bayar = [];
-            for ($m = $monthFrom; $m <= $monthTo; $m++) {
-                $row = $rows->get($m);
-                $sptpd[] = $row ? (float) $row->total_ketetapan : 0;
-                $bayar[] = $row ? (float) $row->total_bayar : 0;
-            }
-
-            $c = $colors[$i] ?? $colors[0];
-            $datasets[] = [
-                'label' => "SPTPD {$y}",
-                'data' => $sptpd,
-                'borderColor' => $c['border'],
-                'backgroundColor' => $c['bg'],
-                'tension' => 0.4,
-                'fill' => true,
-                'pointRadius' => 4,
-                'borderWidth' => 2,
-            ];
-            $datasets[] = [
-                'label' => "Bayar {$y}",
-                'data' => $bayar,
-                'borderColor' => $c['border'],
-                'backgroundColor' => 'transparent',
-                'borderDash' => [5, 4],
-                'tension' => 0.4,
-                'fill' => false,
-                'pointRadius' => 3,
-                'borderWidth' => 1.5,
-            ];
-        }
-
-        return response()->json(['labels' => $labels, 'datasets' => $datasets]);
+        return response()->json($getWpChartData(
+            npwpd: $validated['npwpd'],
+            nop: $validated['nop'],
+            year: (int) $validated['year'],
+            monthFrom: (int) $validated['month_from'],
+            monthTo: (int) $validated['month_to'],
+            multiYear: filter_var($validated['multi_year'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        ));
     }
 
-    public function storeTask(Request $request): RedirectResponse
+    public function storeTask(Request $request, CreateOfficerTaskAction $createTask): RedirectResponse
     {
         $validated = $request->validate([
             'tax_payer_id' => 'required|string',
@@ -277,11 +197,7 @@ class TaxPayerMonitoringController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $task = OfficerTask::create([
-            ...$validated,
-            'status' => 'assigned',
-            'assigned_at' => now(),
-        ]);
+        $task = $createTask($validated);
 
         return back()->with('success', "Petugas berhasil ditugaskan untuk WP {$task->tax_payer_name}");
     }

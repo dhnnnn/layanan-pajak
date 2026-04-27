@@ -7,75 +7,178 @@ use Illuminate\Support\Collection;
 
 class MatchTaxPayersAction
 {
-    private const SIMILARITY_THRESHOLD = 0.7;
+    /**
+     * Jumlah kata bermakna minimum yang harus cocok.
+     */
+    private const MIN_MATCHING_WORDS = 2;
 
     /**
-     * Cocokkan hasil crawling dengan data WP terdaftar di simpadu_tax_payers.
+     * Minimum panjang kata agar dianggap bermakna untuk matching.
+     */
+    private const MIN_WORD_LENGTH = 4;
+
+    /**
+     * Kata-kata umum yang diabaikan (preposisi, lokasi, entitas umum).
      *
-     * @param  Collection<int, array{title: string, subtitle: string, category: string, place_id: string, url: string, latitude: ?float, longitude: ?float}>  $crawlResults
-     * @param  string|null  $ayat  Kode ayat pajak untuk filter WP
-     * @param  string|null  $kdKecamatan  Kode kecamatan untuk filter WP
-     * @return Collection<int, array{title: string, subtitle: string, category: string, place_id: string, url: string, latitude: ?float, longitude: ?float, status: string, matched_npwpd: ?string, matched_name: ?string, similarity_score: float}>
+     * @var list<string>
+     */
+    private const STOP_WORDS = [
+        'hotel', 'restoran', 'restaurant', 'cafe', 'kafe', 'warung', 'rumah',
+        'makan', 'toko', 'salon', 'karaoke', 'villa', 'resort', 'guest',
+        'house', 'homestay', 'kost', 'losmen', 'penginapan', 'pondok',
+        'near', 'dekat', 'baru', 'lama', 'the', 'and', 'dan', 'atau',
+        'jalan', 'raya', 'desa', 'kecamatan', 'kabupaten',
+        'pasuruan', 'jawa', 'timur', 'indonesia',
+        'syariah', 'budget', 'express', 'life', 'oyo',
+    ];
+
+    private ?Collection $districtCache = null;
+
+    /**
+     * Cocokkan hasil crawling dengan data WP terdaftar.
+     *
+     * Strategi: untuk setiap crawl result, ambil kata-kata bermakna dari nama,
+     * lalu query DB langsung dengan LIKE untuk cari WP yang mengandung kata tersebut.
+     * Ini jauh lebih cepat daripada load semua WP ke memory.
      */
     public function __invoke(Collection $crawlResults, ?string $ayat = null, ?string $kdKecamatan = null): Collection
     {
-        $taxPayers = SimpaduTaxPayer::query()
-            ->when($ayat, fn ($q) => $q->where('ayat', $ayat))
-            ->when($kdKecamatan, fn ($q) => $q->where('kd_kecamatan', $kdKecamatan))
-            ->get();
+        return $crawlResults->map(function (array $result) use ($ayat, $kdKecamatan): array {
+            $parsedDistrict = $this->parseDistrictFromAddress($result['subtitle'] ?? '');
 
-        return $crawlResults->map(function (array $result) use ($taxPayers): array {
-            $bestNameScore = 0.0;
-            $bestCombinedScore = 0.0;
-            $matchedNpwpd = null;
-            $matchedName = null;
-
-            foreach ($taxPayers as $wp) {
-                $nameScore = max(
-                    $this->similarity($result['title'], $wp->nm_wp ?? ''),
-                    $this->similarity($result['title'], $wp->nm_op ?? ''),
-                );
-
-                // Hanya pertimbangkan jika nama cukup mirip (> 0.5)
-                if ($nameScore < 0.5) {
-                    continue;
-                }
-
-                $addressScore = $this->similarity($result['subtitle'], $wp->almt_op ?? '');
-
-                // Skor gabungan: nama lebih penting (70%) + alamat (30%)
-                $combinedScore = ($nameScore * 0.7) + ($addressScore * 0.3);
-
-                if ($combinedScore > $bestCombinedScore) {
-                    $bestCombinedScore = $combinedScore;
-                    $bestNameScore = $nameScore;
-                    $matchedNpwpd = $wp->npwpd;
-                    $matchedName = $wp->nm_wp;
-                }
-            }
-
-            $isTerdaftar = $bestCombinedScore >= self::SIMILARITY_THRESHOLD;
+            $match = $this->findBestMatch($result['title'], $ayat, $kdKecamatan);
 
             return array_merge($result, [
-                'status' => $isTerdaftar ? 'terdaftar' : 'potensi_baru',
-                'matched_npwpd' => $isTerdaftar ? $matchedNpwpd : null,
-                'matched_name' => $isTerdaftar ? $matchedName : null,
-                'similarity_score' => round($bestCombinedScore, 4),
+                'status' => $match ? 'terdaftar' : 'potensi_baru',
+                'matched_npwpd' => $match['npwpd'] ?? null,
+                'matched_name' => $match['name'] ?? null,
+                'similarity_score' => $match['score'] ?? 0,
+                'matching_words' => $match['word_count'] ?? 0,
+                'parsed_district' => $parsedDistrict,
             ]);
         });
     }
 
     /**
-     * Hitung similarity score antara dua string menggunakan similar_text(), dinormalisasi ke 0.0 - 1.0.
+     * Cari WP terbaik yang cocok dengan nama dari Maps.
+     *
+     * Strategi: query DB dengan LIKE per kata bermakna, lalu verifikasi
+     * jumlah kata yang benar-benar cocok di PHP.
+     *
+     * @return array{npwpd: string, name: string, score: float, word_count: int}|null
      */
-    private function similarity(string $a, string $b): float
+    private function findBestMatch(string $crawlTitle, ?string $ayat, ?string $kdKecamatan): ?array
     {
-        if ($a === '' && $b === '') {
-            return 0.0;
+        $words = $this->extractWords($crawlTitle);
+
+        if (count($words) < 1) {
+            return null;
         }
 
-        similar_text(strtolower($a), strtolower($b), $percent);
+        // Query DB: cari WP yang mengandung minimal 1 kata dari nama Maps
+        // MySQL akan filter, bukan PHP — jauh lebih cepat
+        $candidates = SimpaduTaxPayer::query()
+            ->when($ayat, fn ($q) => $q->where('ayat', $ayat))
+            ->when($kdKecamatan, fn ($q) => $q->where('kd_kecamatan', $kdKecamatan))
+            ->where(function ($q) use ($words): void {
+                foreach ($words as $word) {
+                    $q->orWhere('nm_wp', 'LIKE', "%{$word}%")
+                        ->orWhere('nm_op', 'LIKE', "%{$word}%");
+                }
+            })
+            ->limit(50) // Batasi kandidat agar tidak terlalu banyak
+            ->get(['npwpd', 'nm_wp', 'nm_op']);
 
-        return $percent / 100;
+        if ($candidates->isEmpty()) {
+            return null;
+        }
+
+        // Verifikasi: hitung kata yang benar-benar cocok
+        $bestMatch = null;
+        $bestWordCount = 0;
+
+        foreach ($candidates as $wp) {
+            $wpWords = $this->extractWords($wp->nm_wp ?? '');
+            $opWords = $this->extractWords($wp->nm_op ?? '');
+
+            $matchCountWp = $this->countExactMatchingWords($words, $wpWords);
+            $matchCountOp = $this->countExactMatchingWords($words, $opWords);
+            $matchCount = max($matchCountWp, $matchCountOp);
+
+            if ($matchCount > $bestWordCount) {
+                $bestWordCount = $matchCount;
+                $bestMatch = $wp;
+            }
+        }
+
+        if ($bestWordCount < self::MIN_MATCHING_WORDS) {
+            return null;
+        }
+
+        $totalWords = max(count($words), 1);
+        $score = round($bestWordCount / $totalWords, 4);
+
+        return [
+            'npwpd' => $bestMatch->npwpd,
+            'name' => $bestMatch->nm_wp,
+            'score' => $score,
+            'word_count' => $bestWordCount,
+        ];
+    }
+
+    /**
+     * Pecah string menjadi kata-kata bermakna: lowercase, tanpa stop words,
+     * minimal MIN_WORD_LENGTH karakter.
+     *
+     * @return list<string>
+     */
+    private function extractWords(string $text): array
+    {
+        $cleaned = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', strtolower($text));
+        $allWords = preg_split('/\s+/', trim($cleaned ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+
+        return array_values(array_filter(
+            $allWords,
+            fn (string $word): bool => mb_strlen($word) >= self::MIN_WORD_LENGTH
+                && ! in_array($word, self::STOP_WORDS, true),
+        ));
+    }
+
+    /**
+     * Hitung kata yang exact match antara dua set.
+     * Hanya exact match — tidak ada substring matching.
+     */
+    private function countExactMatchingWords(array $wordsA, array $wordsB): int
+    {
+        if (empty($wordsA) || empty($wordsB)) {
+            return 0;
+        }
+
+        $setB = array_flip($wordsB);
+        $count = 0;
+
+        foreach ($wordsA as $word) {
+            if (isset($setB[$word])) {
+                $count++;
+                unset($setB[$word]); // Satu kata hanya dihitung sekali
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Parse nama kecamatan dari alamat Google Maps.
+     */
+    private function parseDistrictFromAddress(string $address): ?string
+    {
+        if (preg_match('/(?:kec(?:amatan)?\.?\s+)([a-zA-Z\s]+?)(?:,|\d|$)/iu', $address, $matches)) {
+            $district = trim($matches[1]);
+            $district = preg_replace('/\b(?:kabupaten|kab|pasuruan|jawa|timur)\b/i', '', $district);
+
+            return trim($district) ?: null;
+        }
+
+        return null;
     }
 }

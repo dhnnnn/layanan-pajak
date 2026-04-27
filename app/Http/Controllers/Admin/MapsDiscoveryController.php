@@ -11,8 +11,8 @@ use App\Http\Requests\Admin\CrawlMapsDiscoveryRequest;
 use App\Models\District;
 use App\Models\MapsDiscoveryResult;
 use App\Models\TaxType;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -29,9 +29,7 @@ class MapsDiscoveryController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'simpadu_code']);
 
-        $districts = District::query()
-            ->orderBy('name')
-            ->get();
+        $districts = District::query()->orderBy('name')->get();
 
         return view('admin.maps-discovery.index', [
             'taxTypes' => $taxTypes,
@@ -44,43 +42,34 @@ class MapsDiscoveryController extends Controller
         CrawlMapsAction $crawlAction,
         MatchTaxPayersAction $matchAction,
     ): JsonResponse {
-        // Stop PHP execution when client disconnects (cancel button)
         ignore_user_abort(false);
-
         $validated = $request->validated();
 
+        // === Build keywords ===
         $keywords = [];
         $ayat = null;
 
         if (! empty($validated['tax_type_code'])) {
-            $taxType = TaxType::query()
-                ->where('simpadu_code', $validated['tax_type_code'])
-                ->first();
-
+            $taxType = TaxType::query()->where('simpadu_code', $validated['tax_type_code'])->first();
             if ($taxType) {
                 $ayat = $taxType->simpadu_code;
-                $parentCode = explode('-', $ayat)[0];
                 $keywords = CrawlMapsAction::KEYWORD_MAPPING[$ayat]
-                    ?? CrawlMapsAction::KEYWORD_MAPPING[$parentCode]
+                    ?? CrawlMapsAction::KEYWORD_MAPPING[explode('-', $ayat)[0]]
                     ?? [];
             }
         }
 
         if (! empty($validated['keyword'])) {
-            // Sanitize: strip HTML/script tags, lalu normalize separator (koma, titik, semicolon)
-            $rawKeyword = strip_tags($validated['keyword']);
-            $parts = preg_split('/[,;.]+/', $rawKeyword, -1, PREG_SPLIT_NO_EMPTY);
-
+            $parts = preg_split('/[,;.]+/', strip_tags($validated['keyword']), -1, PREG_SPLIT_NO_EMPTY);
             foreach ($parts as $part) {
-                // Bersihkan whitespace berlebih dan karakter non-alfanumerik (kecuali spasi)
                 $clean = trim(preg_replace('/[^\p{L}\p{N}\s\-]/u', '', $part));
-
                 if ($clean !== '' && ! in_array(strtolower($clean), array_map('strtolower', $keywords))) {
                     $keywords[] = $clean;
                 }
             }
         }
 
+        // === Build area ===
         $area = 'Pasuruan';
         $kdKecamatan = null;
         $districtShort = null;
@@ -88,7 +77,6 @@ class MapsDiscoveryController extends Controller
 
         if (! empty($validated['district_id'])) {
             $district = District::query()->find($validated['district_id']);
-
             if ($district) {
                 $districtShort = preg_replace('/^kecamatan\s+/i', '', $district->name);
                 $districtName = $district->name;
@@ -98,66 +86,128 @@ class MapsDiscoveryController extends Controller
         }
 
         try {
+            // === Load data lama dari DB (yang sudah pernah di-crawl) ===
+            $existingDbQuery = MapsDiscoveryResult::query()
+                ->when($ayat, fn ($q) => $q->where('tax_type_code', $ayat));
+
+            // Filter kecamatan di data lama
+            if ($districtName) {
+                $existingDbQuery->where('district_name', $districtName);
+            }
+
+            $existingFromDb = $existingDbQuery->orderByDesc('updated_at')->get();
+
+            $existingPlaceIds = $existingFromDb
+                ->pluck('place_id')
+                ->filter(fn ($id) => ! empty($id))
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // === Crawl data baru (skip yang sudah ada) ===
             $maxResults = (int) ($validated['max_results'] ?? 20);
-            $crawlResults = $crawlAction($keywords, $area, $maxResults);
+            $crawlResults = $crawlAction($keywords, $area, $maxResults, $existingPlaceIds);
 
-            if ($districtShort !== null) {
-                $needle = strtolower($districtShort);
-                $crawlResults = $crawlResults->filter(
-                    fn (array $item): bool => str_contains(strtolower($item['subtitle'] ?? ''), $needle)
-                )->values();
+            $newMatchedResults = collect();
+
+            if ($crawlResults->isNotEmpty()) {
+                $newMatchedResults = $matchAction($crawlResults, $ayat, $kdKecamatan);
+
+                // Filter kecamatan dari alamat
+                if ($districtShort !== null) {
+                    $needle = strtolower($districtShort);
+                    $newMatchedResults = $newMatchedResults->filter(function (array $item) use ($needle): bool {
+                        $parsedDistrict = strtolower($item['parsed_district'] ?? '');
+                        if ($parsedDistrict !== '') {
+                            return str_contains($parsedDistrict, $needle) || str_contains($needle, $parsedDistrict);
+                        }
+
+                        return str_contains(strtolower($item['subtitle'] ?? ''), $needle);
+                    })->values();
+                }
+
+                // === Simpan data baru — hanya yang punya place_id valid ===
+                $sessionId = Str::uuid()->toString();
+                $userId = auth()->id();
+                $keywordStr = implode(', ', $keywords);
+
+                $newMatchedResults->each(function (array $item) use ($sessionId, $userId, $ayat, $districtName, $keywordStr): void {
+                    $placeId = $item['place_id'] ?? '';
+                    if (empty($placeId)) {
+                        return; // Skip tanpa place_id — tidak bisa deduplicate
+                    }
+
+                    MapsDiscoveryResult::updateOrCreate(
+                        ['place_id' => $placeId],
+                        [
+                            'session_id' => $sessionId,
+                            'user_id' => $userId,
+                            'title' => $item['title'],
+                            'subtitle' => $item['subtitle'] ?? null,
+                            'category' => $item['category'] ?? null,
+                            'url' => $item['url'] ?? null,
+                            'latitude' => $item['latitude'] ?? null,
+                            'longitude' => $item['longitude'] ?? null,
+                            'rating' => $item['rating'] ?? null,
+                            'reviews' => $item['reviews'] ?? null,
+                            'price_range' => $item['price_range'] ?? null,
+                            'status' => $item['status'],
+                            'matched_npwpd' => $item['matched_npwpd'] ?? null,
+                            'matched_name' => $item['matched_name'] ?? null,
+                            'similarity_score' => $item['similarity_score'] ?? 0,
+                            'tax_type_code' => $ayat,
+                            'district_name' => $districtName,
+                            'keyword' => $keywordStr,
+                        ],
+                    );
+                });
             }
 
-            if ($crawlResults->isEmpty()) {
-                return response()->json([
-                    'results' => [],
-                    'stats' => ['total' => 0, 'terdaftar' => 0, 'potensi_baru' => 0],
-                    'message' => 'Tidak ditemukan lokasi bisnis untuk pencarian ini. Coba ubah keyword atau wilayah.',
-                ]);
-            }
+            // === Gabungkan: data lama + data baru untuk response ===
+            $existingMapped = $existingFromDb->map(fn (MapsDiscoveryResult $r): array => [
+                'title' => $r->title,
+                'subtitle' => $r->subtitle,
+                'category' => $r->category,
+                'place_id' => $r->place_id,
+                'url' => $r->url,
+                'latitude' => $r->latitude,
+                'longitude' => $r->longitude,
+                'rating' => $r->rating,
+                'reviews' => $r->reviews,
+                'price_range' => $r->price_range,
+                'status' => $r->status,
+                'matched_npwpd' => $r->matched_npwpd,
+                'matched_name' => $r->matched_name,
+                'similarity_score' => $r->similarity_score,
+                'parsed_district' => $r->district_name,
+                'is_new' => false,
+            ]);
 
-            $matchedResults = $matchAction($crawlResults, $ayat, $kdKecamatan);
+            $newWithFlag = $newMatchedResults->map(fn (array $item): array => array_merge($item, ['is_new' => true]));
 
-            // Simpan hasil ke database
-            $sessionId = Str::uuid()->toString();
-            $userId = auth()->id();
-            $keywordStr = implode(', ', $keywords);
+            // Deduplicate: data baru overwrite data lama dengan place_id sama
+            $newPlaceIds = $newWithFlag->pluck('place_id')->filter()->toArray();
+            $existingFiltered = $existingMapped->filter(
+                fn (array $item): bool => empty($item['place_id']) || ! in_array($item['place_id'], $newPlaceIds, true)
+            );
 
-            $matchedResults->each(function (array $item) use ($sessionId, $userId, $ayat, $districtName, $keywordStr): void {
-                MapsDiscoveryResult::create([
-                    'session_id' => $sessionId,
-                    'user_id' => $userId,
-                    'title' => $item['title'],
-                    'subtitle' => $item['subtitle'] ?? null,
-                    'category' => $item['category'] ?? null,
-                    'place_id' => $item['place_id'] ?? null,
-                    'url' => $item['url'] ?? null,
-                    'latitude' => $item['latitude'] ?? null,
-                    'longitude' => $item['longitude'] ?? null,
-                    'rating' => $item['rating'] ?? null,
-                    'reviews' => $item['reviews'] ?? null,
-                    'price_range' => $item['price_range'] ?? null,
-                    'status' => $item['status'],
-                    'matched_npwpd' => $item['matched_npwpd'] ?? null,
-                    'matched_name' => $item['matched_name'] ?? null,
-                    'similarity_score' => $item['similarity_score'] ?? 0,
-                    'tax_type_code' => $ayat,
-                    'district_name' => $districtName,
-                    'keyword' => $keywordStr,
-                ]);
-            });
+            // Data baru di atas, data lama di bawah
+            $allResults = $newWithFlag->merge($existingFiltered)->values();
 
-            $terdaftar = $matchedResults->where('status', 'terdaftar')->count();
-            $potensiBaru = $matchedResults->where('status', 'potensi_baru')->count();
+            $terdaftar = $allResults->where('status', 'terdaftar')->count();
+            $potensiBaru = $allResults->where('status', 'potensi_baru')->count();
 
             return response()->json([
-                'results' => $matchedResults->values(),
+                'results' => $allResults,
                 'stats' => [
-                    'total' => $matchedResults->count(),
+                    'total' => $allResults->count(),
                     'terdaftar' => $terdaftar,
                     'potensi_baru' => $potensiBaru,
+                    'new_from_crawl' => $newMatchedResults->count(),
                 ],
-                'session_id' => $sessionId,
+                'message' => $crawlResults->isEmpty() && $existingFromDb->isNotEmpty()
+                    ? 'Tidak ada data baru. Menampilkan '.$existingFromDb->count().' data dari database.'
+                    : null,
             ]);
         } catch (ScraperUnavailableException $e) {
             return response()->json(['error' => $e->getMessage()], 503);
@@ -166,21 +216,58 @@ class MapsDiscoveryController extends Controller
         }
     }
 
-    public function report(): View
+    public function report(Request $request): View
     {
-        $sessions = MapsDiscoveryResult::query()
-            ->selectRaw('session_id, user_id, tax_type_code, district_name, keyword, MIN(created_at) as crawled_at, COUNT(*) as total, SUM(CASE WHEN status = "terdaftar" THEN 1 ELSE 0 END) as terdaftar, SUM(CASE WHEN status = "potensi_baru" THEN 1 ELSE 0 END) as potensi_baru')
-            ->groupBy('session_id', 'user_id', 'tax_type_code', 'district_name', 'keyword')
-            ->orderByDesc('crawled_at')
-            ->paginate(20);
+        $query = MapsDiscoveryResult::query();
 
-        // Eager load user names
-        $userIds = $sessions->pluck('user_id')->unique();
-        $users = User::whereIn('id', $userIds)->pluck('name', 'id');
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('tax_type_code')) {
+            $query->where('tax_type_code', $request->input('tax_type_code'));
+        }
+        if ($request->filled('district_name')) {
+            $query->where('district_name', $request->input('district_name'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search): void {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('subtitle', 'like', "%{$search}%")
+                    ->orWhere('matched_name', 'like', "%{$search}%");
+            });
+        }
+
+        $results = $query->orderByDesc('updated_at')->paginate(10)->withQueryString();
+
+        $stats = [
+            'total' => MapsDiscoveryResult::count(),
+            'terdaftar' => MapsDiscoveryResult::where('status', 'terdaftar')->count(),
+            'potensi_baru' => MapsDiscoveryResult::where('status', 'potensi_baru')->count(),
+        ];
+
+        $taxTypeCodes = MapsDiscoveryResult::query()
+            ->whereNotNull('tax_type_code')
+            ->distinct()
+            ->pluck('tax_type_code');
+
+        $taxTypeNames = TaxType::query()
+            ->whereIn('simpadu_code', $taxTypeCodes)
+            ->pluck('name', 'simpadu_code');
+
+        $districtNames = MapsDiscoveryResult::query()
+            ->whereNotNull('district_name')
+            ->distinct()
+            ->orderBy('district_name')
+            ->pluck('district_name');
 
         return view('admin.maps-discovery.report', [
-            'sessions' => $sessions,
-            'users' => $users,
+            'results' => $results,
+            'stats' => $stats,
+            'taxTypeCodes' => $taxTypeCodes,
+            'taxTypeNames' => $taxTypeNames,
+            'districtNames' => $districtNames,
+            'filters' => $request->only(['status', 'tax_type_code', 'district_name', 'search']),
         ]);
     }
 

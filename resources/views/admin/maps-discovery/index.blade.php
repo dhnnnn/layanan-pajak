@@ -48,7 +48,7 @@
 
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">Maks. Hasil Crawling</label>
-                    <input type="number" x-model.number="maxResults" min="5" max="100" step="5"
+                    <input type="number" x-model.number="maxResults" min="1" max="100" step="1"
                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 </div>
 

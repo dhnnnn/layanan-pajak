@@ -31,25 +31,27 @@ class CrawlMapsAction
      * Crawl lokasi bisnis dari Google Maps via Scraper API.
      *
      * @param  list<string>  $keywords
-     * @param  string  $area  Nama wilayah pencarian (e.g. "Pasuruan" atau "Kecamatan Bangil Pasuruan")
-     * @return Collection<int, array{title: string, subtitle: string, category: string, place_id: string, url: string, latitude: ?float, longitude: ?float}>
-     *
-     * @throws ScraperUnavailableException
-     * @throws ScraperErrorException
+     * @param  string  $area  Nama wilayah pencarian
+     * @param  list<string>  $excludePlaceIds  Place ID yang sudah ada di DB, akan di-filter dari hasil
      */
-    public function __invoke(array $keywords, string $area, int $maxResults = 20): Collection
+    public function __invoke(array $keywords, string $area, int $maxResults = 20, array $excludePlaceIds = []): Collection
     {
-        // Gabungkan semua keywords jadi satu query agar hanya 1 request ke scraper
         $combinedKeyword = implode(' ', $keywords);
+        $results = $this->fetchResults($combinedKeyword, $area, $maxResults);
 
-        return $this->fetchResults($combinedKeyword, $area, $maxResults);
+        // Filter: buang hasil yang place_id-nya sudah ada di DB
+        if (! empty($excludePlaceIds)) {
+            $excludeSet = array_flip($excludePlaceIds);
+            $results = $results->filter(
+                fn (array $item): bool => empty($item['place_id']) || ! isset($excludeSet[$item['place_id']])
+            )->values();
+        }
+
+        return $results;
     }
 
     /**
      * @return Collection<int, array{title: string, subtitle: string, category: string, place_id: string, url: string, latitude: ?float, longitude: ?float}>
-     *
-     * @throws ScraperUnavailableException
-     * @throws ScraperErrorException
      */
     private function fetchResults(string $keyword, string $area, int $maxResults): Collection
     {
