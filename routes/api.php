@@ -21,6 +21,13 @@ Route::middleware('api_token')->prefix('v1')->group(function () {
     Route::get('/tax-realization', [TaxTypeController::class, 'realization']);
 
     // POST /api/v1/payment-check/{jenis_pajak}
-    Route::post('/payment-check/{jenis_pajak}', PaymentCheckController::class)
-        ->where('jenis_pajak', 'hotel|restoran|hiburan|reklame|ppj|parkir|at|minerba|bphtb');
+    Route::post('/payment-check/hotel', [PaymentCheckController::class, 'hotel']);
+    Route::post('/payment-check/restoran', [PaymentCheckController::class, 'restoran']);
+    Route::post('/payment-check/hiburan', [PaymentCheckController::class, 'hiburan']);
+    Route::post('/payment-check/reklame', [PaymentCheckController::class, 'reklame']);
+    Route::post('/payment-check/ppj', [PaymentCheckController::class, 'ppj']);
+    Route::post('/payment-check/parkir', [PaymentCheckController::class, 'parkir']);
+    Route::post('/payment-check/at', [PaymentCheckController::class, 'at']);
+    Route::post('/payment-check/minerba', [PaymentCheckController::class, 'minerba']);
+    Route::post('/payment-check/bphtb', [PaymentCheckController::class, 'bphtb']);
 });

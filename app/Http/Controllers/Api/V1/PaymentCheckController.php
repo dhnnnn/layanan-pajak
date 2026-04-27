@@ -4,187 +4,115 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\PaymentCheck\CheckPaymentAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\PaymentCheckRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use OpenApi\Attributes as OA;
 
-#[OA\Schema(
-    schema: 'PaymentCheckItem',
-    properties: [
-        new OA\Property(property: 'nop', type: 'string'),
-        new OA\Property(property: 'nama_op', type: 'string'),
-        new OA\Property(property: 'kohir', type: 'string'),
-        new OA\Property(property: 'masa_awal', type: 'string'),
-        new OA\Property(property: 'jatuh_tempo', type: 'string', nullable: true),
-        new OA\Property(property: 'tgl_bayar', type: 'string', nullable: true),
-        new OA\Property(property: 'jml_sptpd', type: 'integer'),
-        new OA\Property(property: 'bayar_pokok', type: 'integer'),
-        new OA\Property(property: 'bayar_denda', type: 'integer'),
-        new OA\Property(property: 'sisa_pokok', type: 'integer'),
-        new OA\Property(property: 'sisa_denda', type: 'integer'),
-        new OA\Property(property: 'sisa', type: 'integer'),
-        new OA\Property(property: 'keterangan', type: 'string', nullable: true),
-    ],
-)]
-#[OA\Schema(
-    schema: 'PaymentCheckResult',
-    properties: [
-        new OA\Property(property: 'npwpd', type: 'string', example: '1234567890123'),
-        new OA\Property(property: 'nama_op', type: 'string', example: 'HOTEL SEJAHTERA'),
-        new OA\Property(property: 'jenis_pajak', type: 'string', example: 'hotel'),
-        new OA\Property(property: 'tahun', type: 'string', example: '2025'),
-        new OA\Property(
-            property: 'data',
-            type: 'array',
-            items: new OA\Items(ref: '#/components/schemas/PaymentCheckItem'),
-        ),
-        new OA\Property(
-            property: 'summary',
-            type: 'object',
-            properties: [
-                new OA\Property(property: 'total_sptpd', type: 'integer'),
-                new OA\Property(property: 'total_denda', type: 'integer'),
-                new OA\Property(property: 'total_bayar_pokok', type: 'integer'),
-                new OA\Property(property: 'total_bayar_denda', type: 'integer'),
-                new OA\Property(property: 'total_sisa', type: 'integer'),
-            ],
-        ),
-    ],
-)]
-#[OA\Schema(
-    schema: 'PaymentCheckBody',
-    required: ['npwpd', 'tahun', 'nama_wp'],
-    properties: [
-        new OA\Property(property: 'npwpd', type: 'string', description: 'Nomor Pokok Wajib Pajak Daerah', example: '1234567890123'),
-        new OA\Property(property: 'tahun', type: 'integer', description: 'Tahun pajak', example: 2025),
-        new OA\Property(property: 'nama_wp', type: 'string', description: 'Nama wajib pajak (harus cocok dengan data NPWPD)', example: 'HOTEL SEJAHTERA'),
-        new OA\Property(property: 'npwpd_lama', type: 'boolean', description: 'true jika menggunakan NPWPD lama', example: false),
-    ],
-)]
 class PaymentCheckController extends Controller
 {
-    #[OA\Post(
-        path: '/v1/payment-check/hotel',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran PBJT Hotel',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/restoran',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran PBJT Restoran',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/hiburan',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran PBJT Hiburan',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/reklame',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran Pajak Reklame',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/ppj',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran Pajak Penerangan Jalan (PPJ)',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/parkir',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran PBJT Parkir',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/at',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran Pajak Air Tanah (AT)',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/minerba',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran Pajak Mineral Bukan Logam (MINERBA)',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    #[OA\Post(
-        path: '/v1/payment-check/bphtb',
-        tags: ['Cek Pembayaran'],
-        summary: 'Cek pembayaran BPHTB',
-        description: 'Untuk BPHTB, field `npwpd` diisi dengan Nomor Register (kohir).',
-        security: [['BearerToken' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckBody')),
-        responses: [
-            new OA\Response(response: 200, description: 'OK', content: new OA\JsonContent(ref: '#/components/schemas/PaymentCheckResult')),
-            new OA\Response(response: 401, description: 'Unauthorized'),
-            new OA\Response(response: 404, description: 'Data tidak ditemukan'),
-        ],
-    )]
-    public function __invoke(Request $request, string $jenis_pajak, CheckPaymentAction $checkPayment): JsonResponse
-    {
-        $validated = $request->validate([
-            'npwpd' => ['required', 'string'],
-            'tahun' => ['required', 'digits:4'],
-            'nama_wp' => ['required', 'string'],
-            'npwpd_lama' => ['nullable', 'boolean'],
-        ]);
+    public function __construct(
+        private CheckPaymentAction $checkPayment,
+    ) {}
 
-        $result = $checkPayment(
+    /**
+     * Cek pembayaran PBJT Hotel.
+     *
+     * @tags Cek Pembayaran
+     */
+    public function hotel(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'hotel');
+    }
+
+    /**
+     * Cek pembayaran PBJT Restoran.
+     *
+     * @tags Cek Pembayaran
+     */
+    public function restoran(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'restoran');
+    }
+
+    /**
+     * Cek pembayaran PBJT Hiburan.
+     *
+     * @tags Cek Pembayaran
+     */
+    public function hiburan(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'hiburan');
+    }
+
+    /**
+     * Cek pembayaran Pajak Reklame.
+     *
+     * @tags Cek Pembayaran
+     */
+    public function reklame(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'reklame');
+    }
+
+    /**
+     * Cek pembayaran Pajak Penerangan Jalan (PPJ).
+     *
+     * @tags Cek Pembayaran
+     */
+    public function ppj(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'ppj');
+    }
+
+    /**
+     * Cek pembayaran PBJT Parkir.
+     *
+     * @tags Cek Pembayaran
+     */
+    public function parkir(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'parkir');
+    }
+
+    /**
+     * Cek pembayaran Pajak Air Tanah (AT).
+     *
+     * @tags Cek Pembayaran
+     */
+    public function at(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'at');
+    }
+
+    /**
+     * Cek pembayaran Pajak Mineral Bukan Logam (MINERBA).
+     *
+     * @tags Cek Pembayaran
+     */
+    public function minerba(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'minerba');
+    }
+
+    /**
+     * Cek pembayaran BPHTB.
+     *
+     * Untuk BPHTB, field `npwpd` diisi dengan Nomor Register (kohir).
+     *
+     * @tags Cek Pembayaran
+     */
+    public function bphtb(PaymentCheckRequest $request): JsonResponse
+    {
+        return $this->check($request, 'bphtb');
+    }
+
+    private function check(PaymentCheckRequest $request, string $jenisPajak): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $result = ($this->checkPayment)(
             npwpd: $validated['npwpd'],
             tahun: $validated['tahun'],
-            jenisPajak: $jenis_pajak,
+            jenisPajak: $jenisPajak,
             npwpdLama: (bool) ($validated['npwpd_lama'] ?? false),
             namaWp: $validated['nama_wp'] ?? null,
         );

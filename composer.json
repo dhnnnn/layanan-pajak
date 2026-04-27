@@ -11,6 +11,7 @@
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
+        "dedoc/scramble": "^0.13.21",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "*",
         "laravel/tinker": "^2.10.1",
@@ -19,7 +20,6 @@
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "*",
-        "darkaonline/l5-swagger": "^11.0",
         "fakerphp/faker": "^1.23",
         "laravel/boost": "2.0",
         "laravel/pail": "^1.2.2",
