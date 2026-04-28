@@ -11,6 +11,10 @@ docker exec layanan_pajak_app rm -f bootstrap/cache/config.php
 docker exec layanan_pajak_app rm -f bootstrap/cache/packages.php
 docker exec layanan_pajak_app rm -f bootstrap/cache/services.php
 
+# Fix storage permissions
+docker exec layanan_pajak_app chmod -R 775 storage bootstrap/cache
+docker exec layanan_pajak_app chown -R www-data:www-data storage bootstrap/cache
+
 # Install dependencies tanpa dev packages
 docker exec layanan_pajak_app composer install --no-dev --optimize-autoloader --no-interaction
 
