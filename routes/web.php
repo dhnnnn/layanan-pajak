@@ -74,6 +74,7 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::post('maps-discovery/crawl', [MapsDiscoveryController::class, 'crawl'])->name('maps-discovery.crawl')->middleware('permission:manage maps-discovery');
         Route::post('maps-discovery/sync', [MapsDiscoveryController::class, 'sync'])->name('maps-discovery.sync')->middleware('permission:manage maps-discovery');
         Route::get('maps-discovery/report', [MapsDiscoveryController::class, 'report'])->name('maps-discovery.report')->middleware('permission:view maps-discovery');
+        Route::get('maps-discovery/report/map-data', [MapsDiscoveryController::class, 'reportMapData'])->name('maps-discovery.report.map-data')->middleware('permission:view maps-discovery');
         Route::get('maps-discovery/report/{sessionId}', [MapsDiscoveryController::class, 'reportDetail'])->name('maps-discovery.report-detail')->middleware('permission:view maps-discovery');
 
         // Target Tambahan APBD

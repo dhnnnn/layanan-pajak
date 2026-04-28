@@ -2,6 +2,7 @@
     <x-slot:headerActions>
         <div class="flex items-center gap-2">
             @if($stats['belum_dicek'] > 0)
+            @can('manage maps-discovery')
             <button id="syncBtn" onclick="syncData()" 
                     class="inline-flex items-center gap-2 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -9,7 +10,9 @@
                 </svg>
                 Sinkronkan (<span id="syncCount">{{ $stats['belum_dicek'] }}</span>)
             </button>
+            @endcan
             @endif
+            @can('manage maps-discovery')
             <a href="{{ route('admin.maps-discovery.index') }}"
                class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,6 +20,7 @@
                 </svg>
                 Crawl Baru
             </a>
+            @endcan
         </div>
     </x-slot:headerActions>
 
@@ -42,7 +46,7 @@
         </div>
 
         {{-- Filter --}}
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 relative" style="z-index: 1000;">
             <form id="filterForm" method="GET" action="{{ route('admin.maps-discovery.report') }}" class="flex flex-wrap items-end gap-3">
                 <div class="flex-1 min-w-[200px]">
                     <label class="block text-xs font-medium text-slate-600 mb-1">Cari Nama / Alamat</label>
@@ -93,6 +97,11 @@
                     </a>
                 @endif
             </form>
+        </div>
+
+        {{-- Map --}}
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden" style="height: 320px; position: relative; z-index: 1;">
+            <div id="reportMap" style="height: 100%; width: 100%;"></div>
         </div>
 
         {{-- Table --}}
@@ -167,17 +176,92 @@
     </div>
 
     @push('scripts')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-    // Auto-submit filter saat dropdown berubah
-    document.addEventListener('DOMContentLoaded', function() {
-        var form = document.getElementById('filterForm');
-        if (!form) return;
+    // Initialize map
+    var reportMap = L.map('reportMap').setView([-7.6455, 112.9075], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+    }).addTo(reportMap);
 
-        ['statusHidden', 'taxTypeHidden', 'districtHidden'].forEach(function(id) {
-            var input = document.getElementById(id);
-            if (input) {
-                input.addEventListener('change', function() { form.submit(); });
+    var markers = [];
+
+    function escHtml(str) {
+        if (!str) return '';
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function statusColor(status) {
+        if (status === 'terdaftar') return { bg: 'bg-green-500', border: 'border-green-700', label: 'Terdaftar', cls: 'bg-green-100 text-green-700' };
+        if (status === 'potensi_baru') return { bg: 'bg-red-500', border: 'border-red-700', label: 'Potensi Baru', cls: 'bg-red-100 text-red-700' };
+        return { bg: 'bg-amber-500', border: 'border-amber-700', label: 'Belum Dicek', cls: 'bg-amber-100 text-amber-700' };
+    }
+
+    function loadMapData() {
+        var params = new URLSearchParams({
+            status: document.getElementById('statusHidden')?.value || '',
+            tax_type_code: document.getElementById('taxTypeHidden')?.value || '',
+            district_name: document.getElementById('districtHidden')?.value || '',
+            search: document.getElementById('searchInput')?.value || '',
+        });
+
+        fetch('{{ route("admin.maps-discovery.report.map-data") }}?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(function(points) {
+            // Clear existing markers
+            markers.forEach(m => reportMap.removeLayer(m));
+            markers = [];
+
+            points.forEach(function(p) {
+                if (!p.latitude || !p.longitude) return;
+                var s = statusColor(p.status);
+                var icon = L.divIcon({
+                    className: '',
+                    html: '<div class="w-3.5 h-3.5 rounded-full ' + s.bg + ' border-2 ' + s.border + ' shadow-md"></div>',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7],
+                    popupAnchor: [0, -10],
+                });
+
+                var popup = '<div class="text-sm max-w-[240px]">'
+                    + '<p class="font-semibold text-slate-800">' + escHtml(p.title) + '</p>'
+                    + '<p class="text-xs text-slate-500 mt-0.5">' + escHtml(p.subtitle) + '</p>'
+                    + (p.category ? '<p class="text-xs text-slate-400 mt-0.5">' + escHtml(p.category) + '</p>' : '')
+                    + (p.rating ? '<p class="text-xs text-amber-500 mt-1">★ ' + p.rating + (p.reviews ? ' (' + p.reviews + ')' : '') + '</p>' : '')
+                    + '<div class="mt-1.5"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ' + s.cls + '">' + s.label + '</span></div>'
+                    + (p.matched_npwpd ? '<p class="text-xs text-slate-600 mt-1"><span class="font-medium">NPWPD:</span> ' + escHtml(p.matched_npwpd) + '</p>' : '')
+                    + (p.matched_name ? '<p class="text-xs text-slate-600"><span class="font-medium">WP:</span> ' + escHtml(p.matched_name) + '</p>' : '')
+                    + (p.url ? '<a href="' + escHtml(p.url) + '" target="_blank" class="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:text-blue-800">Buka Maps ↗</a>' : '')
+                    + '</div>';
+
+                var m = L.marker([p.latitude, p.longitude], { icon: icon })
+                    .bindPopup(popup, { maxWidth: 240 })
+                    .addTo(reportMap);
+                markers.push(m);
+            });
+
+            if (markers.length > 0) {
+                var group = L.featureGroup(markers);
+                reportMap.fitBounds(group.getBounds().pad(0.1));
             }
+        })
+        .catch(function(e) { console.error('Map data error:', e); });
+    }
+
+    // Load on page ready
+    document.addEventListener('DOMContentLoaded', function() {
+        loadMapData();
+
+        // Reload map when filters change
+        ['statusHidden', 'taxTypeHidden', 'districtHidden'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', function() { setTimeout(loadMapData, 300); });
         });
 
         var searchInput = document.getElementById('searchInput');
@@ -185,8 +269,26 @@
         if (searchInput) {
             searchInput.addEventListener('keyup', function(e) {
                 clearTimeout(searchTimer);
+                if (e.key === 'Enter') { loadMapData(); return; }
+                searchTimer = setTimeout(loadMapData, 600);
+            });
+        }
+
+        // Auto-submit filter saat dropdown berubah
+        var form = document.getElementById('filterForm');
+        if (!form) return;
+        ['statusHidden', 'taxTypeHidden', 'districtHidden'].forEach(function(id) {
+            var input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('change', function() { form.submit(); });
+            }
+        });
+        if (searchInput) {
+            var timer = null;
+            searchInput.addEventListener('keyup', function(e) {
+                clearTimeout(timer);
                 if (e.key === 'Enter') { form.submit(); return; }
-                searchTimer = setTimeout(function() { form.submit(); }, 500);
+                timer = setTimeout(function() { form.submit(); }, 500);
             });
         }
     });
@@ -223,12 +325,10 @@
                     break;
                 }
 
-                // Update counter
                 if (countEl) countEl.textContent = data.remaining;
                 if (statEl) statEl.textContent = data.remaining.toLocaleString('id-ID');
             }
 
-            // Selesai — reload halaman
             window.location.reload();
         } catch (e) {
             alert('Gagal sinkronkan data: ' + e.message);

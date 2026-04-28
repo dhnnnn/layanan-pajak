@@ -95,6 +95,56 @@ class MapsDiscoveryController extends Controller
         return view('admin.maps-discovery.report', $action($request, auth()->user()));
     }
 
+    /**
+     * API: ambil data map (lat/lng + status) untuk halaman report.
+     */
+    public function reportMapData(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        $query = MapsDiscoveryResult::query()
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude');
+
+        // Kepala UPT: hanya kecamatan UPT-nya
+        if ($user->isKepalaUpt()) {
+            $allowedDistricts = $user->upt()?->districts->pluck('name')->toArray() ?? [];
+            if (! empty($allowedDistricts)) {
+                $query->whereIn('district_name', $allowedDistricts);
+            }
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('tax_type_code')) {
+            $query->where('tax_type_code', $request->input('tax_type_code'));
+        }
+        if ($request->filled('district_name')) {
+            $query->where('district_name', $request->input('district_name'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search): void {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('subtitle', 'like', "%{$search}%");
+            });
+        }
+
+        $points = $query->get(['title', 'subtitle', 'category', 'status', 'latitude', 'longitude', 'url', 'matched_npwpd', 'matched_name', 'rating', 'reviews'])
+            ->filter(function ($r): bool {
+                // Filter: hanya koordinat di wilayah Kabupaten Pasuruan
+                return $r->latitude !== null
+                    && $r->longitude !== null
+                    && $r->latitude >= -7.95
+                    && $r->latitude <= -7.35
+                    && $r->longitude >= 112.55
+                    && $r->longitude <= 113.05;
+            })
+            ->values();
+
+        return response()->json($points);
+    }
+
     public function reportDetail(string $sessionId): View
     {
         $results = MapsDiscoveryResult::where('session_id', $sessionId)

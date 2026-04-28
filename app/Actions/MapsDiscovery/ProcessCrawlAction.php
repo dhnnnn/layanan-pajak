@@ -87,21 +87,29 @@ class ProcessCrawlAction
         $maxResults = (int) ($validated['max_results'] ?? 20);
         $crawlResults = ($this->crawlAction)($keywords, $area, $maxResults, $existingPlaceIds);
 
-        // Filter: hanya hasil yang alamatnya mengandung nama kecamatan (jika dipilih)
+        // Filter: hanya hasil yang alamatnya mengandung nama kecamatan yang dipilih
+        // Parse "Kec. NamaKecamatan" dari alamat dan cocokkan secara ketat
         if ($districtShort !== null) {
             $needle = strtolower($districtShort);
             $crawlResults = $crawlResults->filter(function (array $item) use ($needle): bool {
                 $subtitle = strtolower($item['subtitle'] ?? '');
 
-                return str_contains($subtitle, $needle)
-                    || str_contains($subtitle, 'pasuruan');
+                // Cek 1: ada "kec. <nama>" atau "kecamatan <nama>" di alamat
+                if (preg_match('/kec(?:amatan)?\.?\s+([a-z\s]+?)(?:,|\d|$)/i', $subtitle, $matches)) {
+                    $parsedKec = trim(strtolower($matches[1]));
+
+                    return str_contains($parsedKec, $needle) || str_contains($needle, $parsedKec);
+                }
+
+                // Cek 2: nama kecamatan muncul langsung di alamat (tanpa prefix "kec")
+                return str_contains($subtitle, $needle);
             })->values();
         }
 
         if ($crawlResults->isEmpty()) {
             return [
                 'results' => collect(),
-                'stats' => ['total' => 0, 'new' => 0],
+                'stats' => ['total' => 0, 'terdaftar' => 0, 'potensi_baru' => 0, 'belum_dicek' => 0, 'new_from_crawl' => 0],
                 'message' => 'Tidak ditemukan lokasi baru di wilayah ini.',
             ];
         }
@@ -115,6 +123,29 @@ class ProcessCrawlAction
         foreach ($crawlResults as $item) {
             $placeId = $item['place_id'] ?? '';
             if (empty($placeId)) {
+                continue;
+            }
+
+            // Validasi koordinat: hanya simpan yang ada di Kabupaten Pasuruan
+            $lat = $item['latitude'] ?? null;
+            $lng = $item['longitude'] ?? null;
+            if ($lat !== null && $lng !== null) {
+                if ($lat < -7.95 || $lat > -7.35 || $lng < 112.55 || $lng > 113.05) {
+                    continue; // Koordinat di luar Kab. Pasuruan — skip
+                }
+            }
+
+            // Validasi alamat: jangan simpan jika jelas bukan Pasuruan
+            $subtitle = strtolower($item['subtitle'] ?? '');
+            $excludedCities = ['surabaya', 'sidoarjo', 'probolinggo', 'malang', 'mojokerto', 'jombang'];
+            $isExcluded = false;
+            foreach ($excludedCities as $city) {
+                if (str_contains($subtitle, $city)) {
+                    $isExcluded = true;
+                    break;
+                }
+            }
+            if ($isExcluded) {
                 continue;
             }
 
@@ -144,10 +175,9 @@ class ProcessCrawlAction
             $saved++;
         }
 
-        // Return semua data (baru + lama) untuk ditampilkan di maps
-        $allResults = MapsDiscoveryResult::query()
-            ->when($ayat, fn ($q) => $q->where('tax_type_code', $ayat))
-            ->when($districtName, fn ($q) => $q->where('district_name', $districtName))
+        // Return hanya hasil crawl baru (yang baru disimpan ke DB)
+        $newResults = MapsDiscoveryResult::query()
+            ->where('session_id', $sessionId)
             ->orderByDesc('updated_at')
             ->get()
             ->map(fn (MapsDiscoveryResult $r): array => [
@@ -166,17 +196,13 @@ class ProcessCrawlAction
                 'matched_name' => $r->matched_name,
             ]);
 
-        $terdaftar = $allResults->where('status', 'terdaftar')->count();
-        $potensiBaru = $allResults->where('status', 'potensi_baru')->count();
-        $belumDicek = $allResults->where('status', 'belum_dicek')->count();
-
         return [
-            'results' => $allResults->values(),
+            'results' => $newResults->values(),
             'stats' => [
-                'total' => $allResults->count(),
-                'terdaftar' => $terdaftar,
-                'potensi_baru' => $potensiBaru,
-                'belum_dicek' => $belumDicek,
+                'total' => $newResults->count(),
+                'terdaftar' => $newResults->where('status', 'terdaftar')->count(),
+                'potensi_baru' => $newResults->where('status', 'potensi_baru')->count(),
+                'belum_dicek' => $newResults->where('status', 'belum_dicek')->count(),
                 'new_from_crawl' => $saved,
             ],
         ];
