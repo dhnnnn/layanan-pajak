@@ -26,6 +26,7 @@ class CrawlMapsDiscoveryRequest extends FormRequest
         return [
             'tax_type_code' => ['nullable', 'string', 'max:10'],
             'district_id' => ['nullable', 'string', 'exists:districts,id'],
+            'village' => ['nullable', 'string', 'max:100'],
             'keyword' => ['nullable', 'string', 'max:200'],
             'max_results' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];

@@ -35,6 +35,7 @@ class PermissionSeeder extends Seeder
             'monitoring' => [
                 'view forecasting',
                 'view maps-discovery',
+                'manage maps-discovery',
                 'view tax-targets',
                 'manage tax-targets',
                 'view realization-monitoring',
@@ -72,6 +73,7 @@ class PermissionSeeder extends Seeder
                 'view additional-targets', 'manage additional-targets', 'delete additional-targets',
                 'view forecasting',
                 'view maps-discovery',
+                'manage maps-discovery',
                 'view tax-targets', 'manage tax-targets',
                 'view realization-monitoring', 'export realization-monitoring',
                 'import data',

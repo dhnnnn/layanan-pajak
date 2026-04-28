@@ -37,7 +37,7 @@ return [
 
     'scraper' => [
         'url' => env('SCRAPER_API_URL', 'http://pajak_scraper_app:9000'),
-        'timeout' => env('SCRAPER_TIMEOUT', 250),
+        'timeout' => env('SCRAPER_TIMEOUT', 600),
     ],
 
 ];

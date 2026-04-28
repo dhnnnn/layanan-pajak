@@ -41,6 +41,108 @@
                 </div>
 
                 <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Desa/Kelurahan <span class="text-slate-400">(opsional)</span></label>
+                    <input type="hidden" id="villageInput" value="">
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        value: '',
+                        label: 'Pilih kecamatan dulu',
+                        options: [],
+                        disabled: true,
+                        get filteredOptions() {
+                            if (!this.search) return this.options;
+                            return this.options.filter(opt => opt.name.toLowerCase().includes(this.search.toLowerCase()));
+                        },
+                        select(opt) {
+                            this.value = opt.id;
+                            this.label = opt.name;
+                            this.open = false;
+                            this.search = '';
+                            document.getElementById('villageInput').value = opt.id;
+                            document.getElementById('villageInput').dispatchEvent(new Event('change', { bubbles: true }));
+                        },
+                        reset() {
+                            this.value = '';
+                            this.label = 'Semua Desa';
+                            this.options = [];
+                            this.disabled = true;
+                            document.getElementById('villageInput').value = '';
+                            document.getElementById('villageInput').dispatchEvent(new Event('change', { bubbles: true }));
+                        },
+                        async loadVillages(districtId) {
+                            if (!districtId) { this.reset(); this.label = 'Pilih kecamatan dulu'; return; }
+                            this.label = 'Memuat desa...';
+                            this.disabled = true;
+                            try {
+                                const resp = await fetch(`{{ route('admin.maps-discovery.villages') }}?district_id=${districtId}`);
+                                this.options = await resp.json();
+                                this.label = 'Semua Desa';
+                                this.disabled = false;
+                                this.value = '';
+                                document.getElementById('villageInput').value = '';
+                            } catch (e) {
+                                this.label = 'Gagal memuat';
+                                this.disabled = true;
+                            }
+                        }
+                    }" x-ref="villageDropdown" @district-changed.window="loadVillages($event.detail.districtId)" class="relative w-full">
+                        <button type="button"
+                            @click="if(!disabled) open = !open"
+                            @click.away="open = false"
+                            :class="disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-400'"
+                            class="w-full flex items-center justify-between px-4 py-2 min-h-[38px] bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all">
+                            <span x-text="label" :class="value ? 'text-slate-900 font-bold' : 'text-slate-400'"></span>
+                            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <div x-show="open" x-cloak
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute z-50 mt-2 w-full bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden"
+                            style="display: none;">
+                            <div class="p-2 border-b border-slate-50 bg-slate-50/50">
+                                <div class="relative">
+                                    <input type="text" x-model="search" @click.stop placeholder="Cari desa..."
+                                        class="w-full pl-8 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                                    <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="max-h-60 overflow-y-auto py-1 scrollbar-thin scrollbar-thumb-slate-200">
+                                <button type="button" @click="select({id: '', name: 'Semua Desa'})"
+                                    class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors"
+                                    :class="!value ? 'text-blue-600 font-bold bg-blue-50/30' : 'text-slate-600'">
+                                    -- Semua Desa --
+                                </button>
+                                <template x-for="opt in filteredOptions" :key="opt.id">
+                                    <button type="button" @click="select(opt)"
+                                        class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors"
+                                        :class="value == opt.id ? 'text-blue-600 font-bold bg-blue-50/30' : 'text-slate-600'">
+                                        <div class="flex items-center justify-between">
+                                            <span x-text="opt.name" class="uppercase"></span>
+                                            <svg x-show="value == opt.id" class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                    </button>
+                                </template>
+                                <div x-show="filteredOptions.length === 0" class="px-4 py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                    Tidak ada hasil
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">Keyword Tambahan</label>
                     <input type="text" x-model="keyword" placeholder="Contoh: warung, toko..."
                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
@@ -138,6 +240,10 @@
                                               class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                                             Potensi Baru
                                         </span>
+                                        <span x-show="item.status === 'belum_dicek'"
+                                              class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                            Belum Dicek
+                                        </span>
                                     </div>
                                 </button>
                             </template>
@@ -151,30 +257,43 @@
         <div class="w-full lg:w-2/3 flex flex-col gap-4 overflow-hidden relative" style="min-height: 0;">
 
             {{-- Stats Cards --}}
-            <div class="grid grid-cols-2 gap-4 shrink-0 z-10">
+            <div class="grid grid-cols-3 gap-3 shrink-0 z-10">
                 {{-- Terdaftar --}}
-                <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+                    <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500">Terdaftar</p>
-                        <p class="text-xl font-bold text-green-600" x-text="stats.terdaftar">0</p>
+                        <p class="text-[10px] text-slate-500">Terdaftar</p>
+                        <p class="text-lg font-bold text-green-600" x-text="stats.terdaftar">0</p>
                     </div>
                 </div>
 
                 {{-- Potensi Baru --}}
-                <div class="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+                    <div class="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500">Potensi Baru</p>
-                        <p class="text-xl font-bold text-red-600" x-text="stats.potensi_baru">0</p>
+                        <p class="text-[10px] text-slate-500">Potensi Baru</p>
+                        <p class="text-lg font-bold text-red-600" x-text="stats.potensi_baru">0</p>
+                    </div>
+                </div>
+
+                {{-- Belum Dicek --}}
+                <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+                    <div class="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-500">Belum Dicek</p>
+                        <p class="text-lg font-bold text-amber-600" x-text="stats.belum_dicek">0</p>
                     </div>
                 </div>
             </div>
@@ -267,12 +386,13 @@ function mapsDiscovery() {
         results: [],
         error: null,
         message: null,
-        stats: { terdaftar: 0, potensi_baru: 0 },
+        stats: { terdaftar: 0, potensi_baru: 0, belum_dicek: 0 },
         map: null,
         markers: [],
         taxTypeCode: '',
         districtId: '',
         keyword: '',
+        village: '',
         maxResults: 20,
         progress: 0,
         crawlStep: 0,
@@ -293,6 +413,12 @@ function mapsDiscovery() {
                 });
                 document.getElementById('districtIdInput').addEventListener('change', (e) => {
                     this.districtId = e.target.value;
+                    this.village = '';
+                    // Dispatch custom event for village dropdown
+                    window.dispatchEvent(new CustomEvent('district-changed', { detail: { districtId: e.target.value } }));
+                });
+                document.getElementById('villageInput').addEventListener('change', (e) => {
+                    this.village = e.target.value;
                 });
             });
         },
@@ -337,6 +463,7 @@ function mapsDiscovery() {
                     body: JSON.stringify({
                         tax_type_code: this.taxTypeCode,
                         district_id: this.districtId,
+                        village: this.village,
                         keyword: this.keyword,
                         max_results: this.maxResults,
                     }),
@@ -363,7 +490,7 @@ function mapsDiscovery() {
                 this.progress = 100;
 
                 this.results = data.results || [];
-                this.stats = data.stats || { terdaftar: 0, potensi_baru: 0 };
+                this.stats = data.stats || { terdaftar: 0, potensi_baru: 0, belum_dicek: 0 };
                 this.message = data.message || null;
 
                 // Small delay to show 100% before hiding
@@ -402,8 +529,9 @@ function mapsDiscovery() {
                 if (!this.isValidCoord(item.latitude, item.longitude)) return;
 
                 const isRegistered = item.status === 'terdaftar';
-                const colorClass = isRegistered ? 'bg-green-500' : 'bg-red-500';
-                const borderClass = isRegistered ? 'border-green-700' : 'border-red-700';
+                const isBelumDicek = item.status === 'belum_dicek';
+                const colorClass = isRegistered ? 'bg-green-500' : (isBelumDicek ? 'bg-amber-500' : 'bg-red-500');
+                const borderClass = isRegistered ? 'border-green-700' : (isBelumDicek ? 'border-amber-700' : 'border-red-700');
 
                 const icon = L.divIcon({
                     className: '',
@@ -436,8 +564,8 @@ function mapsDiscovery() {
 
                 popupContent += `
                         <div class="mt-2 flex items-center gap-2">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isRegistered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                                ${isRegistered ? 'Terdaftar' : 'Potensi Baru'}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isRegistered ? 'bg-green-100 text-green-700' : (isBelumDicek ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}">
+                                ${isRegistered ? 'Terdaftar' : (isBelumDicek ? 'Belum Dicek' : 'Potensi Baru')}
                             </span>
                         </div>`;
 
@@ -496,6 +624,7 @@ function mapsDiscovery() {
             div.textContent = str;
             return div.innerHTML;
         },
+
     };
 }
 </script>

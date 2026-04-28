@@ -32,37 +32,31 @@ class CrawlMapsAction
      *
      * @param  list<string>  $keywords
      * @param  string  $area  Nama wilayah pencarian
-     * @param  list<string>  $excludePlaceIds  Place ID yang sudah ada di DB, akan di-filter dari hasil
+     * @param  list<string>  $excludePlaceIds  Place ID yang sudah ada di DB, scraper akan skip
      */
     public function __invoke(array $keywords, string $area, int $maxResults = 20, array $excludePlaceIds = []): Collection
     {
         $combinedKeyword = implode(' ', $keywords);
-        $results = $this->fetchResults($combinedKeyword, $area, $maxResults);
 
-        // Filter: buang hasil yang place_id-nya sudah ada di DB
-        if (! empty($excludePlaceIds)) {
-            $excludeSet = array_flip($excludePlaceIds);
-            $results = $results->filter(
-                fn (array $item): bool => empty($item['place_id']) || ! isset($excludeSet[$item['place_id']])
-            )->values();
-        }
-
-        return $results;
+        return $this->fetchResults($combinedKeyword, $area, $maxResults, $excludePlaceIds);
     }
 
     /**
+     * @param  list<string>  $excludePlaceIds
      * @return Collection<int, array{title: string, subtitle: string, category: string, place_id: string, url: string, latitude: ?float, longitude: ?float}>
      */
-    private function fetchResults(string $keyword, string $area, int $maxResults): Collection
+    private function fetchResults(string $keyword, string $area, int $maxResults, array $excludePlaceIds = []): Collection
     {
         $query = "{$keyword} {$area}";
 
         try {
+            // POST agar exclude_place_ids bisa dikirim sebagai array di body (tidak kena URL length limit)
             $response = Http::timeout(config('services.scraper.timeout'))
-                ->get(config('services.scraper.url').'/search', [
+                ->post(config('services.scraper.url').'/search', [
                     'query' => $query,
                     'max_results' => $maxResults,
                     'locale' => 'id-ID',
+                    'exclude_place_ids' => $excludePlaceIds,
                 ]);
 
             if (! $response->successful()) {
@@ -106,13 +100,9 @@ class CrawlMapsAction
      */
     private function cleanAddress(string $address): string
     {
-        // Hapus emoji, symbol, dan karakter non-printable unicode
         $cleaned = preg_replace('/[\x{1F000}-\x{1FFFF}|\x{2600}-\x{27FF}|\x{FE00}-\x{FEFF}|\x{E000}-\x{F8FF}]/u', '', $address);
-
-        // Hapus karakter box/square unicode (plus codes icon)
         $cleaned = preg_replace('/[\x{25A0}-\x{25FF}]/u', '', $cleaned ?? $address);
 
-        // Trim whitespace dan newlines
         return trim(preg_replace('/\s+/', ' ', $cleaned ?? $address));
     }
 }

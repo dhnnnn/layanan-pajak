@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class District extends Model
 {
@@ -14,7 +15,7 @@ class District extends Model
     use HasFactory, HasUuids;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'code', 'simpadu_code'];
+    protected $fillable = ['name', 'code', 'simpadu_code', 'district_code'];
 
     protected $keyType = 'string';
 
@@ -56,5 +57,10 @@ class District extends Model
     public function upts(): BelongsToMany
     {
         return $this->belongsToMany(Upt::class, 'upt_districts');
+    }
+
+    public function villages(): HasMany
+    {
+        return $this->hasMany(Village::class, 'district_code', 'district_code');
     }
 }

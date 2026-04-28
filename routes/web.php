@@ -69,8 +69,10 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::get('forecasting/data', [ForecastingController::class, 'data'])->name('forecasting.data')->middleware('permission:view forecasting');
 
         // Maps WP Discovery
-        Route::get('maps-discovery', [MapsDiscoveryController::class, 'index'])->name('maps-discovery.index')->middleware('permission:view maps-discovery');
-        Route::post('maps-discovery/crawl', [MapsDiscoveryController::class, 'crawl'])->name('maps-discovery.crawl')->middleware('permission:view maps-discovery');
+        Route::get('maps-discovery', [MapsDiscoveryController::class, 'index'])->name('maps-discovery.index')->middleware('permission:manage maps-discovery');
+        Route::get('maps-discovery/villages', [MapsDiscoveryController::class, 'villages'])->name('maps-discovery.villages')->middleware('permission:manage maps-discovery');
+        Route::post('maps-discovery/crawl', [MapsDiscoveryController::class, 'crawl'])->name('maps-discovery.crawl')->middleware('permission:manage maps-discovery');
+        Route::post('maps-discovery/sync', [MapsDiscoveryController::class, 'sync'])->name('maps-discovery.sync')->middleware('permission:manage maps-discovery');
         Route::get('maps-discovery/report', [MapsDiscoveryController::class, 'report'])->name('maps-discovery.report')->middleware('permission:view maps-discovery');
         Route::get('maps-discovery/report/{sessionId}', [MapsDiscoveryController::class, 'reportDetail'])->name('maps-discovery.report-detail')->middleware('permission:view maps-discovery');
 

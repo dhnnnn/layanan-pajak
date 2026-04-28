@@ -81,6 +81,7 @@ class RoleController extends Controller
             [
                 'group' => 'Laporan & Pantauan',
                 'features' => [
+                    ['label' => 'Potensi Wajib Pajak', 'permissions' => ['lihat' => 'view maps-discovery',          'kelola' => 'manage maps-discovery',        'hapus' => null]],
                     ['label' => 'Prediksi Penerimaan',  'permissions' => ['lihat' => 'view forecasting',             'kelola' => null,                          'hapus' => null]],
                     ['label' => 'Laporan Anggaran',     'permissions' => ['lihat' => 'view tax-targets',             'kelola' => 'manage tax-targets',           'hapus' => null]],
                     ['label' => 'Realisasi Penerimaan', 'permissions' => ['lihat' => 'view realization-monitoring',  'kelola' => 'export realization-monitoring', 'hapus' => null]],
