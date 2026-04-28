@@ -76,9 +76,9 @@ class MapsDiscoveryController extends Controller
                 'stats' => $result['stats'],
             ]);
         } catch (ScraperUnavailableException $e) {
-            return response()->json(['error' => $e->getMessage()], 1003);
+            return response()->json(['error' => $e->getMessage()], 5003);
         } catch (ScraperErrorException $e) {
-            return response()->json(['error' => $e->getMessage()], 1000);
+            return response()->json(['error' => $e->getMessage()], 5000);
         }
     }
 

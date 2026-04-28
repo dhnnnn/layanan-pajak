@@ -4,7 +4,7 @@ set -e
 echo "=== Starting deployment ==="
 
 # FIX: allow git repo ownership
-git config --global --add safe.directory '*'
+git config --add safe.directory /var/www
 
 # Pull latest code
 git pull origin main
