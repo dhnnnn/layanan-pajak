@@ -3,6 +3,9 @@ set -e
 
 echo "=== Starting deployment ==="
 
+# FIX: allow git repo ownership
+git config --global --add safe.directory '*'
+
 # Pull latest code
 git pull origin main
 
