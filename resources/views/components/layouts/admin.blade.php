@@ -37,8 +37,7 @@
             {{-- Navigation --}}
             <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto text-sm scrollbar-hide">
 
-                <p class="px-3 pt-1 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menu Utama</p>
-
+                {{-- Dashboard --}}
                 <x-layouts.sidebar-item route="admin.dashboard" :active="request()->routeIs('admin.dashboard')">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
@@ -46,187 +45,132 @@
                     Dashboard
                 </x-layouts.sidebar-item>
 
-                {{-- Admin --}}
-                @if(auth()->user()->isAdmin() && !auth()->user()->isKepalaUpt())
-                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kelola Data</p>
-
-                <x-layouts.sidebar-item route="admin.tax-types.index" :active="request()->routeIs('admin.tax-types.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    Kategori Pajak
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.districts.index" :active="request()->routeIs('admin.districts.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    Data Wilayah
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.employees.index" :active="request()->routeIs('admin.employees.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                    Data Petugas
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.upts.index" :active="request()->routeIs('admin.upts.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
-                    Unit Pelayanan
-                </x-layouts.sidebar-item>
-
-                @can('view additional-targets')
-                <x-layouts.sidebar-dropdown 
-                    label="Target Tambahan" 
-                    :active="request()->routeIs('admin.*additional-targets.*')"
-                >
-                    <x-slot:icon>
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </x-slot:icon>
-                    <x-layouts.sidebar-submenu-item route="admin.upt-additional-targets.index" :active="request()->routeIs('admin.upt-additional-targets.*')">
-                        Target APBD
-                    </x-layouts.sidebar-submenu-item>
-                    <x-layouts.sidebar-submenu-item route="admin.district-additional-targets.index" :active="request()->routeIs('admin.district-additional-targets.*')">
-                        Target Kecamatan
-                    </x-layouts.sidebar-submenu-item>
-                </x-layouts.sidebar-dropdown>
-                @endcan
-
-                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan & Pantauan</p>
-
-                <x-layouts.sidebar-maps-discovery />
-
-                <x-layouts.sidebar-item route="admin.forecasting.index" :active="request()->routeIs('admin.forecasting.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
-                    Prediksi Penerimaan
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Laporan Anggaran
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.realization-monitoring.index" :active="request()->routeIs('admin.realization-monitoring.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Realisasi Penerimaan
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.monitoring.index" :active="request()->routeIs('admin.monitoring.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
-                    Pemantau Wajib Pajak
-                </x-layouts.sidebar-item>
-
-                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Manajemen Akses</p>
-
-                <x-layouts.sidebar-item route="admin.roles.index" :active="request()->routeIs('admin.roles.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                    </svg>
-                    Role
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.rbac-users.index" :active="request()->routeIs('admin.rbac-users.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                    Kelola User
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.access-monitoring.index" :active="request()->routeIs('admin.access-monitoring.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Monitoring Akses
-                </x-layouts.sidebar-item>
-                @endif
-
-                {{-- Kepala UPT --}}
+                {{-- Kepala UPT: Data UPT --}}
                 @if(auth()->user()->isKepalaUpt())
                 <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">UPT Anda</p>
-
                 <x-layouts.sidebar-item route="admin.upts.show" :params="['upt' => auth()->user()->upt()?->id]" :active="request()->routeIs('admin.upts.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                     Data UPT
                 </x-layouts.sidebar-item>
+                @endif
 
+                {{-- DATA --}}
+                @canany(['view tax-types', 'view districts', 'view employees', 'view upts'])
+                <x-layouts.sidebar-section label="Data" :active="request()->routeIs('admin.tax-types.*') || request()->routeIs('admin.districts.*') || request()->routeIs('admin.employees.*') || request()->routeIs('admin.upts.*')">
+                @can('view tax-types')
+                <x-layouts.sidebar-item route="admin.tax-types.index" :active="request()->routeIs('admin.tax-types.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    Kategori Pajak
+                </x-layouts.sidebar-item>
+                @endcan
+                @can('view districts')
+                <x-layouts.sidebar-item route="admin.districts.index" :active="request()->routeIs('admin.districts.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Wilayah
+                </x-layouts.sidebar-item>
+                @endcan
+                @can('view employees')
                 <x-layouts.sidebar-item route="admin.employees.index" :active="request()->routeIs('admin.employees.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Kinerja Petugas
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    Petugas
                 </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.monitoring.index" :active="request()->routeIs('admin.monitoring.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Pemantau Wajib Pajak
+                @endcan
+                @can('view upts')
+                @if(!auth()->user()->isKepalaUpt())
+                <x-layouts.sidebar-item route="admin.upts.index" :active="request()->routeIs('admin.upts.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    Unit Pelayanan
                 </x-layouts.sidebar-item>
+                @endif
+                @endcan
+                </x-layouts.sidebar-section>
+                @endcanany
 
+                {{-- TARGET --}}
+                @can('view additional-targets')
+                <x-layouts.sidebar-section label="Target" :active="request()->routeIs('admin.*additional-targets.*')">
+                <x-layouts.sidebar-item route="admin.upt-additional-targets.index" :active="request()->routeIs('admin.upt-additional-targets.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Target APBD
+                </x-layouts.sidebar-item>
+                <x-layouts.sidebar-item route="admin.district-additional-targets.index" :active="request()->routeIs('admin.district-additional-targets.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Target Kecamatan
+                </x-layouts.sidebar-item>
+                </x-layouts.sidebar-section>
+                @endcan
+
+                {{-- POTENSI --}}
+                @canany(['view maps-discovery', 'manage maps-discovery'])
+                <x-layouts.sidebar-section label="Potensi" :active="request()->routeIs('admin.maps-discovery.*')">
+                @can('manage maps-discovery')
+                <x-layouts.sidebar-item route="admin.maps-discovery.index" :active="request()->routeIs('admin.maps-discovery.index')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    Temukan WP Baru
+                </x-layouts.sidebar-item>
+                @endcan
+                <x-layouts.sidebar-item route="admin.maps-discovery.report" :active="request()->routeIs('admin.maps-discovery.report') || request()->routeIs('admin.maps-discovery.report-detail')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Data Potensi WP
+                </x-layouts.sidebar-item>
+                </x-layouts.sidebar-section>
+                @endcanany
+
+                {{-- ANALISIS --}}
+                @canany(['view forecasting', 'view realization-monitoring', 'view tax-targets'])
+                <x-layouts.sidebar-section label="Analisis" :active="request()->routeIs('admin.forecasting.*') || request()->routeIs('admin.realization-monitoring.*') || request()->routeIs('admin.tax-targets.*')">
                 @can('view forecasting')
                 <x-layouts.sidebar-item route="admin.forecasting.index" :active="request()->routeIs('admin.forecasting.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                     Prediksi Penerimaan
                 </x-layouts.sidebar-item>
                 @endcan
-
-                <x-layouts.sidebar-maps-discovery />
-                @endif
-
-                {{-- Pemimpin --}}
-                @if(auth()->user()->hasRole('pemimpin'))
-                <p class="px-3 pt-4 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Laporan & Pantauan</p>
-
-                <x-layouts.sidebar-maps-discovery />
-
-                <x-layouts.sidebar-item route="admin.forecasting.index" :active="request()->routeIs('admin.forecasting.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
-                    Prediksi Penerimaan
-                </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Laporan Anggaran
-                </x-layouts.sidebar-item>
-
+                @can('view realization-monitoring')
                 <x-layouts.sidebar-item route="admin.realization-monitoring.index" :active="request()->routeIs('admin.realization-monitoring.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     Realisasi Penerimaan
                 </x-layouts.sidebar-item>
-
-                <x-layouts.sidebar-item route="admin.monitoring.index" :active="request()->routeIs('admin.monitoring.*')">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
-                    Pemantau Wajib Pajak
+                @endcan
+                @can('view tax-targets')
+                <x-layouts.sidebar-item route="admin.tax-targets.report" :active="request()->routeIs('admin.tax-targets.report')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Laporan Anggaran
                 </x-layouts.sidebar-item>
-                @endif
+                @endcan
+                </x-layouts.sidebar-section>
+                @endcanany
+
+                {{-- MONITORING --}}
+                <x-layouts.sidebar-section label="Monitoring" :active="request()->routeIs('admin.monitoring.*')">
+                <x-layouts.sidebar-item route="admin.monitoring.index" :active="request()->routeIs('admin.monitoring.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    Pemantau WP
+                </x-layouts.sidebar-item>
+                </x-layouts.sidebar-section>
+
+                {{-- AKSES --}}
+                @canany(['view roles', 'view rbac-users', 'view access-monitoring'])
+                <x-layouts.sidebar-section label="Akses" :active="request()->routeIs('admin.roles.*') || request()->routeIs('admin.rbac-users.*') || request()->routeIs('admin.access-monitoring.*')">
+                @can('view roles')
+                <x-layouts.sidebar-item route="admin.roles.index" :active="request()->routeIs('admin.roles.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    Role
+                </x-layouts.sidebar-item>
+                @endcan
+                @can('view rbac-users')
+                <x-layouts.sidebar-item route="admin.rbac-users.index" :active="request()->routeIs('admin.rbac-users.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    User
+                </x-layouts.sidebar-item>
+                @endcan
+                @can('view access-monitoring')
+                <x-layouts.sidebar-item route="admin.access-monitoring.index" :active="request()->routeIs('admin.access-monitoring.*')">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    Monitoring Akses
+                </x-layouts.sidebar-item>
+                @endcan
+                </x-layouts.sidebar-section>
+                @endcanany
 
             </nav>
 
