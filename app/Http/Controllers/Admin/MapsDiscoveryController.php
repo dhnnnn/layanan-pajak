@@ -180,6 +180,10 @@ class MapsDiscoveryController extends Controller
         $statisticsError = null;
         $isLoading = false;
 
+        // Cek apakah sudah ditandai unavailable (sudah dicoba tapi tidak ada data)
+        $popularTimes = $result->popular_times ?? [];
+        $isUnavailable = isset($popularTimes['_unavailable']) && $popularTimes['_unavailable'] === true;
+
         // Cek apakah sudah ada di maps_statistics
         $hasStatistics = $result->mapsStatistics()->exists();
 
@@ -191,6 +195,9 @@ class MapsDiscoveryController extends Controller
             } else {
                 $statisticsError = $statsResult['message'] ?? 'Gagal memuat statistik';
             }
+        } elseif ($isUnavailable) {
+            // Sudah pernah dicoba tapi tidak ada data popular times
+            $statisticsError = 'Data jam ramai tidak tersedia untuk tempat ini di Google Maps. Tempat ini mungkin belum memiliki cukup data kunjungan.';
         } elseif (! empty($result->popular_times)) {
             // Ada popular_times di DB, konversi ke maps_statistics
             try {

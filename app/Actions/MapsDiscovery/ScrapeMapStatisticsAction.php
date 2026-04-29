@@ -182,6 +182,9 @@ class ScrapeMapStatisticsAction
             $popularTimes = $data['popular_times'] ?? [];
 
             if (empty($popularTimes)) {
+                // Tandai bahwa sudah dicoba tapi tidak tersedia, agar tidak scrape ulang terus
+                $result->update(['popular_times' => ['_unavailable' => true]]);
+
                 return [
                     'success' => false,
                     'message' => 'Data popular times tidak tersedia untuk tempat ini di Google Maps.',
