@@ -77,6 +77,11 @@ Route::middleware(['auth', 'role:admin|kepala_upt|pemimpin'])
         Route::get('maps-discovery/report/map-data', [MapsDiscoveryController::class, 'reportMapData'])->name('maps-discovery.report.map-data')->middleware('permission:view maps-discovery');
         Route::get('maps-discovery/report/{sessionId}', [MapsDiscoveryController::class, 'reportDetail'])->name('maps-discovery.report-detail')->middleware('permission:view maps-discovery');
 
+        // Analisis Potensi Pajak
+        Route::get('maps-discovery/analisis/{id}', [MapsDiscoveryController::class, 'analisisDetail'])->name('maps-discovery.analisis-detail')->middleware('permission:view maps-discovery');
+        Route::post('maps-discovery/analisis/{id}/scrape-statistics', [MapsDiscoveryController::class, 'scrapeStatistics'])->name('maps-discovery.scrape-statistics')->middleware('permission:view maps-discovery');
+        Route::post('maps-discovery/analisis/{id}/calculate', [MapsDiscoveryController::class, 'calculatePotential'])->name('maps-discovery.calculate-potential')->middleware('permission:view maps-discovery');
+
         // Target Tambahan APBD
         Route::middleware('permission:view additional-targets')->group(function (): void {
             Route::get('upt-additional-targets', [UptAdditionalTargetController::class, 'index'])->name('upt-additional-targets.index');

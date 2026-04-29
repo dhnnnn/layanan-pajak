@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\MapsDiscovery\CalculatePotentialTaxAction;
 use App\Actions\MapsDiscovery\CrawlMapsAction;
 use App\Actions\MapsDiscovery\GetDiscoveryReportAction;
 use App\Actions\MapsDiscovery\GetVillagesByDistrictAction;
 use App\Actions\MapsDiscovery\ProcessCrawlAction;
+use App\Actions\MapsDiscovery\ScrapeMapStatisticsAction;
 use App\Actions\MapsDiscovery\SyncDiscoveryResultsAction;
 use App\Exceptions\ScraperErrorException;
 use App\Exceptions\ScraperUnavailableException;
@@ -13,6 +15,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CrawlMapsDiscoveryRequest;
 use App\Models\District;
 use App\Models\MapsDiscoveryResult;
+use App\Models\MonitoringReport;
 use App\Models\TaxType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -162,6 +165,115 @@ class MapsDiscoveryController extends Controller
             'results' => $results,
             'stats' => $stats,
             'sessionId' => $sessionId,
+        ]);
+    }
+
+    /**
+     * Halaman detail analisis potensi pajak.
+     */
+    public function analisisDetail(string $id, ScrapeMapStatisticsAction $action): View
+    {
+        $result = MapsDiscoveryResult::with(['monitoringReports.officer', 'potentialCalculations'])
+            ->findOrFail($id);
+
+        $statisticsData = null;
+        $statisticsError = null;
+        $isLoading = false;
+
+        // Cek apakah sudah ada di maps_statistics
+        $hasStatistics = $result->mapsStatistics()->exists();
+
+        if ($hasStatistics) {
+            // Sudah ada, langsung load
+            $statsResult = $action($result);
+            if ($statsResult['success']) {
+                $statisticsData = $statsResult['statistics'];
+            } else {
+                $statisticsError = $statsResult['message'] ?? 'Gagal memuat statistik';
+            }
+        } elseif (! empty($result->popular_times)) {
+            // Ada popular_times di DB, konversi ke maps_statistics
+            try {
+                $statsResult = $action($result);
+                if ($statsResult['success']) {
+                    $statisticsData = $statsResult['statistics'];
+                } else {
+                    $statisticsError = $statsResult['message'] ?? 'Gagal memuat statistik';
+                }
+            } catch (\Exception $e) {
+                $statisticsError = 'Terjadi kesalahan: '.$e->getMessage();
+            }
+        } else {
+            // Belum ada data - perlu scrape dari API (loading state)
+            $isLoading = true;
+        }
+
+        return view('admin.maps-discovery.analisis-detail', [
+            'result' => $result,
+            'statisticsData' => $statisticsData,
+            'statisticsError' => $statisticsError,
+            'isLoading' => $isLoading,
+            'latestCalculation' => $result->potentialCalculations()->latest()->first(),
+        ]);
+    }
+
+    /**
+     * API: Scrape statistik Maps untuk satu tempat.
+     */
+    public function scrapeStatistics(string $id, ScrapeMapStatisticsAction $action): JsonResponse
+    {
+        $result = MapsDiscoveryResult::findOrFail($id);
+
+        try {
+            $data = $action($result);
+
+            return response()->json($data);
+        } catch (ScraperUnavailableException $e) {
+            return response()->json(['success' => false, 'message' => 'Scraper tidak dapat dijangkau.'], 503);
+        } catch (ScraperErrorException $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal mengambil data dari scraper.'], 500);
+        }
+    }
+
+    /**
+     * API: Hitung potensi pajak berdasarkan data monitoring dan statistik Maps.
+     */
+    public function calculatePotential(Request $request, string $id, CalculatePotentialTaxAction $action): JsonResponse
+    {
+        $validated = $request->validate([
+            'checker_result' => ['required', 'integer', 'min:1'],
+            'monitoring_hour' => ['required', 'string', 'regex:/^\d{1,2}-\d{1,2}$/'],
+            'day_of_week' => ['required', 'string', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
+            'avg_menu_price' => ['required', 'numeric', 'min:1000'],
+            'avg_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:12'],
+        ]);
+
+        $result = MapsDiscoveryResult::findOrFail($id);
+
+        // Buat monitoring report sementara (tanpa simpan ke DB) untuk kalkulasi
+        $monitoring = new MonitoringReport([
+            'maps_discovery_result_id' => $result->id,
+            'officer_id' => auth()->id(),
+            'monitoring_date' => now()->toDateString(),
+            'monitoring_hour' => $validated['monitoring_hour'],
+            'day_of_week' => $validated['day_of_week'],
+            'visitor_count' => $validated['checker_result'],
+        ]);
+
+        $calcResult = $action(
+            $result,
+            $monitoring,
+            (float) $validated['avg_menu_price'],
+            (float) $validated['avg_duration_hours']
+        );
+
+        if (! $calcResult['success']) {
+            return response()->json(['success' => false, 'message' => $calcResult['message']], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'calculation' => $calcResult['calculation'],
         ]);
     }
 }

@@ -119,6 +119,7 @@
                             <th class="px-4 py-3 text-left">NPWPD Match</th>
                             <th class="px-4 py-3 text-left">Nama WP Match</th>
                             <th class="px-4 py-3 text-center">Maps</th>
+                            <th class="px-4 py-3 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -158,10 +159,20 @@
                                 </a>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-center">
+                                <a href="{{ route('admin.maps-discovery.analisis-detail', $item->id) }}" 
+                                   class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                                   title="Analisis Potensi Pajak">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                    </svg>
+                                    Analisis
+                                </a>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-12 text-center text-slate-400">Belum ada data. Mulai crawling untuk menemukan potensi WP baru.</td>
+                            <td colspan="10" class="px-4 py-12 text-center text-slate-400">Belum ada data. Mulai crawling untuk menemukan potensi WP baru.</td>
                         </tr>
                         @endforelse
                     </tbody>

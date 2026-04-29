@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MapsDiscoveryResult extends Model
 {
@@ -30,6 +31,8 @@ class MapsDiscoveryResult extends Model
         'tax_type_code',
         'district_name',
         'keyword',
+        'avg_menu_price',
+        'popular_times',
     ];
 
     protected $keyType = 'string';
@@ -44,11 +47,28 @@ class MapsDiscoveryResult extends Model
             'rating' => 'float',
             'reviews' => 'integer',
             'similarity_score' => 'float',
+            'avg_menu_price' => 'decimal:2',
+            'popular_times' => 'array',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function mapsStatistics(): HasMany
+    {
+        return $this->hasMany(MapsStatistic::class);
+    }
+
+    public function monitoringReports(): HasMany
+    {
+        return $this->hasMany(MonitoringReport::class);
+    }
+
+    public function potentialCalculations(): HasMany
+    {
+        return $this->hasMany(PotentialCalculation::class);
     }
 }

@@ -163,6 +163,7 @@ class ProcessCrawlAction
                     'rating' => $item['rating'] ?? null,
                     'reviews' => $item['reviews'] ?? null,
                     'price_range' => $item['price_range'] ?? null,
+                    'popular_times' => null, // Diambil saat analisis, bukan saat crawling
                     'status' => 'belum_dicek',
                     'matched_npwpd' => null,
                     'matched_name' => null,

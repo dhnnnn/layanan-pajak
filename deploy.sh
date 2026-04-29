@@ -1,37 +1,26 @@
-#!/bin/bash
-set -e
-
 echo "=== Starting deployment ==="
 
-# FIX: allow git repo ownership
-git config --add safe.directory /var/www
-
-# Pull latest code
 git pull origin main
 
-# Clear old caches dulu agar tidak load provider lama
-docker exec layanan_pajak_app rm -f bootstrap/cache/config.php
-docker exec layanan_pajak_app rm -f bootstrap/cache/packages.php
-docker exec layanan_pajak_app rm -f bootstrap/cache/services.php
+# Build dulu
+docker compose build
 
-# Fix storage permissions
-docker exec layanan_pajak_app chmod -R 775 storage bootstrap/cache
-docker exec layanan_pajak_app chown -R www-data:www-data storage bootstrap/cache
+# Jalankan container baru
+docker compose up -d
 
-# Install dependencies tanpa dev packages
-docker exec layanan_pajak_app composer install --no-dev --optimize-autoloader --no-interaction
+# Pastikan container ready
+sleep 5
 
-# Run database migrations
-docker exec layanan_pajak_app php artisan migrate --force --no-interaction
+# Clear cache
+docker exec layanan_pajak_app php artisan optimize:clear
 
-# Rebuild caches
-docker exec layanan_pajak_app php artisan config:cache
-docker exec layanan_pajak_app php artisan route:cache
-docker exec layanan_pajak_app php artisan view:cache
-docker exec layanan_pajak_app php artisan event:cache
+# Install deps (kalau memang runtime)
+docker exec layanan_pajak_app composer install --no-dev --optimize-autoloader
 
-# Restart queue & scheduler agar pakai kode baru
-docker restart layanan_pajak_queue
-docker restart layanan_pajak_scheduler
+# Migrate setelah container baru aktif
+docker exec layanan_pajak_app php artisan migrate --force
+
+# Cache ulang
+docker exec layanan_pajak_app php artisan optimize
 
 echo "=== Deployment complete ==="
