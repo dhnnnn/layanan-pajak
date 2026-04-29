@@ -9,27 +9,44 @@ git config --add safe.directory /var/www
 # Pull latest code
 git pull origin main
 
+echo "=== Stopping current containers ==="
 # Stop semua container dengan bersih
 docker compose down --remove-orphans
 
-# Tunggu sebentar agar semua resource dilepas
-sleep 5
+# Beri waktu lebih lama agar OS benar-benar melepas volume mount
+echo "Waiting for OS to release volume mounts..."
+sleep 10
 
-# Bersihkan resource yang masih busy (dangling images, stopped containers)
-docker system prune -f
+# PERBAIKAN: Hapus 'docker system prune -f' dari sini agar tidak memicu "device busy"
 
-# Tunggu lagi setelah prune
-sleep 3
+echo "=== Building and starting containers ==="
+# Tambahkan sistem RETRY: Jika gagal karena resource busy, dia akan coba lagi sampai 3x
+MAX_RETRIES=3
+RETRY_COUNT=0
+SUCCESS=false
 
-# Start ulang container
-docker compose up -d --build
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if docker compose up -d --build; then
+        SUCCESS=true
+        break
+    else
+        echo "⚠️ Attempt $((RETRY_COUNT+1)) failed (Mungkin resource masih busy). Retrying in 5 seconds..."
+        sleep 5
+        RETRY_COUNT=$((RETRY_COUNT+1))
+    fi
+done
+
+if [ "$SUCCESS" = false ]; then
+    echo "❌ ERROR: Gagal menjalankan docker compose up setelah $MAX_RETRIES percobaan."
+    exit 1
+fi
 
 # Tunggu DB healthy
 echo "=== Waiting for database ==="
 ELAPSED=0
 until [ "$(docker inspect -f '{{.State.Health.Status}}' layanan_pajak_db 2>/dev/null)" = "healthy" ]; do
     if [ $ELAPSED -ge 90 ]; then
-        echo "ERROR: DB tidak healthy setelah 90s"
+        echo "❌ ERROR: DB tidak healthy setelah 90s"
         exit 1
     fi
     echo "Waiting for DB... (${ELAPSED}s)"
@@ -42,7 +59,7 @@ echo "=== Waiting for PHP-FPM ==="
 ELAPSED=0
 until docker exec layanan_pajak_app php artisan --version > /dev/null 2>&1; do
     if [ $ELAPSED -ge 90 ]; then
-        echo "ERROR: PHP-FPM tidak ready setelah 90s"
+        echo "❌ ERROR: PHP-FPM tidak ready setelah 90s"
         docker logs layanan_pajak_app --tail 30
         exit 1
     fi
@@ -64,4 +81,9 @@ docker exec layanan_pajak_app php artisan optimize
 # Reload nginx
 docker exec layanan_pajak_nginx nginx -s reload || true
 
-echo "=== Deployment complete ==="
+echo "=== Cleaning up unused Docker resources ==="
+# PERBAIKAN: Lakukan prune di paling akhir saat aplikasi sudah berjalan dengan aman
+# Menggunakan 'image prune' lebih aman daripada 'system prune' untuk production
+docker image prune -f
+
+echo "=== Deployment complete ✅ ==="
